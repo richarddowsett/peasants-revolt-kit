@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Next.js build & export outputs
+app/.next/
+app/out/
+
+# Firebase local cache
+app/.firebase/
+
+# Terraform local state & lock files
+infrastructure/.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Operating System
+.DS_Store
