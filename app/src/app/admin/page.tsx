@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { FirestoreProductRepositoryAdapter } from '@/adapters/db/FirestoreProductRepositoryAdapter';
 import { FirestoreOrderRepositoryAdapter } from '@/adapters/db/FirestoreOrderRepositoryAdapter';
 import { PasswordAdminAuthAdapter } from '@/adapters/auth/PasswordAdminAuthAdapter';
+import { FirebaseStorageAdapter } from '@/adapters/storage/FirebaseStorageAdapter';
 import { ManageProductUseCase } from '@/domain/usecases/ManageProductUseCase';
 import { GetProductsUseCase } from '@/domain/usecases/GetProductsUseCase';
 import { UpdateOrderStatusUseCase } from '@/domain/usecases/UpdateOrderStatusUseCase';
 import { GetUserOrdersUseCase } from '@/domain/usecases/GetUserOrdersUseCase';
 import { Product } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminCMSPage() {
@@ -30,6 +31,7 @@ export default function AdminCMSPage() {
   const [productDesc, setProductDesc] = useState<string>('');
   const [productPrice, setProductPrice] = useState<string>('25.00');
   const [productImage, setProductImage] = useState<string>('/logo.png');
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [productSizesStr, setProductSizesStr] = useState<string>('XS, S, M, L, XL, XXL');
   const [isPublished, setIsPublished] = useState<boolean>(true);
 
@@ -37,6 +39,7 @@ export default function AdminCMSPage() {
   const productRepo = new FirestoreProductRepositoryAdapter();
   const orderRepo = new FirestoreOrderRepositoryAdapter();
   const authAdapter = new PasswordAdminAuthAdapter();
+  const storageAdapter = new FirebaseStorageAdapter();
 
   const getProductsUseCase = new GetProductsUseCase(productRepo);
   const manageProductUseCase = new ManageProductUseCase(productRepo);
@@ -44,7 +47,6 @@ export default function AdminCMSPage() {
   const updateOrderStatusUseCase = new UpdateOrderStatusUseCase(orderRepo);
 
   useEffect(() => {
-    // Check local session
     const savedAuth = sessionStorage.getItem('admin_authenticated');
     if (savedAuth === 'true') {
       setIsAuthenticated(true);
@@ -68,12 +70,27 @@ export default function AdminCMSPage() {
   const loadAdminData = async () => {
     setLoading(true);
     const [allProds, allOrds] = await Promise.all([
-      getProductsUseCase.execute(false), // get all products including drafts
+      getProductsUseCase.execute(false),
       getUserOrdersUseCase.getAllOrders(),
     ]);
     setProducts(allProds);
     setOrders(allOrds);
     setLoading(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const downloadUrl = await storageAdapter.uploadImage(file, 'product-images');
+      setProductImage(downloadUrl);
+    } catch (err) {
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -257,7 +274,7 @@ export default function AdminCMSPage() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-xl font-black text-slate-900">Manage Kit Items</h2>
-                <p className="text-xs text-slate-500">Add, update prices, or remove store kit items.</p>
+                <p className="text-xs text-slate-500">Upload images, set prices, and update kit items.</p>
               </div>
               <button
                 onClick={() => {
@@ -408,7 +425,6 @@ export default function AdminCMSPage() {
                         Total: £{order.totalAmount.toFixed(2)}
                       </span>
 
-                      {/* Organiser Action Buttons */}
                       <div className="flex flex-wrap gap-2">
                         {order.status === 'pending_payment' && (
                           <button
@@ -439,7 +455,7 @@ export default function AdminCMSPage() {
       {/* Product Add/Edit Modal */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsProductModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold"
@@ -474,6 +490,38 @@ export default function AdminCMSPage() {
                 />
               </div>
 
+              {/* Image Upload Box */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Product Image</label>
+                
+                <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <div className="w-16 h-16 bg-white rounded-xl border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                    {uploadingImage ? (
+                      <Loader2 size={24} className="text-[rgb(202,88,46)] animate-spin" />
+                    ) : (
+                      <img
+                        src={productImage || '/logo.png'}
+                        alt="Preview"
+                        className="max-h-full max-w-full object-contain rounded-lg"
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex-1">
+                    <label className="cursor-pointer bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 text-xs font-bold py-2 px-3 rounded-xl shadow-sm inline-flex items-center gap-2 transition">
+                      <Upload size={14} /> Upload Image File
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="text-[10px] text-slate-400 mt-1">Upload PNG, JPG, or WebP kit image.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Price (£)</label>
@@ -487,26 +535,16 @@ export default function AdminCMSPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Image URL</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Sizes (comma-separated)
+                  </label>
                   <input
                     type="text"
-                    value={productImage}
-                    onChange={(e) => setProductImage(e.target.value)}
+                    value={productSizesStr}
+                    onChange={(e) => setProductSizesStr(e.target.value)}
                     className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Sizes (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={productSizesStr}
-                  onChange={(e) => setProductSizesStr(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
-                />
               </div>
 
               <div className="flex items-center gap-2">
@@ -524,9 +562,10 @@ export default function AdminCMSPage() {
 
               <button
                 type="submit"
+                disabled={uploadingImage}
                 className="w-full bg-[rgb(202,88,46)] hover:bg-[rgb(165,68,32)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition"
               >
-                Save Product
+                {uploadingImage ? 'Uploading Image...' : 'Save Product'}
               </button>
             </form>
           </div>
