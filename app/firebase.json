@@ -4,6 +4,15 @@
     "ignore": [
       "firebase.json",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "peasants-running-kit-api",
+          "region": "europe-west2"
+        }
+      }
     ]
   }
 }

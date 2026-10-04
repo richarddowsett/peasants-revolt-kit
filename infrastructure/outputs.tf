@@ -1,3 +1,13 @@
+output "cloud_run_backend_url" {
+  description = "Cloud Run Backend API URL"
+  value       = google_cloud_run_v2_service.api.uri
+}
+
+output "artifact_registry_repo" {
+  description = "Docker artifact repository path"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
+}
+
 output "firebase_site_url" {
   description = "Default Firebase Hosting URL"
   value       = "https://${google_firebase_hosting_site.primary.site_id}.web.app"
@@ -13,7 +23,7 @@ output "www_domain" {
   value       = google_firebase_hosting_custom_domain.www.custom_domain
 }
 
-output "deploy_command" {
-  description = "Command to deploy site files from app directory to Firebase Hosting"
-  value       = "cd app && npx -y firebase-tools@latest deploy --only hosting --project ${var.project_id}"
+output "backend_docker_build_command" {
+  description = "Command to build backend container locally and push to GCP Artifact Registry"
+  value       = "docker build -t ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend && docker push ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
 }
