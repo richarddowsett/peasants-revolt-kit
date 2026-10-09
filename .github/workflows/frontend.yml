@@ -31,6 +31,13 @@ jobs:
           npm ci
 
       - name: Build Next.js Static Export
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: peasants-running-kit.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: peasants-running-kit
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: peasants-running-kit.appspot.com
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "98587359280"
+          NEXT_PUBLIC_FIREBASE_APP_ID: "1:98587359280:web:8e3063a02fc4408c2f15f5"
         run: |
           cd app
           npm run build
