@@ -24,6 +24,6 @@ output "www_domain" {
 }
 
 output "backend_docker_build_command" {
-  description = "Command to build backend container locally and push to GCP Artifact Registry"
-  value       = "docker build -t ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend && docker push ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
+  description = "Command to build backend container locally for Cloud Run (linux/amd64) and push to GCP Artifact Registry"
+  value       = "docker build --platform linux/amd64 -t ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend && docker push ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
 }
