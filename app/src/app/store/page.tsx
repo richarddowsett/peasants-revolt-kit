@@ -16,6 +16,7 @@ export default function StoreCatalogPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
+  const [selectedImages, setSelectedImages] = useState<Record<string, string>>({});
 
   // Checkout Form State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -31,14 +32,18 @@ export default function StoreCatalogPage() {
         const items = await fetchProducts(false); // Fetch published products from API
         setProducts(items);
 
-        // Default selected sizes
+        // Default selected sizes & images
         const defaultSizes: Record<string, string> = {};
+        const defaultImages: Record<string, string> = {};
         items.forEach((p: Product) => {
           if (p.sizes && p.sizes.length > 0) {
             defaultSizes[p.id] = p.sizes[0];
           }
+          const mainImg = p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : (p.imageUrl || '/logo.png');
+          defaultImages[p.id] = mainImg;
         });
         setSelectedSizes(defaultSizes);
+        setSelectedImages(defaultImages);
       } catch (err) {
         console.error('Failed to load products from API:', err);
       } finally {
@@ -189,16 +194,40 @@ export default function StoreCatalogPage() {
                 key={product.id}
                 className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between"
               >
-                {/* Product Image */}
-                <div className="relative h-56 bg-slate-100 flex items-center justify-center p-4">
-                  <img
-                    src={product.imageUrl || '/logo.png'}
-                    alt={product.name}
-                    className="max-h-full max-w-full object-contain"
-                  />
+                {/* Product Image & Thumbnail Bar */}
+                <div className="relative bg-slate-100 p-4 flex flex-col items-center justify-center">
+                  <div className="h-56 w-full flex items-center justify-center">
+                    <img
+                      src={selectedImages[product.id] || product.imageUrl || '/logo.png'}
+                      alt={product.name}
+                      className="max-h-full max-w-full object-contain transition-all duration-200"
+                    />
+                  </div>
                   <span className="absolute top-3 right-3 bg-white/90 font-black text-slate-900 text-sm px-3 py-1 rounded-full shadow-sm">
                     £{product.price.toFixed(2)}
                   </span>
+
+                  {/* Multi-image thumbnail selector */}
+                  {product.imageUrls && product.imageUrls.length > 1 && (
+                    <div className="flex items-center gap-1.5 mt-2 overflow-x-auto max-w-full px-2 py-1 bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200">
+                      {product.imageUrls.map((imgUrl, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() =>
+                            setSelectedImages((prev) => ({ ...prev, [product.id]: imgUrl }))
+                          }
+                          className={`w-8 h-8 rounded-lg border overflow-hidden p-0.5 transition ${
+                            (selectedImages[product.id] || product.imageUrl) === imgUrl
+                              ? 'border-[rgb(202,88,46)] ring-2 ring-[rgb(202,88,46)]/20'
+                              : 'border-slate-200 hover:border-slate-400 opacity-70 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={imgUrl} alt="" className="w-full h-full object-contain" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Product Info */}

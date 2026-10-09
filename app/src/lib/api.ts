@@ -26,7 +26,7 @@ export async function deleteProduct(id: string) {
 
 export async function uploadImage(file: File) {
   const formData = new FormData();
-  formData.append('image', file);
+  formData.append('images', file);
   const res = await fetch(`${API_BASE}/upload`, {
     method: 'POST',
     body: formData,
@@ -34,6 +34,19 @@ export async function uploadImage(file: File) {
   if (!res.ok) throw new Error('Failed to upload image');
   const data = await res.json();
   return data.imageUrl;
+}
+
+export async function uploadImages(files: File[]): Promise<string[]> {
+  if (!files || files.length === 0) return [];
+  const formData = new FormData();
+  files.forEach((file) => formData.append('images', file));
+  const res = await fetch(`${API_BASE}/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Failed to upload images');
+  const data = await res.json();
+  return data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
 }
 
 export async function createOrder(orderCommand: any) {

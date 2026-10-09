@@ -6,13 +6,13 @@ import {
   fetchProducts,
   saveProduct,
   deleteProduct,
-  uploadImage,
+  uploadImages,
   fetchOrders,
   updateOrderStatus,
 } from '@/lib/api';
 import { Product } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2 } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminCMSPage() {
@@ -31,8 +31,9 @@ export default function AdminCMSPage() {
   const [productName, setProductName] = useState<string>('');
   const [productDesc, setProductDesc] = useState<string>('');
   const [productPrice, setProductPrice] = useState<string>('25.00');
-  const [productImage, setProductImage] = useState<string>('/logo.png');
+  const [productImages, setProductImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
   const [productSizesStr, setProductSizesStr] = useState<string>('XS, S, M, L, XL, XXL');
   const [isPublished, setIsPublished] = useState<boolean>(true);
 
@@ -77,19 +78,60 @@ export default function AdminCMSPage() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processFiles = async (files: File[]) => {
+    if (!files || files.length === 0) return;
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return alert('Please upload image files (PNG, JPG, WebP).');
 
     setUploadingImage(true);
     try {
-      const downloadUrl = await uploadImage(file);
-      setProductImage(downloadUrl);
+      const uploadedUrls = await uploadImages(imageFiles);
+      setProductImages((prev) => [...prev, ...uploadedUrls]);
     } catch (err) {
-      alert('Failed to upload image to backend.');
+      alert('Failed to upload images to backend.');
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(Array.from(e.target.files));
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(Array.from(e.dataTransfer.files));
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setProductImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleSetPrimaryImage = (indexToSet: number) => {
+    setProductImages((prev) => {
+      const copy = [...prev];
+      const selected = copy.splice(indexToSet, 1);
+      return [...selected, ...copy];
+    });
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -102,12 +144,15 @@ export default function AdminCMSPage() {
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean);
 
+    const mainImageUrl = productImages.length > 0 ? productImages[0] : '/logo.png';
+
     await saveProduct({
       id: editingProductId || undefined,
       name: productName,
       description: productDesc,
       price: priceNum,
-      imageUrl: productImage || '/logo.png',
+      imageUrl: mainImageUrl,
+      imageUrls: productImages.length > 0 ? productImages : [mainImageUrl],
       sizes: sizes.length > 0 ? sizes : ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
       isPublished,
     });
@@ -134,7 +179,7 @@ export default function AdminCMSPage() {
     setProductName('');
     setProductDesc('');
     setProductPrice('25.00');
-    setProductImage('/logo.png');
+    setProductImages([]);
     setProductSizesStr('XS, S, M, L, XL, XXL');
     setIsPublished(true);
   };
@@ -144,7 +189,10 @@ export default function AdminCMSPage() {
     setProductName(product.name);
     setProductDesc(product.description);
     setProductPrice(product.price.toString());
-    setProductImage(product.imageUrl);
+    const existingImages = product.imageUrls && product.imageUrls.length > 0
+      ? product.imageUrls
+      : product.imageUrl ? [product.imageUrl] : [];
+    setProductImages(existingImages);
     setProductSizesStr(product.sizes ? product.sizes.join(', ') : 'XS, S, M, L, XL, XXL');
     setIsPublished(product.isPublished);
     setIsProductModalOpen(true);
@@ -489,36 +537,99 @@ export default function AdminCMSPage() {
                 />
               </div>
 
-              {/* Image Upload Box */}
+              {/* Drag & Drop Multi-Image Upload Zone */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Product Image</label>
-                
-                <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                  <div className="w-16 h-16 bg-white rounded-xl border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                    {uploadingImage ? (
-                      <Loader2 size={24} className="text-[rgb(202,88,46)] animate-spin" />
-                    ) : (
-                      <img
-                        src={productImage || '/logo.png'}
-                        alt="Preview"
-                        className="max-h-full max-w-full object-contain rounded-lg"
-                      />
-                    )}
-                  </div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Product Images (Drag & Drop or Click to Select Multiple)
+                </label>
 
-                  <div className="flex-1">
-                    <label className="cursor-pointer bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 text-xs font-bold py-2 px-3 rounded-xl shadow-sm inline-flex items-center gap-2 transition">
-                      <Upload size={14} /> Upload Image File
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                    </label>
-                    <p className="text-[10px] text-slate-400 mt-1">Upload PNG, JPG, or WebP kit image.</p>
-                  </div>
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200 cursor-pointer ${
+                    isDragging
+                      ? 'border-[rgb(202,88,46)] bg-[rgba(202,88,46,0.08)] scale-[1.01]'
+                      : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                    id="multi-file-input"
+                  />
+                  <label htmlFor="multi-file-input" className="cursor-pointer block">
+                    {uploadingImage ? (
+                      <div className="flex flex-col items-center justify-center gap-2 py-2">
+                        <Loader2 size={32} className="text-[rgb(202,88,46)] animate-spin" />
+                        <span className="text-xs font-bold text-slate-700">Uploading Images...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                        <div className="w-12 h-12 bg-white rounded-full border border-slate-200 flex items-center justify-center shadow-sm text-[rgb(202,88,46)] mx-auto mb-1">
+                          <Upload size={20} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-800 block">
+                          {isDragging ? 'Drop Image Files Here!' : 'Drag & Drop Images Here'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 block">
+                          or click to browse multiple files (PNG, JPG, WebP)
+                        </span>
+                      </div>
+                    )}
+                  </label>
                 </div>
+
+                {/* Uploaded Images Gallery Grid */}
+                {productImages.length > 0 && (
+                  <div className="mt-4">
+                    <span className="text-[11px] uppercase font-bold text-slate-400 block mb-2">
+                      Uploaded Images ({productImages.length})
+                    </span>
+                    <div className="grid grid-cols-4 gap-3">
+                      {productImages.map((imgUrl, index) => (
+                        <div
+                          key={`${imgUrl}-${index}`}
+                          className="relative group h-20 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center p-1"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Product image ${index + 1}`}
+                            className="max-h-full max-w-full object-contain rounded-lg"
+                          />
+                          {index === 0 && (
+                            <span className="absolute top-1 left-1 bg-[rgb(202,88,46)] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow flex items-center gap-0.5">
+                              <Star size={10} /> Main
+                            </span>
+                          )}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                            {index !== 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetPrimaryImage(index)}
+                                title="Set as Main Image"
+                                className="bg-white text-slate-800 p-1.5 rounded-lg hover:bg-amber-100 hover:text-amber-800 text-[10px] font-bold"
+                              >
+                                <Star size={14} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(index)}
+                              title="Remove Image"
+                              className="bg-white text-slate-800 p-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 text-[10px] font-bold"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

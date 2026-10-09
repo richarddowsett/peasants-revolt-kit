@@ -4,6 +4,7 @@ export interface Product {
   description: string;
   price: number;
   imageUrl: string;
+  imageUrls?: string[];
   sizes: string[];
   isPublished: boolean;
   createdAt: string;

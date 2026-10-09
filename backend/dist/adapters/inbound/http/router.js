@@ -19,8 +19,8 @@ exports.apiRouter.post('/admin/login', (req, res) => container_1.adminController
 exports.apiRouter.get('/products', (req, res) => container_1.productsController.getProducts(req, res));
 exports.apiRouter.post('/products', (req, res) => container_1.productsController.saveProduct(req, res));
 exports.apiRouter.delete('/products/:id', (req, res) => container_1.productsController.deleteProduct(req, res));
-// Image Upload
-exports.apiRouter.post('/upload', upload.single('image'), (req, res) => container_1.uploadController.uploadImage(req, res));
+// Image Upload (single or multiple files)
+exports.apiRouter.post('/upload', upload.any(), (req, res) => container_1.uploadController.uploadImage(req, res));
 // Orders
 exports.apiRouter.post('/orders', (req, res) => container_1.ordersController.createOrder(req, res));
 exports.apiRouter.get('/orders', (req, res) => container_1.ordersController.getOrders(req, res));

@@ -7,12 +7,27 @@ class UploadController {
     }
     async uploadImage(req, res) {
         try {
-            if (!req.file) {
+            const files = [];
+            if (req.files && Array.isArray(req.files)) {
+                files.push(...req.files);
+            }
+            else if (req.files && typeof req.files === 'object') {
+                Object.values(req.files).forEach((fileArray) => {
+                    files.push(...fileArray);
+                });
+            }
+            else if (req.file) {
+                files.push(req.file);
+            }
+            if (files.length === 0) {
                 res.status(400).json({ error: 'No image file uploaded' });
                 return;
             }
-            const imageUrl = await this.storageAdapter.uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype);
-            res.json({ imageUrl });
+            const imageUrls = await Promise.all(files.map((file) => this.storageAdapter.uploadFile(file.buffer, file.originalname, file.mimetype)));
+            res.json({
+                imageUrl: imageUrls[0],
+                imageUrls,
+            });
         }
         catch (err) {
             res.status(500).json({ error: err.message });
