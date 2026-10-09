@@ -16,15 +16,17 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
 
   async getAllProducts(): Promise<Product[]> {
     try {
-      const colRef = collection(db, this.collectionName);
-      const snapshot = await getDocs(colRef);
-      if (!snapshot.empty) {
-        const products: Product[] = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...(docSnap.data() as Omit<Product, 'id'>),
-        }));
-        FirestoreProductRepositoryAdapter.localMemoryStore = products;
-        return products;
+      if (db) {
+        const colRef = collection(db, this.collectionName);
+        const snapshot = await getDocs(colRef);
+        if (!snapshot.empty) {
+          const products: Product[] = snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...(docSnap.data() as Omit<Product, 'id'>),
+          }));
+          FirestoreProductRepositoryAdapter.localMemoryStore = products;
+          return products;
+        }
       }
     } catch (err) {
       console.warn('Firestore product fetch notice:', err);
@@ -39,10 +41,12 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
 
   async getProductById(id: string): Promise<Product | null> {
     try {
-      const docRef = doc(db, this.collectionName, id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return { id: docSnap.id, ...(docSnap.data() as Omit<Product, 'id'>) };
+      if (db) {
+        const docRef = doc(db, this.collectionName, id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          return { id: docSnap.id, ...(docSnap.data() as Omit<Product, 'id'>) };
+        }
       }
     } catch (err) {
       console.warn('Firestore product getById notice:', err);
@@ -64,8 +68,10 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
     };
 
     try {
-      const docRef = doc(db, this.collectionName, id);
-      await setDoc(docRef, product, { merge: true });
+      if (db) {
+        const docRef = doc(db, this.collectionName, id);
+        await setDoc(docRef, product, { merge: true });
+      }
     } catch (err) {
       console.warn('Firestore product save notice:', err);
     }
@@ -82,8 +88,10 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
 
   async deleteProduct(id: string): Promise<boolean> {
     try {
-      const docRef = doc(db, this.collectionName, id);
-      await deleteDoc(docRef);
+      if (db) {
+        const docRef = doc(db, this.collectionName, id);
+        await deleteDoc(docRef);
+      }
     } catch (err) {
       console.warn('Firestore product delete notice:', err);
     }

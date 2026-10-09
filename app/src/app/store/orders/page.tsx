@@ -14,7 +14,7 @@ export default function UserOrdersPage() {
   const [searched, setSearched] = useState<boolean>(false);
 
   useEffect(() => {
-    const user = auth.currentUser;
+    const user = auth?.currentUser;
     if (user?.email) {
       setEmailInput(user.email);
       loadOrders(user.email);

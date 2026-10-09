@@ -48,7 +48,7 @@ export default function StoreCatalogPage() {
     loadData();
 
     // Prefill auth user details if available
-    const user = auth.currentUser;
+    const user = auth?.currentUser;
     if (user) {
       if (user.displayName) setCustomerName(user.displayName);
       if (user.email) setCustomerEmail(user.email);
@@ -103,7 +103,7 @@ export default function StoreCatalogPage() {
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleProceedToCheckout = () => {
-    const user = auth.currentUser;
+    const user = auth?.currentUser;
     if (user?.email) setCustomerEmail(user.email);
     if (user?.displayName) setCustomerName(user.displayName);
     setIsCartOpen(false);
@@ -116,7 +116,7 @@ export default function StoreCatalogPage() {
 
     setIsSubmitting(true);
     try {
-      const user = auth.currentUser;
+      const user = auth?.currentUser;
       const order = await createOrder({
         userName: customerName,
         userEmail: customerEmail,

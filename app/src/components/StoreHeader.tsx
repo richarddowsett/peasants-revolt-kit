@@ -19,6 +19,7 @@ export default function StoreHeader({ cartItemCount, onOpenCart }: StoreHeaderPr
   const [authError, setAuthError] = useState<string>('');
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
     });
@@ -42,6 +43,10 @@ export default function StoreHeader({ cartItemCount, onOpenCart }: StoreHeaderPr
   }, []);
 
   const handleGoogleSignIn = async () => {
+    if (!auth) {
+      setAuthError('Firebase Auth API key is not configured.');
+      return;
+    }
     try {
       setAuthError('');
       await signInWithPopup(auth, googleProvider);
@@ -54,6 +59,10 @@ export default function StoreHeader({ cartItemCount, onOpenCart }: StoreHeaderPr
   const handleEmailMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInput) return;
+    if (!auth) {
+      setAuthError('Firebase Auth API key is not configured.');
+      return;
+    }
     try {
       setAuthError('');
       const actionCodeSettings = {
@@ -69,7 +78,9 @@ export default function StoreHeader({ cartItemCount, onOpenCart }: StoreHeaderPr
   };
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    if (auth) {
+      await signOut(auth);
+    }
   };
 
   return (

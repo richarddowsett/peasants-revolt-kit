@@ -34,8 +34,10 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
     };
 
     try {
-      const docRef = doc(db, this.collectionName, orderId);
-      await setDoc(docRef, order);
+      if (db) {
+        const docRef = doc(db, this.collectionName, orderId);
+        await setDoc(docRef, order);
+      }
     } catch (err) {
       console.warn('Firestore order save notice:', err);
     }
@@ -46,10 +48,12 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
 
   async getOrderById(id: string): Promise<Order | null> {
     try {
-      const docRef = doc(db, this.collectionName, id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return docSnap.data() as Order;
+      if (db) {
+        const docRef = doc(db, this.collectionName, id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          return docSnap.data() as Order;
+        }
       }
     } catch (err) {
       console.warn('Firestore order getById notice:', err);
@@ -59,11 +63,13 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
 
   async getOrdersByUserEmail(email: string): Promise<Order[]> {
     try {
-      const colRef = collection(db, this.collectionName);
-      const q = query(colRef, where('userEmail', '==', email.toLowerCase()));
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        return snapshot.docs.map((docSnap) => docSnap.data() as Order);
+      if (db) {
+        const colRef = collection(db, this.collectionName);
+        const q = query(colRef, where('userEmail', '==', email.toLowerCase()));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          return snapshot.docs.map((docSnap) => docSnap.data() as Order);
+        }
       }
     } catch (err) {
       console.warn('Firestore order getByUserEmail notice:', err);
@@ -75,12 +81,14 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
 
   async getAllOrders(): Promise<Order[]> {
     try {
-      const colRef = collection(db, this.collectionName);
-      const snapshot = await getDocs(colRef);
-      if (!snapshot.empty) {
-        const orders = snapshot.docs.map((docSnap) => docSnap.data() as Order);
-        FirestoreOrderRepositoryAdapter.localMemoryStore = orders;
-        return orders;
+      if (db) {
+        const colRef = collection(db, this.collectionName);
+        const snapshot = await getDocs(colRef);
+        if (!snapshot.empty) {
+          const orders = snapshot.docs.map((docSnap) => docSnap.data() as Order);
+          FirestoreOrderRepositoryAdapter.localMemoryStore = orders;
+          return orders;
+        }
       }
     } catch (err) {
       console.warn('Firestore order getAll notice:', err);
@@ -101,8 +109,10 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
     };
 
     try {
-      const docRef = doc(db, this.collectionName, orderId);
-      await setDoc(docRef, updatedOrder, { merge: true });
+      if (db) {
+        const docRef = doc(db, this.collectionName, orderId);
+        await setDoc(docRef, updatedOrder, { merge: true });
+      }
     } catch (err) {
       console.warn('Firestore order update notice:', err);
     }
