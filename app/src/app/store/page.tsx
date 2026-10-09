@@ -176,16 +176,10 @@ export default function StoreCatalogPage() {
             <div className="w-16 h-16 bg-[rgba(202,88,46,0.1)] text-[rgb(202,88,46)] rounded-full flex items-center justify-center mx-auto mb-4">
               <ShoppingBag size={32} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">No Products Available Yet</h2>
-            <p className="text-sm text-slate-500 mb-6">
-              Our organisers are updating the kit items in the Admin CMS!
+            <h2 className="text-xl font-bold text-slate-900 mb-2">No Products Available</h2>
+            <p className="text-sm text-slate-500">
+              There are currently no products available in the store catalog. Please check back soon!
             </p>
-            <button
-              onClick={() => router.push('/admin')}
-              className="bg-[rgb(202,88,46)] text-white text-xs font-bold px-5 py-3 rounded-xl shadow hover:bg-[rgb(165,68,32)] transition"
-            >
-              Go to Admin CMS
-            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
