@@ -53,6 +53,19 @@ resource "google_project_service" "firestore_api" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "identitytoolkit_api" {
+  service            = "identitytoolkit.googleapis.com"
+  disable_on_destroy = false
+}
+
+# Provision Identity Platform / Firebase Authentication
+resource "google_identity_platform_config" "default" {
+  provider = google-beta
+  project  = var.project_id
+
+  depends_on = [google_project_service.identitytoolkit_api]
+}
+
 # Artifact Registry Repository for storing backend container images
 resource "google_artifact_registry_repository" "store_repo" {
   location      = var.region
