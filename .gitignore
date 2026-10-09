@@ -21,3 +21,7 @@ infrastructure/.terraform/
 .env*.local
 *.env
 
+# Firebase emulator debug logs
+*-debug.log
+*.log
+

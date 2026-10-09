@@ -98,32 +98,27 @@ peasants-running-kit/
 
 ---
 
-## 🛠️ Local Development Setup
+### ⚡ One-Command Local Development (With Firestore Emulator)
 
-### Prerequisites
-
-- **Node.js**: `v20.x` or higher
-- **Docker**: For local backend container testing
-- **GCP CLI (`gcloud`) & Firebase CLI (`firebase-tools`)**
-- **Terraform**: `>= 1.0.0`
-
-### Running the Backend Locally
+Run the Firestore Emulator, Express Backend API, and Next.js Frontend concurrently in a single command:
 
 ```bash
-cd backend
-npm install
-npm run dev
-# Server listens at http://localhost:8080/api/health
+npm run dev:emulator
 ```
 
-### Running the Frontend Locally
+This starts:
+- **Firestore Emulator**: Listening on `http://127.0.0.1:8085`
+- **Firebase Emulator UI**: Accessible at `http://127.0.0.1:4000/firestore`
+- **Backend API**: Listening on `http://localhost:8080` (automatically connected to the local Firestore emulator)
+- **Frontend App**: Listening on `http://localhost:3000`
 
-```bash
-cd app
-npm install
-npm run dev
-# App listens at http://localhost:3000
-```
+---
+
+### Running Individual Services
+
+- **Firestore Emulator**: `npm run emulator`
+- **Backend API**: `npm run backend:dev`
+- **Frontend App**: `npm run frontend:dev`
 
 ---
 
