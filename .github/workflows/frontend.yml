@@ -28,7 +28,7 @@ jobs:
       - name: Install Frontend Dependencies
         run: |
           cd app
-          npm ci
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Build Next.js Static Export
         env:

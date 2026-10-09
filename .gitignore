@@ -29,3 +29,7 @@ infrastructure/.terraform/
 test-results/
 playwright-report/
 
+# Backend build output
+backend/dist/
+
+

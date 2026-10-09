@@ -2,15 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import StoreHeader from '@/components/StoreHeader';
+import StoreLoginScreen from '@/components/StoreLoginScreen';
 import { fetchProducts, createOrder } from '@/lib/api';
 import { Product } from '@/domain/models/Product';
 import { CartItem } from '@/domain/models/Cart';
 import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 export default function StoreCatalogPage() {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -26,6 +31,23 @@ export default function StoreCatalogPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
+    if (!auth) {
+      setAuthChecking(false);
+      return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthChecking(false);
+      if (user) {
+        if (user.displayName) setCustomerName(user.displayName);
+        if (user.email) setCustomerEmail(user.email);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
     async function loadData() {
       setLoading(true);
       try {
@@ -51,14 +73,7 @@ export default function StoreCatalogPage() {
       }
     }
     loadData();
-
-    // Prefill auth user details if available
-    const user = auth?.currentUser;
-    if (user) {
-      if (user.displayName) setCustomerName(user.displayName);
-      if (user.email) setCustomerEmail(user.email);
-    }
-  }, []);
+  }, [currentUser]);
 
   const handleAddToCart = (product: Product) => {
     const chosenSize = selectedSizes[product.id] || (product.sizes ? product.sizes[0] : 'M');
@@ -143,6 +158,23 @@ export default function StoreCatalogPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center py-20">
+        <div className="w-10 h-10 border-4 border-[rgb(202,88,46)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <StoreHeader cartItemCount={0} onOpenCart={() => {}} />
+        <StoreLoginScreen onLoginSuccess={() => setCurrentUser({ uid: 'guest-runner', email: 'guest@peasants.store', displayName: 'Guest Runner' })} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

@@ -7,6 +7,9 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
   const customerName = 'Alex Runner';
 
   test('Complete E2E Journey: Admin product creation -> Storefront order placement -> Admin fulfillment', async ({ page }) => {
+    page.on('console', (msg) => console.log('BROWSER LOG:', msg.type(), msg.text()));
+    page.on('pageerror', (err) => console.log('BROWSER ERROR:', err.message));
+
     // ----------------------------------------------------
     // STEP 1: Organiser Accesses Admin CMS & Adds Product
     // ----------------------------------------------------
@@ -46,8 +49,18 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     // ----------------------------------------------------
     await page.goto('/');
 
+    // Wait for either login screen or store hero banner to render after auth checking
+    const loginOrStore = page.locator('button:has-text("Continue as Guest")').or(page.locator('text=Official Gear & Kit'));
+    await loginOrStore.first().waitFor({ timeout: 10000 });
+
+    const guestBtn = page.locator('button:has-text("Continue as Guest")');
+    if (await guestBtn.isVisible()) {
+      await guestBtn.click();
+      await page.waitForSelector('text=Official Gear & Kit', { timeout: 15000 });
+    }
+
     // Verify the newly created product appears on the Storefront
-    await expect(page.locator(`text=${productName}`)).toBeVisible();
+    await expect(page.locator(`text=${productName}`)).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=£29.99').first()).toBeVisible();
 
     // Select Size 'M'

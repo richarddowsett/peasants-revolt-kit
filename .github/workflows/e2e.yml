@@ -33,7 +33,7 @@ jobs:
           cd ../app && npm ci || npm install --legacy-peer-deps
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps
 
       - name: Run Playwright E2E UI Journey Tests
         run: npx playwright test

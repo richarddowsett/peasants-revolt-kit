@@ -4,8 +4,8 @@
   "private": true,
   "description": "Peasants Running Kit full-stack application root workspace",
   "scripts": {
-    "kill-ports": "npx -y kill-port 8085 8080 4000 4400 3000 || true",
-    "emulator": "npx -y firebase-tools@latest emulators:start --only firestore --project peasants-running-kit",
+    "kill-ports": "npx -y kill-port 9099 8085 8080 4000 4400 3000 || true",
+    "emulator": "npx -y firebase-tools@latest emulators:start --only firestore,auth --project peasants-running-kit",
     "backend:dev": "cd backend && FIRESTORE_EMULATOR_HOST=127.0.0.1:8085 npm run dev",
     "frontend:dev": "cd app && npm run dev",
     "dev:emulator": "npm run kill-ports && npx -y concurrently@latest --names \"EMULATOR,BACKEND,FRONTEND\" -c \"yellow.bold,blue.bold,magenta.bold\" \"npm run emulator\" \"npm run backend:dev\" \"npm run frontend:dev\"",
