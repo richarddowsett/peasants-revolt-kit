@@ -32,3 +32,15 @@ output "backend_cloud_build_command" {
   description = "Alternative: Cloud Build command (builds directly on GCP x86_64 servers)"
   value       = "gcloud builds submit --tag ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend"
 }
+
+output "firebase_web_app_config" {
+  description = "Firebase Web App Configuration (API Key, App ID, Auth Domain)"
+  value = {
+    api_key             = data.google_firebase_web_app_config.web_app_config.api_key
+    auth_domain         = data.google_firebase_web_app_config.web_app_config.auth_domain
+    project_id          = var.project_id
+    storage_bucket      = data.google_firebase_web_app_config.web_app_config.storage_bucket
+    messaging_sender_id = data.google_firebase_web_app_config.web_app_config.messaging_sender_id
+    app_id              = google_firebase_web_app.web_app.app_id
+  }
+}

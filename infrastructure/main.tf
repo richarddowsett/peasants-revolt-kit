@@ -140,3 +140,19 @@ resource "google_firebase_hosting_custom_domain" "www" {
   site_id       = google_firebase_hosting_site.primary.site_id
   custom_domain = "www.${var.domain_name}"
 }
+
+# Firebase Web App Registration
+resource "google_firebase_web_app" "web_app" {
+  provider     = google-beta
+  project      = var.project_id
+  display_name = "Peasants Running Kit Web App"
+
+  depends_on = [google_firebase_project.default]
+}
+
+# Fetch Web App Config (includes API key, app ID, messaging sender ID, etc.)
+data "google_firebase_web_app_config" "web_app_config" {
+  provider   = google-beta
+  project    = var.project_id
+  web_app_id = google_firebase_web_app.web_app.app_id
+}
