@@ -221,16 +221,20 @@ export default function AdminCMSPage() {
     }
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
+  const handleDeleteProduct = async (id: string, name?: string) => {
+    const label = name ? `"${name}"` : 'this product';
+    if (confirm(`Are you sure you want to remove ${label}? This will delete it from the store.`)) {
       try {
         await deleteProduct(id);
+        setIsProductModalOpen(false);
+        resetProductForm();
         loadAdminData();
       } catch (err: any) {
         alert(err.message || 'Failed to delete product');
       }
     }
   };
+
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
     try {
@@ -483,16 +487,18 @@ export default function AdminCMSPage() {
 
                       <div className="flex items-center gap-2">
                         <button
+                          type="button"
                           onClick={() => openEditProductModal(product)}
-                          className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+                          className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-1"
                         >
-                          <Edit3 size={16} />
+                          <Edit3 size={14} /> Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteProduct(product.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg"
+                          type="button"
+                          onClick={() => handleDeleteProduct(product.id, product.name)}
+                          className="px-3 py-1.5 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-xl transition flex items-center gap-1 border border-red-100"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} /> Remove
                         </button>
                       </div>
                     </div>
@@ -871,13 +877,24 @@ export default function AdminCMSPage() {
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={uploadingImage}
-                className="w-full bg-[rgb(202,88,46)] hover:bg-[rgb(165,68,32)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition"
-              >
-                {uploadingImage ? 'Uploading Image...' : 'Save Product'}
-              </button>
+              <div className="flex items-center gap-3 pt-2">
+                {editingProductId && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProduct(editingProductId, productName)}
+                    className="w-1/3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs py-3.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-red-200"
+                  >
+                    <Trash2 size={14} /> Remove Item
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={uploadingImage}
+                  className={`${editingProductId ? 'w-2/3' : 'w-full'} bg-[rgb(202,88,46)] hover:bg-[rgb(165,68,32)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition`}
+                >
+                  {uploadingImage ? 'Uploading Image...' : editingProductId ? 'Save Changes' : 'Save Product'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
