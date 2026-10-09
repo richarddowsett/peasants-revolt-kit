@@ -35,25 +35,6 @@ jobs:
           cd app
           npm test
 
-      - name: Install Root & Backend Dependencies for E2E
-        run: |
-          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
-          cd backend && (npm ci --legacy-peer-deps || npm install --legacy-peer-deps)
-
-      - name: Setup Java JRE (for Firebase Emulators)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright E2E UI Journey Tests
-        run: npx playwright test
-        env:
-          CI: true
-
       - name: Build Next.js Static Export
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}

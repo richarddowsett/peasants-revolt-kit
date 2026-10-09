@@ -12,6 +12,7 @@ import {
 } from '@/lib/api';
 import { Product } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
+import { SIZE_GUIDE_TEMPLATES } from '@/domain/models/SizeGuide';
 import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
@@ -36,6 +37,7 @@ export default function AdminCMSPage() {
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [productSizesStr, setProductSizesStr] = useState<string>('XS, S, M, L, XL, XXL');
+  const [sizeGuideCategory, setSizeGuideCategory] = useState<string>('unisex_vest');
 
   useEffect(() => {
     const savedAuth = sessionStorage.getItem('admin_authenticated');
@@ -155,6 +157,7 @@ export default function AdminCMSPage() {
         imageUrl: mainImageUrl,
         imageUrls: productImages.length > 0 ? productImages : [mainImageUrl],
         sizes: sizes.length > 0 ? sizes : ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+        sizeGuideCategory,
         isPublished: true,
       });
 
@@ -208,6 +211,7 @@ export default function AdminCMSPage() {
     setProductPrice('25.00');
     setProductImages([]);
     setProductSizesStr('XS, S, M, L, XL, XXL');
+    setSizeGuideCategory('unisex_vest');
   };
 
   const openEditProductModal = (product: Product) => {
@@ -220,6 +224,7 @@ export default function AdminCMSPage() {
       : product.imageUrl ? [product.imageUrl] : [];
     setProductImages(existingImages);
     setProductSizesStr(product.sizes ? product.sizes.join(', ') : 'XS, S, M, L, XL, XXL');
+    setSizeGuideCategory(product.sizeGuideCategory || 'unisex_vest');
     setIsProductModalOpen(true);
   };
 
@@ -684,6 +689,24 @@ export default function AdminCMSPage() {
                     className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Sizing Guide Template
+                </label>
+                <select
+                  value={sizeGuideCategory}
+                  onChange={(e) => setSizeGuideCategory(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] font-medium text-slate-800"
+                >
+                  {Object.values(SIZE_GUIDE_TEMPLATES).map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                  <option value="none">None (No Sizing Guide)</option>
+                </select>
               </div>
 
               <button

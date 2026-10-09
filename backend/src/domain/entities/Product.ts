@@ -6,6 +6,7 @@ export interface Product {
   imageUrl: string;
   imageUrls?: string[];
   sizes: string[];
+  sizeGuideCategory?: string;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;

@@ -6,10 +6,11 @@ import StoreLoginScreen from '@/components/StoreLoginScreen';
 import { fetchProducts, createOrder } from '@/lib/api';
 import { Product } from '@/domain/models/Product';
 import { CartItem } from '@/domain/models/Cart';
-import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { SIZE_GUIDE_TEMPLATES } from '@/domain/models/SizeGuide';
 
 export default function StoreCatalogPage() {
   const router = useRouter();
@@ -22,6 +23,10 @@ export default function StoreCatalogPage() {
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
   const [selectedImages, setSelectedImages] = useState<Record<string, string>>({});
+
+  // Size Guide Modal State
+  const [sizeGuideProduct, setSizeGuideProduct] = useState<Product | null>(null);
+  const [sizeGuideUnit, setSizeGuideUnit] = useState<'cm' | 'in'>('cm');
 
   // Checkout Form State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -269,9 +274,20 @@ export default function StoreCatalogPage() {
                     {/* Size Selector */}
                     {product.sizes && product.sizes.length > 0 && (
                       <div className="mb-4">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">
-                          Select Size
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[10px] uppercase font-bold text-slate-400 block">
+                            Select Size
+                          </label>
+                          {product.sizeGuideCategory !== 'none' && (
+                            <button
+                              type="button"
+                              onClick={() => setSizeGuideProduct(product)}
+                              className="text-[11px] font-bold text-[rgb(202,88,46)] hover:underline flex items-center gap-1"
+                            >
+                              <Ruler size={12} /> Sizing Guide
+                            </button>
+                          )}
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                           {product.sizes.map((size) => (
                             <button
@@ -505,6 +521,125 @@ export default function StoreCatalogPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Sizing Guide Modal */}
+      {sizeGuideProduct && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setSizeGuideProduct(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold"
+            >
+              &times;
+            </button>
+
+            <div className="flex items-center gap-2 text-[rgb(202,88,46)] mb-1">
+              <Ruler size={20} />
+              <span className="text-xs uppercase font-extrabold tracking-wider">
+                Official Size Guide
+              </span>
+            </div>
+            <h3 className="text-xl font-black text-slate-900 mb-1">
+              {sizeGuideProduct.name}
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              {SIZE_GUIDE_TEMPLATES[sizeGuideProduct.sizeGuideCategory || 'unisex_vest']?.description ||
+                'Garment measurements for PRRC kit.'}
+            </p>
+
+            {/* Unit Switcher */}
+            <div className="flex items-center justify-between bg-slate-100 p-1.5 rounded-2xl mb-4">
+              <span className="text-xs font-bold text-slate-700 pl-2">Measurement Unit:</span>
+              <div className="flex gap-1 bg-white p-1 rounded-xl shadow-sm border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setSizeGuideUnit('cm')}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    sizeGuideUnit === 'cm'
+                      ? 'bg-[rgb(202,88,46)] text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Centimeters (cm)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSizeGuideUnit('in')}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                    sizeGuideUnit === 'in'
+                      ? 'bg-[rgb(202,88,46)] text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Inches (in)
+                </button>
+              </div>
+            </div>
+
+            {/* Size Table */}
+            {(() => {
+              const template =
+                SIZE_GUIDE_TEMPLATES[sizeGuideProduct.sizeGuideCategory || 'unisex_vest'] ||
+                SIZE_GUIDE_TEMPLATES['unisex_vest'];
+              const selectedSize = selectedSizes[sizeGuideProduct.id];
+
+              return (
+                <div className="border border-slate-200 rounded-2xl overflow-hidden mb-4">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-4">Size</th>
+                        <th className="py-3 px-4">Chest ({sizeGuideUnit})</th>
+                        <th className="py-3 px-4">Waist ({sizeGuideUnit})</th>
+                        <th className="py-3 px-4">Length ({sizeGuideUnit})</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {template.measurements.map((m) => {
+                        const isSelected = selectedSize === m.size;
+                        return (
+                          <tr
+                            key={m.size}
+                            className={`transition ${
+                              isSelected
+                                ? 'bg-amber-50 font-bold text-[rgb(202,88,46)]'
+                                : 'hover:bg-slate-50 text-slate-800'
+                            }`}
+                          >
+                            <td className="py-3 px-4 font-extrabold flex items-center gap-1.5">
+                              <span>{m.size}</span>
+                              {isSelected && (
+                                <span className="bg-[rgb(202,88,46)] text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                                  Selected
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {sizeGuideUnit === 'cm' ? m.chestCm : m.chestIn}
+                            </td>
+                            <td className="py-3 px-4">
+                              {sizeGuideUnit === 'cm' ? m.waistCm : m.waistIn}
+                            </td>
+                            <td className="py-3 px-4">
+                              {sizeGuideUnit === 'cm'
+                                ? m.lengthCm || 'N/A'
+                                : m.lengthIn || 'N/A'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-[11px] text-slate-600">
+              💡 <strong>Fit Tip:</strong> Measure around the fullest part of your chest, keeping the tape horizontal. If you are between sizes, we recommend sizing up for a relaxed training fit or sizing down for a race fit.
+            </div>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ export interface SaveProductCommand {
   price: number;
   imageUrl: string;
   sizes: string[];
+  sizeGuideCategory?: string;
   isPublished: boolean;
 }
 
