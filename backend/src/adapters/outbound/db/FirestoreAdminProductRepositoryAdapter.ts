@@ -1,10 +1,11 @@
 import { ProductRepositoryOutboundPort } from '../../../domain/ports/outbound/ProductRepositoryOutboundPort';
 import { Product } from '../../../domain/entities/Product';
+import { INITIAL_PRODUCTS } from '../../../domain/entities/InitialProducts';
 import { adminDb } from './FirebaseAdminConfig';
 
 export class FirestoreAdminProductRepositoryAdapter implements ProductRepositoryOutboundPort {
   private readonly collectionName = 'products';
-  private static localMemoryStore: Product[] = [];
+  private static localMemoryStore: Product[] = [...INITIAL_PRODUCTS];
 
   async getAllProducts(): Promise<Product[]> {
     try {
@@ -16,12 +17,22 @@ export class FirestoreAdminProductRepositoryAdapter implements ProductRepository
         }));
         FirestoreAdminProductRepositoryAdapter.localMemoryStore = products;
         return products;
+      } else if (FirestoreAdminProductRepositoryAdapter.localMemoryStore.length === INITIAL_PRODUCTS.length) {
+        // Database is empty - seed initial products into Firestore
+        try {
+          for (const item of INITIAL_PRODUCTS) {
+            await adminDb.collection(this.collectionName).doc(item.id).set(item, { merge: true });
+          }
+        } catch (seedErr) {
+          console.warn('Firestore admin seeding notice:', seedErr);
+        }
       }
     } catch (err) {
       console.warn('Firestore admin products fetch notice:', err);
     }
     return FirestoreAdminProductRepositoryAdapter.localMemoryStore;
   }
+
 
   async getPublishedProducts(): Promise<Product[]> {
     const all = await this.getAllProducts();

@@ -44,3 +44,9 @@ output "firebase_web_app_config" {
     app_id              = google_firebase_web_app.web_app.app_id
   }
 }
+
+output "firestore_database_name" {
+  description = "Firestore NoSQL Database Name"
+  value       = google_firestore_database.database.name
+}
+

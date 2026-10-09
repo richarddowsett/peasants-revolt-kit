@@ -57,6 +57,20 @@ resource "google_project_service" "firestore_api" {
   disable_on_destroy = false
 }
 
+# Provision Firestore NoSQL Database
+resource "google_firestore_database" "database" {
+  provider                    = google-beta
+  project                     = var.project_id
+  name                        = "(default)"
+  location_id                 = var.region
+  type                        = "FIRESTORE_NATIVE"
+  concurrency_mode            = "OPTIMISTIC"
+  app_engine_integration_mode = "DISABLED"
+
+  depends_on = [google_project_service.firestore_api]
+}
+
+
 resource "google_project_service" "identitytoolkit_api" {
   service            = "identitytoolkit.googleapis.com"
   disable_on_destroy = false
