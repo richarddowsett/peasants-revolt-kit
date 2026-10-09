@@ -6,7 +6,7 @@ import StoreLoginScreen from '@/components/StoreLoginScreen';
 import { fetchProducts, createOrder } from '@/lib/api';
 import { Product } from '@/domain/models/Product';
 import { CartItem } from '@/domain/models/Cart';
-import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler, ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -27,6 +27,41 @@ export default function StoreCatalogPage() {
   // Size Guide Modal State
   const [sizeGuideProduct, setSizeGuideProduct] = useState<Product | null>(null);
   const [sizeGuideUnit, setSizeGuideUnit] = useState<'cm' | 'in'>('cm');
+
+  // Image Zoom Lightbox State
+  const [zoomProduct, setZoomProduct] = useState<Product | null>(null);
+  const [zoomImageIndex, setZoomImageIndex] = useState<number>(0);
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const openZoomModal = (product: Product, imgUrl?: string) => {
+    const images = product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls : [product.imageUrl || '/logo.png'];
+    const selectedUrl = imgUrl || selectedImages[product.id] || product.imageUrl || '/logo.png';
+    const index = images.indexOf(selectedUrl);
+    setZoomProduct(product);
+    setZoomImageIndex(index >= 0 ? index : 0);
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const handleZoomIn = () => {
+    setZoomScale((prev) => Math.min(prev + 0.5, 4));
+  };
+
+  const handleZoomOut = () => {
+    setZoomScale((prev) => {
+      const next = Math.max(prev - 0.5, 1);
+      if (next === 1) setPanOffset({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleResetZoom = () => {
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
 
   // Checkout Form State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -226,14 +261,32 @@ export default function StoreCatalogPage() {
                 className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between"
               >
                 {/* Product Image & Thumbnail Bar */}
-                <div className="relative bg-slate-100 p-4 flex flex-col items-center justify-center">
+                <div
+                  className="relative bg-slate-100 p-4 flex flex-col items-center justify-center group cursor-pointer"
+                  onClick={() => openZoomModal(product)}
+                >
                   <div className="h-56 w-full flex items-center justify-center">
                     <img
                       src={selectedImages[product.id] || product.imageUrl || '/logo.png'}
                       alt={product.name}
-                      className="max-h-full max-w-full object-contain transition-all duration-200"
+                      className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
+
+                  {/* Zoom Inspect Badge */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openZoomModal(product);
+                    }}
+                    className="absolute top-3 left-3 bg-white/90 hover:bg-white text-slate-700 hover:text-[rgb(202,88,46)] px-2.5 py-1 rounded-full shadow-sm transition flex items-center gap-1 text-[11px] font-bold border border-slate-200"
+                    title="Click to zoom & inspect photo"
+                  >
+                    <ZoomIn size={13} />
+                    <span>Zoom</span>
+                  </button>
+
                   <span className="absolute top-3 right-3 bg-white/90 font-black text-slate-900 text-sm px-3 py-1 rounded-full shadow-sm">
                     £{product.price.toFixed(2)}
                   </span>
@@ -643,6 +696,177 @@ export default function StoreCatalogPage() {
           </div>
         </div>
       )}
+
+      {/* Interactive Image Zoom Lightbox Modal */}
+      {zoomProduct && (() => {
+        const images = zoomProduct.imageUrls && zoomProduct.imageUrls.length > 0 ? zoomProduct.imageUrls : [zoomProduct.imageUrl || '/logo.png'];
+        const currentImage = images[zoomImageIndex] || images[0];
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col justify-between p-4 select-none">
+            {/* Top Toolbar */}
+            <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto w-full pt-2 px-2 text-white">
+              <div>
+                <h4 className="font-black text-sm text-white truncate max-w-[200px] sm:max-w-xs">
+                  {zoomProduct.name}
+                </h4>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                  Photo {zoomImageIndex + 1} of {images.length} • Zoom: {Math.round(zoomScale * 100)}%
+                </span>
+              </div>
+
+              {/* Zoom Action Controls */}
+              <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 p-1.5 rounded-2xl shadow-lg">
+                <button
+                  type="button"
+                  onClick={handleZoomOut}
+                  disabled={zoomScale <= 1}
+                  title="Zoom Out (-)"
+                  className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition"
+                >
+                  <ZoomOut size={18} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  title="Reset Zoom (100%)"
+                  className="px-2.5 py-1 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1"
+                >
+                  <RotateCcw size={14} />
+                  <span>{Math.round(zoomScale * 100)}%</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleZoomIn}
+                  disabled={zoomScale >= 4}
+                  title="Zoom In (+)"
+                  className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition"
+                >
+                  <ZoomIn size={18} />
+                </button>
+
+                <div className="h-4 w-px bg-slate-800 mx-1" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoomProduct(null);
+                    handleResetZoom();
+                  }}
+                  title="Close (Esc)"
+                  className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800 transition text-lg font-bold leading-none"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+
+            {/* Main Image Viewport & Pan Canvas */}
+            <div
+              className={`relative flex-1 my-4 flex items-center justify-center overflow-hidden rounded-3xl ${
+                zoomScale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'
+              }`}
+              onMouseDown={(e) => {
+                if (zoomScale > 1) {
+                  setIsPanning(true);
+                  setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+                }
+              }}
+              onMouseMove={(e) => {
+                if (isPanning && zoomScale > 1) {
+                  setPanOffset({
+                    x: e.clientX - dragStart.x,
+                    y: e.clientY - dragStart.y,
+                  });
+                }
+              }}
+              onMouseUp={() => setIsPanning(false)}
+              onMouseLeave={() => setIsPanning(false)}
+              onWheel={(e) => {
+                if (e.deltaY < 0) handleZoomIn();
+                else handleZoomOut();
+              }}
+            >
+              {/* Previous Photo Button */}
+              {images.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoomImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+                    handleResetZoom();
+                  }}
+                  title="Previous Photo"
+                  className="absolute left-4 z-10 p-3 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white border border-slate-700/50 shadow-lg transition backdrop-blur-sm"
+                >
+                  <ChevronLeft size={22} />
+                </button>
+              )}
+
+              {/* Zoomable Image */}
+              <div
+                className="w-full h-full flex items-center justify-center p-4 transition-transform duration-100 ease-out"
+                style={{
+                  transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
+                }}
+              >
+                <img
+                  src={currentImage}
+                  alt={zoomProduct.name}
+                  className="max-h-[75vh] max-w-full object-contain drop-shadow-2xl pointer-events-none rounded-2xl"
+                />
+              </div>
+
+              {/* Next Photo Button */}
+              {images.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoomImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+                    handleResetZoom();
+                  }}
+                  title="Next Photo"
+                  className="absolute right-4 z-10 p-3 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white border border-slate-700/50 shadow-lg transition backdrop-blur-sm"
+                >
+                  <ChevronRight size={22} />
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Bar: Thumbnails & Instruction */}
+            <div className="flex flex-col items-center gap-3 pb-2 max-w-5xl mx-auto w-full">
+              {images.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto max-w-full px-3 py-1.5 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-800">
+                  {images.map((url, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setZoomImageIndex(idx);
+                        handleResetZoom();
+                      }}
+                      className={`w-12 h-12 rounded-xl overflow-hidden border p-0.5 transition ${
+                        zoomImageIndex === idx
+                          ? 'border-[rgb(202,88,46)] ring-2 ring-[rgb(202,88,46)]/50 opacity-100'
+                          : 'border-slate-800 opacity-50 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={url} alt="" className="w-full h-full object-contain" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-400 font-medium">
+                {zoomScale > 1
+                  ? '🖱️ Click and drag to pan around image details'
+                  : '💡 Use mouse wheel or +/- buttons to zoom in'}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
