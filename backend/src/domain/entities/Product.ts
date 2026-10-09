@@ -1,3 +1,10 @@
+export interface SizeGuideRow {
+  size: string;
+  chest?: string;
+  waist?: string;
+  length?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -7,7 +14,9 @@ export interface Product {
   imageUrls?: string[];
   sizes: string[];
   sizeGuideCategory?: string;
+  sizeGuideRows?: SizeGuideRow[];
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
 }
+

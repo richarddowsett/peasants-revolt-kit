@@ -10,11 +10,46 @@ import {
   fetchOrders,
   updateOrderStatus,
 } from '@/lib/api';
-import { Product } from '@/domain/models/Product';
+import { Product, SizeGuideRow } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
-import { SIZE_GUIDE_TEMPLATES } from '@/domain/models/SizeGuide';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler } from 'lucide-react';
 import Link from 'next/link';
+
+const DEFAULT_VEST_ROWS: SizeGuideRow[] = [
+  { size: 'XS', chest: '84 – 89 cm (33 – 35 in)', waist: '70 – 75 cm (27 – 29 in)', length: '65 cm (25.5 in)' },
+  { size: 'S',  chest: '90 – 95 cm (35 – 37 in)', waist: '76 – 81 cm (30 – 32 in)', length: '67 cm (26.4 in)' },
+  { size: 'M',  chest: '96 – 101 cm (38 – 40 in)', waist: '82 – 87 cm (32 – 34 in)', length: '69 cm (27.2 in)' },
+  { size: 'L',  chest: '102 – 107 cm (40 – 42 in)', waist: '88 – 93 cm (34 – 36 in)', length: '71 cm (28.0 in)' },
+  { size: 'XL', chest: '108 – 113 cm (43 – 45 in)', waist: '94 – 99 cm (37 – 39 in)', length: '73 cm (28.7 in)' },
+  { size: 'XXL', chest: '114 – 119 cm (45 – 47 in)', waist: '100 – 105 cm (39 – 41 in)', length: '75 cm (29.5 in)' },
+];
+
+const DEFAULT_TSHIRT_ROWS: SizeGuideRow[] = [
+  { size: 'XS', chest: '86 – 91 cm (34 – 36 in)', waist: '72 – 77 cm (28 – 30 in)', length: '66 cm (26.0 in)' },
+  { size: 'S',  chest: '92 – 97 cm (36 – 38 in)', waist: '78 – 83 cm (30 – 32 in)', length: '68 cm (26.8 in)' },
+  { size: 'M',  chest: '98 – 103 cm (38 – 40 in)', waist: '84 – 89 cm (33 – 35 in)', length: '70 cm (27.6 in)' },
+  { size: 'L',  chest: '104 – 109 cm (41 – 43 in)', waist: '90 – 95 cm (35 – 37 in)', length: '72 cm (28.3 in)' },
+  { size: 'XL', chest: '110 – 115 cm (43 – 45 in)', waist: '96 – 101 cm (38 – 40 in)', length: '74 cm (29.1 in)' },
+  { size: 'XXL', chest: '116 – 121 cm (46 – 48 in)', waist: '102 – 107 cm (40 – 42 in)', length: '76 cm (29.9 in)' },
+];
+
+const DEFAULT_SHORTS_ROWS: SizeGuideRow[] = [
+  { size: 'XS', chest: 'N/A', waist: '70 – 75 cm (27 – 29 in)', length: '12 cm / 4.7 in (Inseam)' },
+  { size: 'S',  chest: 'N/A', waist: '76 – 81 cm (30 – 32 in)', length: '13 cm / 5.1 in (Inseam)' },
+  { size: 'M',  chest: 'N/A', waist: '82 – 87 cm (32 – 34 in)', length: '13 cm / 5.1 in (Inseam)' },
+  { size: 'L',  chest: 'N/A', waist: '88 – 93 cm (34 – 36 in)', length: '14 cm / 5.5 in (Inseam)' },
+  { size: 'XL', chest: 'N/A', waist: '94 – 99 cm (37 – 39 in)', length: '14 cm / 5.5 in (Inseam)' },
+  { size: 'XXL', chest: 'N/A', waist: '100 – 105 cm (39 – 41 in)', length: '15 cm / 5.9 in (Inseam)' },
+];
+
+const DEFAULT_HOODIE_ROWS: SizeGuideRow[] = [
+  { size: 'XS', chest: '88 – 93 cm (35 – 37 in)', waist: '74 – 79 cm (29 – 31 in)', length: '68 cm (26.8 in)' },
+  { size: 'S',  chest: '94 – 99 cm (37 – 39 in)', waist: '80 – 85 cm (31 – 33 in)', length: '70 cm (27.6 in)' },
+  { size: 'M',  chest: '100 – 105 cm (39 – 41 in)', waist: '86 – 91 cm (34 – 36 in)', length: '72 cm (28.3 in)' },
+  { size: 'L',  chest: '106 – 111 cm (42 – 44 in)', waist: '92 – 97 cm (36 – 38 in)', length: '74 cm (29.1 in)' },
+  { size: 'XL', chest: '112 – 117 cm (44 – 46 in)', waist: '98 – 103 cm (38 – 40 in)', length: '76 cm (29.9 in)' },
+  { size: 'XXL', chest: '118 – 123 cm (46 – 48 in)', waist: '104 – 109 cm (41 – 43 in)', length: '78 cm (30.7 in)' },
+];
 
 export default function AdminCMSPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -36,8 +71,8 @@ export default function AdminCMSPage() {
   const [productImages, setProductImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [productSizesStr, setProductSizesStr] = useState<string>('XS, S, M, L, XL, XXL');
-  const [sizeGuideCategory, setSizeGuideCategory] = useState<string>('unisex_vest');
+  const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>(DEFAULT_VEST_ROWS);
+
 
   useEffect(() => {
     const savedAuth = sessionStorage.getItem('admin_authenticated');
@@ -136,16 +171,33 @@ export default function AdminCMSPage() {
     });
   };
 
+  const handleAddSizeRow = () => {
+    setSizeGuideRows((prev) => [...prev, { size: '', chest: '', waist: '', length: '' }]);
+  };
+
+  const handleUpdateSizeRow = (index: number, field: keyof SizeGuideRow, value: string) => {
+    setSizeGuideRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleRemoveSizeRow = (index: number) => {
+    setSizeGuideRows((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const priceNum = parseFloat(productPrice);
     if (isNaN(priceNum) || priceNum <= 0) return alert('Enter a valid price');
 
-    const sizes = productSizesStr
-      .split(',')
-      .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
+    const validRows = sizeGuideRows.filter((r) => r.size.trim().length > 0);
+    if (validRows.length === 0) {
+      return alert('Please add at least one size for the product.');
+    }
 
+    const derivedSizes = validRows.map((r) => r.size.trim().toUpperCase());
     const mainImageUrl = productImages.length > 0 ? productImages[0] : '/logo.png';
 
     try {
@@ -156,8 +208,8 @@ export default function AdminCMSPage() {
         price: priceNum,
         imageUrl: mainImageUrl,
         imageUrls: productImages.length > 0 ? productImages : [mainImageUrl],
-        sizes: sizes.length > 0 ? sizes : ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-        sizeGuideCategory,
+        sizes: derivedSizes,
+        sizeGuideRows: validRows,
         isPublished: true,
       });
 
@@ -210,8 +262,7 @@ export default function AdminCMSPage() {
     setProductDesc('');
     setProductPrice('25.00');
     setProductImages([]);
-    setProductSizesStr('XS, S, M, L, XL, XXL');
-    setSizeGuideCategory('unisex_vest');
+    setSizeGuideRows(DEFAULT_VEST_ROWS);
   };
 
   const openEditProductModal = (product: Product) => {
@@ -223,10 +274,16 @@ export default function AdminCMSPage() {
       ? product.imageUrls
       : product.imageUrl ? [product.imageUrl] : [];
     setProductImages(existingImages);
-    setProductSizesStr(product.sizes ? product.sizes.join(', ') : 'XS, S, M, L, XL, XXL');
-    setSizeGuideCategory(product.sizeGuideCategory || 'unisex_vest');
+    if (product.sizeGuideRows && product.sizeGuideRows.length > 0) {
+      setSizeGuideRows(product.sizeGuideRows);
+    } else if (product.sizes && product.sizes.length > 0) {
+      setSizeGuideRows(product.sizes.map((s) => ({ size: s, chest: '', waist: '', length: '' })));
+    } else {
+      setSizeGuideRows(DEFAULT_VEST_ROWS);
+    }
     setIsProductModalOpen(true);
   };
+
 
   if (!isAuthenticated) {
     return (
@@ -536,7 +593,7 @@ export default function AdminCMSPage() {
       {/* Product Add/Edit Modal */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsProductModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold"
@@ -548,17 +605,30 @@ export default function AdminCMSPage() {
               {editingProductId ? 'Edit Product' : 'Add New Product'}
             </h3>
 
-            <form onSubmit={handleSaveProduct} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Product Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Official Club Running Vest"
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
-                />
+            <form onSubmit={handleSaveProduct} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Product Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Official Club Running Vest"
+                    value={productName}
+                    onChange={(e) => setProductName(e.target.value)}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Price (£)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={productPrice}
+                    onChange={(e) => setProductPrice(e.target.value)}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] font-bold"
+                  />
+                </div>
               </div>
 
               <div>
@@ -581,7 +651,7 @@ export default function AdminCMSPage() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200 cursor-pointer ${
+                  className={`border-2 border-dashed rounded-2xl p-5 text-center transition-all duration-200 cursor-pointer ${
                     isDragging
                       ? 'border-[rgb(202,88,46)] bg-[rgba(202,88,46,0.08)] scale-[1.01]'
                       : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'
@@ -603,8 +673,8 @@ export default function AdminCMSPage() {
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-1.5 py-1">
-                        <div className="w-12 h-12 bg-white rounded-full border border-slate-200 flex items-center justify-center shadow-sm text-[rgb(202,88,46)] mx-auto mb-1">
-                          <Upload size={20} />
+                        <div className="w-10 h-10 bg-white rounded-full border border-slate-200 flex items-center justify-center shadow-sm text-[rgb(202,88,46)] mx-auto mb-1">
+                          <Upload size={18} />
                         </div>
                         <span className="text-xs font-bold text-slate-800 block">
                           {isDragging ? 'Drop Image Files Here!' : 'Drag & Drop Images Here'}
@@ -619,15 +689,15 @@ export default function AdminCMSPage() {
 
                 {/* Uploaded Images Gallery Grid */}
                 {productImages.length > 0 && (
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <span className="text-[11px] uppercase font-bold text-slate-400 block mb-2">
                       Uploaded Images ({productImages.length})
                     </span>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                       {productImages.map((imgUrl, index) => (
                         <div
                           key={`${imgUrl}-${index}`}
-                          className="relative group h-20 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center p-1"
+                          className="relative group h-16 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center p-1"
                         >
                           <img
                             src={imgUrl}
@@ -635,28 +705,28 @@ export default function AdminCMSPage() {
                             className="max-h-full max-w-full object-contain rounded-lg"
                           />
                           {index === 0 && (
-                            <span className="absolute top-1 left-1 bg-[rgb(202,88,46)] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow flex items-center gap-0.5">
-                              <Star size={10} /> Main
+                            <span className="absolute top-1 left-1 bg-[rgb(202,88,46)] text-white text-[8px] font-bold px-1 py-0.5 rounded shadow flex items-center gap-0.5">
+                              <Star size={8} /> Main
                             </span>
                           )}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 p-1">
                             {index !== 0 && (
                               <button
                                 type="button"
                                 onClick={() => handleSetPrimaryImage(index)}
                                 title="Set as Main Image"
-                                className="bg-white text-slate-800 p-1.5 rounded-lg hover:bg-amber-100 hover:text-amber-800 text-[10px] font-bold"
+                                className="bg-white text-slate-800 p-1 rounded-lg hover:bg-amber-100 hover:text-amber-800 text-[10px] font-bold"
                               >
-                                <Star size={14} />
+                                <Star size={12} />
                               </button>
                             )}
                             <button
                               type="button"
                               onClick={() => handleRemoveImage(index)}
                               title="Remove Image"
-                              className="bg-white text-slate-800 p-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 text-[10px] font-bold"
+                              className="bg-white text-slate-800 p-1 rounded-lg hover:bg-red-100 hover:text-red-600 text-[10px] font-bold"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={12} />
                             </button>
                           </div>
                         </div>
@@ -666,47 +736,139 @@ export default function AdminCMSPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Price (£)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={productPrice}
-                    onChange={(e) => setProductPrice(e.target.value)}
-                    className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
-                  />
+              {/* Product Sizes & Measurements Table Builder */}
+              <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-slate-800 tracking-wide flex items-center gap-1.5">
+                      <Ruler size={14} className="text-[rgb(202,88,46)]" /> Product Sizes & Sizing Guide
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Define the custom sizes offered for this product and optional sizing measurements.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddSizeRow}
+                    className="bg-[rgb(202,88,46)] hover:bg-[rgb(165,68,32)] text-white text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
+                  >
+                    <Plus size={14} /> Add Size Row
+                  </button>
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Sizes (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={productSizesStr}
-                    onChange={(e) => setProductSizesStr(e.target.value)}
-                    className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Sizing Guide Template
-                </label>
-                <select
-                  value={sizeGuideCategory}
-                  onChange={(e) => setSizeGuideCategory(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] font-medium text-slate-800"
-                >
-                  {Object.values(SIZE_GUIDE_TEMPLATES).map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                  <option value="none">None (No Sizing Guide)</option>
-                </select>
+                {/* Pre-fill Preset Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Pre-fill Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideRows(DEFAULT_VEST_ROWS)}
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition"
+                  >
+                    🎽 Vest
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideRows(DEFAULT_TSHIRT_ROWS)}
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition"
+                  >
+                    👕 T-Shirt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideRows(DEFAULT_SHORTS_ROWS)}
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition"
+                  >
+                    🩳 Shorts
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideRows(DEFAULT_HOODIE_ROWS)}
+                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition"
+                  >
+                    🧥 Hoodie
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideRows([])}
+                    className="px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50 rounded-lg transition"
+                  >
+                    Clear All
+                  </button>
+                </div>
+
+                {/* Interactive Table of Size Rows */}
+                {sizeGuideRows.length === 0 ? (
+                  <div className="text-center py-4 bg-white rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 font-medium">
+                    No sizes defined. Click &quot;Add Size Row&quot; or choose a pre-fill preset above.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3 w-28">Size Label *</th>
+                          <th className="py-2.5 px-3">Chest / Bust</th>
+                          <th className="py-2.5 px-3">Waist</th>
+                          <th className="py-2.5 px-3">Length / Inseam</th>
+                          <th className="py-2.5 px-2 text-center w-10">Remove</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {sizeGuideRows.map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. S, M, L"
+                                value={row.size}
+                                onChange={(e) => handleUpdateSizeRow(idx, 'size', e.target.value)}
+                                className="w-full text-xs font-bold p-1.5 rounded-lg border border-slate-300 uppercase focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                placeholder="e.g. 90 – 95 cm"
+                                value={row.chest || ''}
+                                onChange={(e) => handleUpdateSizeRow(idx, 'chest', e.target.value)}
+                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] text-slate-700"
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                placeholder="e.g. 76 – 81 cm"
+                                value={row.waist || ''}
+                                onChange={(e) => handleUpdateSizeRow(idx, 'waist', e.target.value)}
+                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] text-slate-700"
+                              />
+                            </td>
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                placeholder="e.g. 67 cm"
+                                value={row.length || ''}
+                                onChange={(e) => handleUpdateSizeRow(idx, 'length', e.target.value)}
+                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] text-slate-700"
+                              />
+                            </td>
+                            <td className="py-2 px-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSizeRow(idx)}
+                                className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition"
+                                title="Remove Size"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               <button
@@ -720,6 +882,7 @@ export default function AdminCMSPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

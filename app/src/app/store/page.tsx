@@ -634,10 +634,56 @@ export default function StoreCatalogPage() {
 
             {/* Size Table */}
             {(() => {
+              const selectedSize = selectedSizes[sizeGuideProduct.id];
+              const hasCustomRows = sizeGuideProduct.sizeGuideRows && sizeGuideProduct.sizeGuideRows.length > 0;
+
+              if (hasCustomRows) {
+                return (
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden mb-4">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
+                        <tr>
+                          <th className="py-3 px-4">Size</th>
+                          <th className="py-3 px-4">Chest / Bust</th>
+                          <th className="py-3 px-4">Waist</th>
+                          <th className="py-3 px-4">Length / Inseam</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {sizeGuideProduct.sizeGuideRows!.map((row, idx) => {
+                          const isSelected = selectedSize === row.size;
+                          return (
+                            <tr
+                              key={`${row.size}-${idx}`}
+                              className={`transition ${
+                                isSelected
+                                  ? 'bg-amber-50 font-bold text-[rgb(202,88,46)]'
+                                  : 'hover:bg-slate-50 text-slate-800'
+                              }`}
+                            >
+                              <td className="py-3 px-4 font-extrabold flex items-center gap-1.5">
+                                <span>{row.size}</span>
+                                {isSelected && (
+                                  <span className="bg-[rgb(202,88,46)] text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                                    Selected
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">{row.chest || '—'}</td>
+                              <td className="py-3 px-4">{row.waist || '—'}</td>
+                              <td className="py-3 px-4">{row.length || '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              }
+
               const template =
                 SIZE_GUIDE_TEMPLATES[sizeGuideProduct.sizeGuideCategory || 'unisex_vest'] ||
                 SIZE_GUIDE_TEMPLATES['unisex_vest'];
-              const selectedSize = selectedSizes[sizeGuideProduct.id];
 
               return (
                 <div className="border border-slate-200 rounded-2xl overflow-hidden mb-4">
