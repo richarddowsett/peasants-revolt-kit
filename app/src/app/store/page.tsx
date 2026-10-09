@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 
 export default function StoreCatalogPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | { uid: string; email?: string | null; displayName?: string | null } | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -171,7 +171,7 @@ export default function StoreCatalogPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <StoreHeader cartItemCount={0} onOpenCart={() => {}} />
-        <StoreLoginScreen onLoginSuccess={() => setCurrentUser({ uid: 'guest-runner', email: 'guest@peasants.store', displayName: 'Guest Runner' })} />
+        <StoreLoginScreen />
       </div>
     );
   }

@@ -105,6 +105,7 @@ describe('CreateOrderUseCase', () => {
     );
     expect(orderRepo.createOrder).toHaveBeenCalledWith(
       {
+        id: expect.stringMatching(/^PRRC-\d{4}$/),
         userEmail: 'runner@example.com',
         userName: 'Fast Runner',
         userId: 'user-456',

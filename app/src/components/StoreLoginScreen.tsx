@@ -2,15 +2,13 @@
 
 import React, { useState } from 'react';
 import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { Lock, Mail, UserPlus, LogIn, AlertCircle } from 'lucide-react';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { Lock, Mail, UserPlus, LogIn, AlertCircle, User as UserIcon } from 'lucide-react';
 
-interface StoreLoginScreenProps {
-  onLoginSuccess?: () => void;
-}
-
-export default function StoreLoginScreen({ onLoginSuccess }: StoreLoginScreenProps) {
+export default function StoreLoginScreen() {
   const [isSignUp, setIsSignUp] = useState<boolean>(false);
+  const [firstName, setFirstName] = useState<string>('');
+  const [lastName, setLastName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -25,6 +23,11 @@ export default function StoreLoginScreen({ onLoginSuccess }: StoreLoginScreenPro
       return;
     }
 
+    if (isSignUp && (!firstName.trim() || !lastName.trim())) {
+      setError('Please provide your first and last name.');
+      return;
+    }
+
     if (!auth) {
       setError('Firebase authentication service is not initialized.');
       return;
@@ -33,11 +36,15 @@ export default function StoreLoginScreen({ onLoginSuccess }: StoreLoginScreenPro
     setLoading(true);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        if (userCredential.user) {
+          await updateProfile(userCredential.user, {
+            displayName: `${firstName.trim()} ${lastName.trim()}`,
+          });
+        }
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
-      if (onLoginSuccess) onLoginSuccess();
     } catch (err: any) {
       console.error('Firebase Auth error:', err);
       let msg = err.message || 'Authentication failed.';
@@ -84,9 +91,47 @@ export default function StoreLoginScreen({ onLoginSuccess }: StoreLoginScreenPro
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    First Name
+                  </label>
+                  <div className="relative">
+                    <UserIcon size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      required={isSignUp}
+                      placeholder="Alex"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] focus:border-transparent transition"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Last Name
+                  </label>
+                  <div className="relative">
+                    <UserIcon size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      required={isSignUp}
+                      placeholder="Runner"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)] focus:border-transparent transition"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Email Address / Username
+                Email Address
               </label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
@@ -140,7 +185,7 @@ export default function StoreLoginScreen({ onLoginSuccess }: StoreLoginScreenPro
           </form>
 
           {/* Toggle between Sign In and Sign Up */}
-          <div className="mt-6 pt-6 border-t border-slate-100 text-center space-y-4">
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <button
               type="button"
               onClick={() => {
@@ -155,16 +200,6 @@ export default function StoreLoginScreen({ onLoginSuccess }: StoreLoginScreenPro
                 <span>Don't have an account? <strong className="text-[rgb(202,88,46)] underline">Register now</strong></span>
               )}
             </button>
-
-            {onLoginSuccess && (
-              <button
-                type="button"
-                onClick={onLoginSuccess}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2.5 rounded-xl transition"
-              >
-                Continue as Guest
-              </button>
-            )}
           </div>
         </div>
       </div>

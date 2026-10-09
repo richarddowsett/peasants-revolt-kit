@@ -22,18 +22,19 @@ export class CreateOrderUseCase implements CreateOrderInboundPort {
     const totalAmount = calculatedItems.reduce((acc, item) => acc + item.subtotal, 0);
 
     const randomRefNum = Math.floor(1000 + Math.random() * 9000);
-    const tempOrderRef = `PRRC-${randomRefNum}`;
+    const orderRef = `PRRC-${randomRefNum}`;
 
-    const paymentLinkUrl = this.paymentGateway.generatePaymentLink(tempOrderRef, totalAmount);
+    const paymentLinkUrl = this.paymentGateway.generatePaymentLink(orderRef, totalAmount);
 
     const orderData = {
+      id: orderRef,
       userEmail: command.userEmail,
       userName: command.userName,
       userId: command.userId,
       items: calculatedItems,
       totalAmount,
       status: 'pending_payment' as const,
-      monzoReference: tempOrderRef,
+      monzoReference: orderRef,
     };
 
     return this.orderRepo.createOrder(orderData, paymentLinkUrl);

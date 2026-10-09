@@ -49,13 +49,18 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     // ----------------------------------------------------
     await page.goto('/');
 
-    // Wait for either login screen or store hero banner to render after auth checking
-    const loginOrStore = page.locator('button:has-text("Continue as Guest")').or(page.locator('text=Official Gear & Kit'));
+    // Wait for either login screen input or store hero banner to render after auth checking
+    const loginOrStore = page.locator('input[placeholder="runner@peasants.store"]').or(page.locator('text=Official Gear & Kit'));
     await loginOrStore.first().waitFor({ timeout: 10000 });
 
-    const guestBtn = page.locator('button:has-text("Continue as Guest")');
-    if (await guestBtn.isVisible()) {
-      await guestBtn.click();
+    const loginInput = page.locator('input[placeholder="runner@peasants.store"]');
+    if (await loginInput.isVisible()) {
+      await page.click('text=Register now');
+      await page.fill('input[placeholder="Alex"]', 'Alex');
+      await page.fill('input[placeholder="Runner"]', 'Runner');
+      await page.fill('input[placeholder="runner@peasants.store"]', customerEmail);
+      await page.fill('input[type="password"]', 'peasants2026!');
+      await page.click('button:has-text("Register & Access Store")');
       await page.waitForSelector('text=Official Gear & Kit', { timeout: 15000 });
     }
 

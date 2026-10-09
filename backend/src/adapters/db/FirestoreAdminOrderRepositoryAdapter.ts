@@ -7,11 +7,10 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryPort
   private static localMemoryStore: Order[] = [];
 
   async createOrder(
-    orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'paymentLinkUrl'>,
+    orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'paymentLinkUrl'> & { id?: string },
     paymentLinkUrl: string
   ): Promise<Order> {
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const orderId = `PRRC-${randomNum}`;
+    const orderId = orderData.monzoReference || orderData.id || `PRRC-${Math.floor(1000 + Math.random() * 9000)}`;
     const now = new Date().toISOString();
 
     const order: Order = {

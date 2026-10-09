@@ -12,12 +12,13 @@ import {
 } from '@/lib/api';
 import { Product } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminCMSPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
 
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
@@ -35,7 +36,6 @@ export default function AdminCMSPage() {
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [productSizesStr, setProductSizesStr] = useState<string>('XS, S, M, L, XL, XXL');
-  const [isPublished, setIsPublished] = useState<boolean>(true);
 
   useEffect(() => {
     const savedAuth = sessionStorage.getItem('admin_authenticated');
@@ -146,32 +146,59 @@ export default function AdminCMSPage() {
 
     const mainImageUrl = productImages.length > 0 ? productImages[0] : '/logo.png';
 
-    await saveProduct({
-      id: editingProductId || undefined,
-      name: productName,
-      description: productDesc,
-      price: priceNum,
-      imageUrl: mainImageUrl,
-      imageUrls: productImages.length > 0 ? productImages : [mainImageUrl],
-      sizes: sizes.length > 0 ? sizes : ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-      isPublished,
-    });
+    try {
+      await saveProduct({
+        id: editingProductId || undefined,
+        name: productName,
+        description: productDesc,
+        price: priceNum,
+        imageUrl: mainImageUrl,
+        imageUrls: productImages.length > 0 ? productImages : [mainImageUrl],
+        sizes: sizes.length > 0 ? sizes : ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+        isPublished: true,
+      });
 
-    setIsProductModalOpen(false);
-    resetProductForm();
-    loadAdminData();
+      setIsProductModalOpen(false);
+      resetProductForm();
+      loadAdminData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to save product');
+    }
   };
 
   const handleDeleteProduct = async (id: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      await deleteProduct(id);
-      loadAdminData();
+      try {
+        await deleteProduct(id);
+        loadAdminData();
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete product');
+      }
     }
   };
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
-    await updateOrderStatus(orderId, status);
-    loadAdminData();
+    try {
+      await updateOrderStatus(orderId, status);
+      loadAdminData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update order status');
+    }
+  };
+
+  const formatStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending_payment':
+        return 'Pending Payment';
+      case 'payment_successful':
+        return 'Payment Received';
+      case 'completed':
+        return 'Order Fulfilled';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status.replace(/_/g, ' ');
+    }
   };
 
   const resetProductForm = () => {
@@ -181,7 +208,6 @@ export default function AdminCMSPage() {
     setProductPrice('25.00');
     setProductImages([]);
     setProductSizesStr('XS, S, M, L, XL, XXL');
-    setIsPublished(true);
   };
 
   const openEditProductModal = (product: Product) => {
@@ -194,7 +220,6 @@ export default function AdminCMSPage() {
       : product.imageUrl ? [product.imageUrl] : [];
     setProductImages(existingImages);
     setProductSizesStr(product.sizes ? product.sizes.join(', ') : 'XS, S, M, L, XL, XXL');
-    setIsPublished(product.isPublished);
     setIsProductModalOpen(true);
   };
 
@@ -219,14 +244,24 @@ export default function AdminCMSPage() {
           <form onSubmit={handleAdminLogin} className="space-y-4">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Password</label>
-              <input
-                type="password"
-                required
-                placeholder="Enter password..."
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter password..."
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full text-xs p-3 pr-10 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 text-slate-400 hover:text-slate-600 transition"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <button
               type="submit"
@@ -380,14 +415,8 @@ export default function AdminCMSPage() {
                     </div>
 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                      <span
-                        className={`font-bold text-[10px] uppercase px-2 py-0.5 rounded-full ${
-                          product.isPublished
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {product.isPublished ? 'Published' : 'Draft'}
+                      <span className="font-bold text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        Published
                       </span>
 
                       <div className="flex items-center gap-2">
@@ -451,7 +480,7 @@ export default function AdminCMSPage() {
                               : 'bg-emerald-100 text-emerald-800'
                           }`}
                         >
-                          {order.status}
+                          {formatStatusLabel(order.status)}
                         </span>
                       </div>
                     </div>
@@ -655,19 +684,6 @@ export default function AdminCMSPage() {
                     className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
                   />
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="pub"
-                  checked={isPublished}
-                  onChange={(e) => setIsPublished(e.target.checked)}
-                  className="rounded border-slate-300 text-[rgb(202,88,46)] focus:ring-[rgb(202,88,46)]"
-                />
-                <label htmlFor="pub" className="text-xs font-bold text-slate-700">
-                  Publish item immediately in store
-                </label>
               </div>
 
               <button
