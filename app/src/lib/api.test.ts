@@ -25,7 +25,7 @@ describe('Frontend API Client (lib/api)', () => {
     });
 
     const products = await fetchProducts(false);
-    expect(global.fetch).toHaveBeenCalledWith('/api/products');
+    expect(global.fetch).toHaveBeenCalledWith('/api/products', expect.objectContaining({ cache: 'no-store' }));
     expect(products).toEqual(mockProducts);
   });
 
@@ -36,8 +36,9 @@ describe('Frontend API Client (lib/api)', () => {
     });
 
     await fetchProducts(true);
-    expect(global.fetch).toHaveBeenCalledWith('/api/products?all=true');
+    expect(global.fetch).toHaveBeenCalledWith('/api/products?all=true', expect.objectContaining({ cache: 'no-store' }));
   });
+
 
   it('saveProduct posts data to /api/products', async () => {
     const productPayload = { name: 'Vest', price: 20 };

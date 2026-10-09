@@ -20,9 +20,10 @@ async function handleResponse(res: Response, defaultMessage: string) {
 }
 
 export async function fetchProducts(all: boolean = false) {
-  const res = await fetch(`${API_BASE}/products${all ? '?all=true' : ''}`);
+  const res = await fetch(`${API_BASE}/products${all ? '?all=true' : ''}`, { cache: 'no-store' });
   return handleResponse(res, 'Failed to fetch products');
 }
+
 
 export async function saveProduct(productData: any) {
   const res = await fetch(`${API_BASE}/products`, {
@@ -74,9 +75,10 @@ export async function createOrder(orderCommand: any) {
 
 export async function fetchOrders(email?: string) {
   const url = email ? `${API_BASE}/orders?email=${encodeURIComponent(email)}` : `${API_BASE}/orders`;
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: 'no-store' });
   return handleResponse(res, 'Failed to fetch orders');
 }
+
 
 export async function updateOrderStatus(orderId: string, status: string) {
   const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
