@@ -25,3 +25,7 @@ infrastructure/.terraform/
 *-debug.log
 *.log
 
+# Playwright test results
+test-results/
+playwright-report/
+

@@ -8,92 +8,34 @@ Built with a **Next.js 14 Frontend** statically exported to Firebase Hosting, a 
 
 ## 🌟 Key Features
 
-- **Interactive Holding Page (`/`)**: Brand holding page with background color `rgb(202, 88, 46)`. Long-pressing (1.5 seconds) the central logo animates an SVG progress ring that unlocks access to the secret beta store catalog.
-- **Storefront Catalog (`/store`)**: Dynamic kit catalog supporting item browsing, size selection (XS–XXL), sticky shopping basket drawer, and instant order creation.
+- **Storefront Catalog (`/`)**: Main kit catalog supporting item browsing, multi-image display, drag-and-drop file uploads in admin, size selection (XS–XXL), sticky shopping basket drawer, and instant order creation.
 - **Monzo Payment Deep-Linking**: Orders generate a unique reference (`PRRC-XXXX`) and direct deep links to Monzo transfers (`https://monzo.me/peasantsrevolt/[amount]?d=PRRC-XXXX`).
 - **User Order Tracking (`/store/orders`)**: Dedicated page allowing club members to look up order status, item breakdowns, and payment state.
-- **Organiser Admin CMS (`/admin`)**: Organiser portal protected by authentication for CRUD management of products, image file uploads, and updating customer order payment/fulfillment statuses.
+- **Organiser Admin CMS (`/admin`)**: Organiser portal protected by authentication with drag-and-drop multi-file upload for product images, product management, and updating customer order payment/fulfillment statuses.
 - **Hexagonal Architecture**: Strict separation of concern between Domain Entities, Inbound/Outbound Ports, Use Cases, Driving HTTP Controllers, and Driven Database/Storage Adapters.
 - **Zero Hardcoded Backend URLs**: Firebase Hosting proxy rewrite (`/api/**` $\rightarrow$ Cloud Run API) enables zero hardcoded backend URLs in git and zero CORS issues.
 
 ---
 
-## 🏗️ System Architecture
+## 🧪 Testing Suite
 
-```mermaid
-flowchart TD
-    subgraph Client ["Client Browser"]
-        HP["Holding Page (1.5s Long Press Secret)"]
-        Store["Store Catalog (/store)"]
-        Orders["Order Tracking (/store/orders)"]
-        AdminCMS["Admin CMS (/admin)"]
-    end
+The repository features comprehensive testing across unit, integration, and end-to-end (E2E) UI user journeys:
 
-    subgraph FirebaseHosting ["Firebase Hosting (CDN)"]
-        StaticAssets["Static HTML/JS/CSS (app/out)"]
-        RewriteProxy["Proxy Rewrites (/api/**)"]
-    end
+- **Backend Unit Tests** (Vitest): Covers all Domain Use Cases (`GetProducts`, `CreateOrder`, `ManageProduct`) and HTTP Controllers (`ProductsController`, `OrdersController`, `UploadController`).
+- **Frontend Unit Tests** (Vitest + React Testing Library): Covers API client methods, mock handlers, and UI component rendering (`StoreHeader`).
+- **Playwright E2E User Journey Tests**: Full automated browser test running against local Firestore emulator. Simulates Admin login $\rightarrow$ Product creation $\rightarrow$ Storefront catalog browsing $\rightarrow$ Monzo checkout order placement $\rightarrow$ Admin payment & fulfillment status updates.
 
-    subgraph CloudRun ["GCP Cloud Run Service"]
-        API["Hexagonal Express API (peasants-running-kit-api)"]
-        
-        subgraph HexagonalBackend ["Backend Architecture"]
-            InboundPort["Inbound Ports & HTTP Controllers"]
-            UseCases["Domain Use Cases & Entities"]
-            OutboundPort["Outbound Ports"]
-        end
-    end
+### Test Commands
 
-    subgraph Database ["Google Cloud Platform"]
-        Firestore["Cloud Firestore Database"]
-        Storage["Cloud Storage / Image Uploads"]
-        MonzoGateway["Monzo Payment Deep Links"]
-    end
+```bash
+# Run all tests (Unit + E2E)
+npm test
 
-    Client -->|HTTP / HTML| StaticAssets
-    Client -->|API Calls /api/*| RewriteProxy
-    RewriteProxy -->|Internal GCP Routing| API
-    API --> InboundPort
-    InboundPort --> UseCases
-    UseCases --> OutboundPort
-    OutboundPort --> Firestore
-    OutboundPort --> Storage
-    OutboundPort --> MonzoGateway
-```
+# Run Unit Tests only (Backend + Frontend)
+npm run test:unit
 
----
-
-## 📁 Repository Structure
-
-```text
-peasants-running-kit/
-├── app/                                  # Frontend Application (Next.js 14)
-│   ├── public/                           # Assets (Club logo, images)
-│   ├── src/
-│   │   ├── app/                          # App Router pages (/, /store, /store/orders, /admin)
-│   │   ├── components/                   # StoreHeader, components
-│   │   └── lib/                          # API client (/api base routing)
-│   ├── firebase.json                     # Hosting config with /api/** -> Cloud Run rewrite
-│   └── next.config.js                    # Next.js static export output config
-├── backend/                              # Hexagonal Architecture API (Node.js Express TypeScript)
-│   ├── src/
-│   │   ├── domain/
-│   │   │   ├── entities/                 # Product, Order, Cart
-│   │   │   ├── ports/inbound/            # Use Case Interfaces
-│   │   │   ├── ports/outbound/           # Repository & Gateway Interfaces
-│   │   │   └── usecases/                 # Business Logic Execution
-│   │   ├── adapters/
-│   │   │   ├── inbound/http/             # Express Controllers & Router (/api/*)
-│   │   │   └── outbound/                 # Firestore, Monzo & Storage Adapters
-│   │   ├── config/                       # Dependency Injection Container
-│   │   └── server.ts                     # Express Server entrypoint (Port 8080)
-│   ├── Dockerfile                        # Multi-arch Cloud Run container (linux/amd64)
-│   └── package.json
-├── infrastructure/                       # Infrastructure as Code (Terraform)
-│   ├── main.tf                           # Cloud Run, Firebase Site, Web App, Auth, Artifact Registry
-│   ├── variables.tf                      # GCP Project Variables
-│   └── outputs.tf                        # Resource URIs and Build Commands
-└── README.md
+# Run Playwright E2E Journey Tests
+npm run test:e2e
 ```
 
 ---
