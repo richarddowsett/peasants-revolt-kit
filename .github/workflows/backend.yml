@@ -1,0 +1,53 @@
+name: Deploy Backend API to GCP Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: peasants-running-kit
+  REGION: europe-west2
+  SERVICE_NAME: peasants-running-kit-api
+  GAR_REPO: peasants-running-kit
+  IMAGE_NAME: backend-api
+
+jobs:
+  deploy-backend:
+    name: Build & Deploy Backend Container
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authorize Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and Push Docker Image (linux/amd64)
+        run: |
+          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.IMAGE_NAME }}"
+          docker build --platform linux/amd64 -t "${IMAGE_URI}:${{ github.sha }}" -t "${IMAGE_URI}:latest" ./backend
+          docker push "${IMAGE_URI}:${{ github.sha }}"
+          docker push "${IMAGE_URI}:latest"
+
+      - name: Deploy to GCP Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          flags: '--allow-unauthenticated --port=8080'
