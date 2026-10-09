@@ -1,6 +1,7 @@
 import { OrderRepositoryPort } from '../ports/OrderRepositoryPort';
 import { PaymentGatewayPort } from '../ports/PaymentGatewayPort';
 import { Order, OrderItem } from '../models/Order';
+import { generateNextMonzoReference } from '../utils/orderRef';
 
 export interface CreateOrderCommand {
   userEmail: string;
@@ -27,8 +28,9 @@ export class CreateOrderUseCase {
 
     const totalAmount = calculatedItems.reduce((acc, item) => acc + item.subtotal, 0);
 
-    const randomRefNum = Math.floor(1000 + Math.random() * 9000);
-    const tempOrderRef = `PRRC-${randomRefNum}`;
+    const existingOrders = await this.orderRepo.getAllOrders();
+    const tempOrderRef = generateNextMonzoReference(existingOrders);
+
 
     const paymentLinkUrl = this.paymentGateway.generatePaymentLink(tempOrderRef, totalAmount);
 

@@ -2,6 +2,8 @@ import { OrderRepositoryOutboundPort } from '../../../domain/ports/outbound/Orde
 import { Order, OrderStatus } from '../../../domain/entities/Order';
 import { adminDb } from './FirebaseAdminConfig';
 
+import { generateNextMonzoReference } from '../../../domain/utils/orderRef';
+
 export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutboundPort {
   private readonly collectionName = 'orders';
   private static localMemoryStore: Order[] = [];
@@ -10,8 +12,10 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'paymentLinkUrl'> & { id?: string },
     paymentLinkUrl: string
   ): Promise<Order> {
-    const orderId = orderData.monzoReference || orderData.id || `PRRC-${Math.floor(1000 + Math.random() * 9000)}`;
+    const existingOrders = await this.getAllOrders();
+    const orderId = orderData.monzoReference || orderData.id || generateNextMonzoReference(existingOrders);
     const now = new Date().toISOString();
+
 
     const order: Order = {
       ...orderData,

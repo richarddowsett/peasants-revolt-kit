@@ -5,26 +5,34 @@ import StoreHeader from '@/components/StoreHeader';
 import { fetchOrders } from '@/lib/api';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { auth } from '@/lib/firebase';
-import { Package, Clock, CheckCircle2, CheckCheck, ExternalLink, Search } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { Package, Clock, CheckCircle2, CheckCheck, ExternalLink } from 'lucide-react';
 
 export default function UserOrdersPage() {
-  const [emailInput, setEmailInput] = useState<string>('');
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [searched, setSearched] = useState<boolean>(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const user = auth?.currentUser;
-    if (user?.email) {
-      setEmailInput(user.email);
-      loadOrders(user.email);
+    if (!auth) {
+      setLoading(false);
+      return;
     }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.email) {
+        setUserEmail(user.email);
+        loadOrders(user.email);
+      } else {
+        setUserEmail(null);
+        setOrders([]);
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const loadOrders = async (email: string) => {
-    if (!email) return;
     setLoading(true);
-    setSearched(true);
     try {
       const results = await fetchOrders(email);
       setOrders(results);
@@ -33,11 +41,6 @@ export default function UserOrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadOrders(emailInput);
   };
 
   const getStatusBadge = (status: OrderStatus) => {
@@ -81,35 +84,24 @@ export default function UserOrdersPage() {
           </p>
         </div>
 
-        {/* Email Search Box */}
-        <form onSubmit={handleSearch} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-8 flex gap-3">
-          <input
-            type="email"
-            required
-            placeholder="Enter your order email address..."
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            className="flex-1 text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
-          />
-          <button
-            type="submit"
-            className="bg-[rgb(202,88,46)] hover:bg-[rgb(165,68,32)] text-white font-bold text-xs px-5 py-3 rounded-xl shadow transition flex items-center gap-2"
-          >
-            <Search size={16} /> Look Up Orders
-          </button>
-        </form>
-
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-4 border-[rgb(202,88,46)] border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : searched && orders.length === 0 ? (
+        ) : !userEmail ? (
+          <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-sm max-w-sm mx-auto">
+            <Package size={40} className="text-slate-300 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-slate-900 mb-1">Please Sign In</h3>
+            <p className="text-xs text-slate-500">Sign in with your club member account to view your past orders.</p>
+          </div>
+        ) : orders.length === 0 ? (
           <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-sm max-w-sm mx-auto">
             <Package size={40} className="text-slate-300 mx-auto mb-3" />
             <h3 className="text-base font-bold text-slate-900 mb-1">No Orders Found</h3>
-            <p className="text-xs text-slate-500">No orders found matching "{emailInput}".</p>
+            <p className="text-xs text-slate-500">You haven&apos;t placed any kit orders yet.</p>
           </div>
         ) : (
+
           <div className="space-y-6">
             {orders.map((order) => (
               <div

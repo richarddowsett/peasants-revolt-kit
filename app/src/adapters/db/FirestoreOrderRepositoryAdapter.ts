@@ -11,6 +11,8 @@ import {
   where 
 } from 'firebase/firestore';
 
+import { generateNextMonzoReference } from '@/domain/utils/orderRef';
+
 export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
   private readonly collectionName = 'orders';
   private static localMemoryStore: Order[] = [];
@@ -19,8 +21,10 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
     orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'paymentLinkUrl'> & { id?: string },
     paymentLinkUrl: string
   ): Promise<Order> {
-    const orderId = orderData.monzoReference || orderData.id || `PRRC-${Math.floor(1000 + Math.random() * 9000)}`;
+    const existingOrders = await this.getAllOrders();
+    const orderId = orderData.monzoReference || orderData.id || generateNextMonzoReference(existingOrders);
     const now = new Date().toISOString();
+
 
     const order: Order = {
       ...orderData,
