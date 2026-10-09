@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 
 export default function StoreCatalogPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | { uid: string; email?: string | null; displayName?: string | null } | null>(null);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
 
   const [products, setProducts] = useState<Product[]>([]);

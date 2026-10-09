@@ -60,7 +60,7 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     }
 
     // Verify the newly created product appears on the Storefront
-    await expect(page.locator(`text=${productName}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`text=${productName}`).first()).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=£29.99').first()).toBeVisible();
 
     // Select Size 'M'
@@ -103,11 +103,12 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     await page.goto('/admin');
 
     // If login prompt appears (session empty across new tab), log in again
-    const isLoginVisible = await page.locator('input[type="password"]').isVisible();
-    if (isLoginVisible) {
-      await page.fill('input[type="password"]', 'peasants2026!');
+    const pwdInput = page.locator('input[type="password"]');
+    await pwdInput.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
+    if (await pwdInput.isVisible()) {
+      await pwdInput.fill('peasants2026!');
       await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/api/admin/login')),
+        page.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
         page.click('button[type="submit"]'),
       ]);
     }
