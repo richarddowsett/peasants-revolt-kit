@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FirestoreProductRepositoryAdapter } from '@/adapters/db/FirestoreProductRepositoryAdapter';
-import { FirestoreOrderRepositoryAdapter } from '@/adapters/db/FirestoreOrderRepositoryAdapter';
-import { PasswordAdminAuthAdapter } from '@/adapters/auth/PasswordAdminAuthAdapter';
-import { FirebaseStorageAdapter } from '@/adapters/storage/FirebaseStorageAdapter';
-import { ManageProductUseCase } from '@/domain/usecases/ManageProductUseCase';
-import { GetProductsUseCase } from '@/domain/usecases/GetProductsUseCase';
-import { UpdateOrderStatusUseCase } from '@/domain/usecases/UpdateOrderStatusUseCase';
-import { GetUserOrdersUseCase } from '@/domain/usecases/GetUserOrdersUseCase';
+import {
+  verifyAdminPassword,
+  fetchProducts,
+  saveProduct,
+  deleteProduct,
+  uploadImage,
+  fetchOrders,
+  updateOrderStatus,
+} from '@/lib/api';
 import { Product } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminCMSPage() {
@@ -35,17 +36,6 @@ export default function AdminCMSPage() {
   const [productSizesStr, setProductSizesStr] = useState<string>('XS, S, M, L, XL, XXL');
   const [isPublished, setIsPublished] = useState<boolean>(true);
 
-  // Hexagonal Adapters & Use Cases
-  const productRepo = new FirestoreProductRepositoryAdapter();
-  const orderRepo = new FirestoreOrderRepositoryAdapter();
-  const authAdapter = new PasswordAdminAuthAdapter();
-  const storageAdapter = new FirebaseStorageAdapter();
-
-  const getProductsUseCase = new GetProductsUseCase(productRepo);
-  const manageProductUseCase = new ManageProductUseCase(productRepo);
-  const getUserOrdersUseCase = new GetUserOrdersUseCase(orderRepo);
-  const updateOrderStatusUseCase = new UpdateOrderStatusUseCase(orderRepo);
-
   useEffect(() => {
     const savedAuth = sessionStorage.getItem('admin_authenticated');
     if (savedAuth === 'true') {
@@ -56,26 +46,35 @@ export default function AdminCMSPage() {
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isValid = await authAdapter.verifyAdminPassword(passwordInput);
-    if (isValid) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('admin_authenticated', 'true');
-      setAuthError('');
-      loadAdminData();
-    } else {
-      setAuthError('Incorrect admin password.');
+    try {
+      const isValid = await verifyAdminPassword(passwordInput);
+      if (isValid) {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('admin_authenticated', 'true');
+        setAuthError('');
+        loadAdminData();
+      } else {
+        setAuthError('Incorrect admin password.');
+      }
+    } catch (err) {
+      setAuthError('Failed to verify admin password.');
     }
   };
 
   const loadAdminData = async () => {
     setLoading(true);
-    const [allProds, allOrds] = await Promise.all([
-      getProductsUseCase.execute(false),
-      getUserOrdersUseCase.getAllOrders(),
-    ]);
-    setProducts(allProds);
-    setOrders(allOrds);
-    setLoading(false);
+    try {
+      const [allProds, allOrds] = await Promise.all([
+        fetchProducts(true), // fetch all products including drafts from backend API
+        fetchOrders(),       // fetch all orders from backend API
+      ]);
+      setProducts(allProds);
+      setOrders(allOrds);
+    } catch (err) {
+      console.error('Failed to load admin data from API:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,10 +83,10 @@ export default function AdminCMSPage() {
 
     setUploadingImage(true);
     try {
-      const downloadUrl = await storageAdapter.uploadImage(file, 'product-images');
+      const downloadUrl = await uploadImage(file);
       setProductImage(downloadUrl);
     } catch (err) {
-      alert('Failed to upload image. Please try again.');
+      alert('Failed to upload image to backend.');
     } finally {
       setUploadingImage(false);
     }
@@ -103,7 +102,7 @@ export default function AdminCMSPage() {
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean);
 
-    await manageProductUseCase.saveProduct({
+    await saveProduct({
       id: editingProductId || undefined,
       name: productName,
       description: productDesc,
@@ -120,13 +119,13 @@ export default function AdminCMSPage() {
 
   const handleDeleteProduct = async (id: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      await manageProductUseCase.deleteProduct(id);
+      await deleteProduct(id);
       loadAdminData();
     }
   };
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
-    await updateOrderStatusUseCase.execute(orderId, status);
+    await updateOrderStatus(orderId, status);
     loadAdminData();
   };
 

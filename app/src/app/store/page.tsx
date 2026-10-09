@@ -2,11 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import StoreHeader from '@/components/StoreHeader';
-import { GetProductsUseCase } from '@/domain/usecases/GetProductsUseCase';
-import { CreateOrderUseCase } from '@/domain/usecases/CreateOrderUseCase';
-import { FirestoreProductRepositoryAdapter } from '@/adapters/db/FirestoreProductRepositoryAdapter';
-import { FirestoreOrderRepositoryAdapter } from '@/adapters/db/FirestoreOrderRepositoryAdapter';
-import { MonzoPaymentGatewayAdapter } from '@/adapters/payment/MonzoPaymentGatewayAdapter';
+import { fetchProducts, createOrder } from '@/lib/api';
 import { Product } from '@/domain/models/Product';
 import { CartItem } from '@/domain/models/Cart';
 import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck } from 'lucide-react';
@@ -28,29 +24,26 @@ export default function StoreCatalogPage() {
   const [createdOrder, setCreatedOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Initialize Hexagonal Architecture Dependencies
-  const productRepo = new FirestoreProductRepositoryAdapter();
-  const orderRepo = new FirestoreOrderRepositoryAdapter();
-  const paymentGateway = new MonzoPaymentGatewayAdapter('peasantsrevolt');
-
-  const getProductsUseCase = new GetProductsUseCase(productRepo);
-  const createOrderUseCase = new CreateOrderUseCase(orderRepo, paymentGateway);
-
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const items = await getProductsUseCase.execute(true);
-      setProducts(items);
+      try {
+        const items = await fetchProducts(false); // Fetch published products from API
+        setProducts(items);
 
-      // Default selected sizes
-      const defaultSizes: Record<string, string> = {};
-      items.forEach((p) => {
-        if (p.sizes && p.sizes.length > 0) {
-          defaultSizes[p.id] = p.sizes[0];
-        }
-      });
-      setSelectedSizes(defaultSizes);
-      setLoading(false);
+        // Default selected sizes
+        const defaultSizes: Record<string, string> = {};
+        items.forEach((p: Product) => {
+          if (p.sizes && p.sizes.length > 0) {
+            defaultSizes[p.id] = p.sizes[0];
+          }
+        });
+        setSelectedSizes(defaultSizes);
+      } catch (err) {
+        console.error('Failed to load products from API:', err);
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
 
@@ -124,7 +117,7 @@ export default function StoreCatalogPage() {
     setIsSubmitting(true);
     try {
       const user = auth.currentUser;
-      const order = await createOrderUseCase.execute({
+      const order = await createOrder({
         userName: customerName,
         userEmail: customerEmail,
         userId: user?.uid,

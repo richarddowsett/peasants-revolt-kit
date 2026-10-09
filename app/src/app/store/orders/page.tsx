@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import StoreHeader from '@/components/StoreHeader';
-import { FirestoreOrderRepositoryAdapter } from '@/adapters/db/FirestoreOrderRepositoryAdapter';
-import { GetUserOrdersUseCase } from '@/domain/usecases/GetUserOrdersUseCase';
+import { fetchOrders } from '@/lib/api';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { auth } from '@/lib/firebase';
 import { Package, Clock, CheckCircle2, CheckCheck, ExternalLink, Search } from 'lucide-react';
@@ -14,29 +13,31 @@ export default function UserOrdersPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [searched, setSearched] = useState<boolean>(false);
 
-  const orderRepo = new FirestoreOrderRepositoryAdapter();
-  const getUserOrdersUseCase = new GetUserOrdersUseCase(orderRepo);
-
   useEffect(() => {
     const user = auth.currentUser;
     if (user?.email) {
       setEmailInput(user.email);
-      fetchOrders(user.email);
+      loadOrders(user.email);
     }
   }, []);
 
-  const fetchOrders = async (email: string) => {
+  const loadOrders = async (email: string) => {
     if (!email) return;
     setLoading(true);
     setSearched(true);
-    const results = await getUserOrdersUseCase.getOrdersForUser(email);
-    setOrders(results);
-    setLoading(false);
+    try {
+      const results = await fetchOrders(email);
+      setOrders(results);
+    } catch (err) {
+      console.error('Failed to fetch orders from API:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchOrders(emailInput);
+    loadOrders(emailInput);
   };
 
   const getStatusBadge = (status: OrderStatus) => {
