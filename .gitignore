@@ -5,9 +5,6 @@ node_modules/
 app/.next/
 app/out/
 
-# Backend build outputs
-backend/dist/
-
 # Firebase local cache
 app/.firebase/
 

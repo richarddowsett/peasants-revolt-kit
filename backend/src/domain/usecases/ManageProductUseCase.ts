@@ -1,13 +1,12 @@
-import { ProductRepositoryPort } from '../ports/ProductRepositoryPort';
-import { Product } from '../models/Product';
+import { ManageProductInboundPort, SaveProductCommand } from '../ports/inbound/ManageProductInboundPort';
+import { ProductRepositoryOutboundPort } from '../ports/outbound/ProductRepositoryOutboundPort';
+import { Product } from '../entities/Product';
 
-export class ManageProductUseCase {
-  constructor(private productRepo: ProductRepositoryPort) {}
+export class ManageProductUseCase implements ManageProductInboundPort {
+  constructor(private productRepo: ProductRepositoryOutboundPort) {}
 
-  async saveProduct(
-    productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }
-  ): Promise<Product> {
-    return this.productRepo.saveProduct(productData);
+  async saveProduct(command: SaveProductCommand): Promise<Product> {
+    return this.productRepo.saveProduct(command);
   }
 
   async deleteProduct(id: string): Promise<boolean> {

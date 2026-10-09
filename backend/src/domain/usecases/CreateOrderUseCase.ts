@@ -1,18 +1,12 @@
-import { OrderRepositoryPort } from '../ports/OrderRepositoryPort';
-import { PaymentGatewayPort } from '../ports/PaymentGatewayPort';
-import { Order, OrderItem } from '../models/Order';
+import { CreateOrderInboundPort, CreateOrderCommand } from '../ports/inbound/CreateOrderInboundPort';
+import { OrderRepositoryOutboundPort } from '../ports/outbound/OrderRepositoryOutboundPort';
+import { PaymentGatewayOutboundPort } from '../ports/outbound/PaymentGatewayOutboundPort';
+import { Order, OrderItem } from '../entities/Order';
 
-export interface CreateOrderCommand {
-  userEmail: string;
-  userName: string;
-  userId?: string;
-  items: Omit<OrderItem, 'subtotal'>[];
-}
-
-export class CreateOrderUseCase {
+export class CreateOrderUseCase implements CreateOrderInboundPort {
   constructor(
-    private orderRepo: OrderRepositoryPort,
-    private paymentGateway: PaymentGatewayPort
+    private orderRepo: OrderRepositoryOutboundPort,
+    private paymentGateway: PaymentGatewayOutboundPort
   ) {}
 
   async execute(command: CreateOrderCommand): Promise<Order> {

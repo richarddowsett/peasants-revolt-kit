@@ -1,8 +1,9 @@
-import { OrderRepositoryPort } from '../ports/OrderRepositoryPort';
-import { Order } from '../models/Order';
+import { GetUserOrdersInboundPort } from '../ports/inbound/GetUserOrdersInboundPort';
+import { OrderRepositoryOutboundPort } from '../ports/outbound/OrderRepositoryOutboundPort';
+import { Order } from '../entities/Order';
 
-export class GetUserOrdersUseCase {
-  constructor(private orderRepo: OrderRepositoryPort) {}
+export class GetUserOrdersUseCase implements GetUserOrdersInboundPort {
+  constructor(private orderRepo: OrderRepositoryOutboundPort) {}
 
   async getOrdersForUser(email: string): Promise<Order[]> {
     return this.orderRepo.getOrdersByUserEmail(email);
