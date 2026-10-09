@@ -24,6 +24,11 @@ output "www_domain" {
 }
 
 output "backend_docker_build_command" {
-  description = "Command to build backend container locally for Cloud Run (linux/amd64) and push to GCP Artifact Registry"
-  value       = "docker build --platform linux/amd64 -t ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend && docker push ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
+  description = "Command to build backend container for Cloud Run (linux/amd64) and push to GCP Artifact Registry"
+  value       = "docker build --pull --no-cache --platform linux/amd64 -t ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend && docker push ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
+}
+
+output "backend_cloud_build_command" {
+  description = "Alternative: Cloud Build command (builds directly on GCP x86_64 servers)"
+  value       = "gcloud builds submit --tag ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend"
 }
