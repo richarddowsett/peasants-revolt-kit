@@ -70,7 +70,8 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
 
     // Select Size 'M'
     const productCard = page.locator('.bg-white', { hasText: productName });
-    await productCard.locator('button', { hasText: 'M' }).click();
+    await productCard.locator('button', { hasText: /^M$/ }).click();
+
 
     // Add to Basket
     await productCard.locator('button', { hasText: 'Add to Basket' }).click();
@@ -125,20 +126,21 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     const orderCard = page.locator('.bg-white', { hasText: orderRef });
     await expect(orderCard).toBeVisible();
     await expect(orderCard.locator(`text=${customerName}`)).toBeVisible();
-    await expect(orderCard.locator('text=pending_payment')).toBeVisible();
+    await expect(orderCard.locator('text=Pending Payment')).toBeVisible();
 
     // Mark Payment Received
     await Promise.all([
       page.waitForResponse((r) => r.url().includes('/status')),
       orderCard.locator('button:has-text("Mark Payment Received")').click(),
     ]);
-    await expect(orderCard.locator('text=payment_successful')).toBeVisible();
+    await expect(orderCard.locator('text=Payment Received')).toBeVisible();
 
     // Mark Order Fulfilled
     await Promise.all([
       page.waitForResponse((r) => r.url().includes('/status')),
       orderCard.locator('button:has-text("Mark Order Fulfilled")').click(),
     ]);
-    await expect(orderCard.locator('text=completed')).toBeVisible();
+    await expect(orderCard.locator('text=Order Fulfilled')).toBeVisible();
+
   });
 });

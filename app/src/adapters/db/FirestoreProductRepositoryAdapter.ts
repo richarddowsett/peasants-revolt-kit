@@ -1,6 +1,5 @@
 import { ProductRepositoryPort } from '@/domain/ports/ProductRepositoryPort';
 import { Product } from '@/domain/models/Product';
-import { INITIAL_PRODUCTS } from '@/domain/models/InitialProducts';
 import { db } from '@/lib/firebase';
 import { 
   collection, 
@@ -13,7 +12,7 @@ import {
 
 export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort {
   private readonly collectionName = 'products';
-  private static localMemoryStore: Product[] = [...INITIAL_PRODUCTS];
+  private static localMemoryStore: Product[] = [];
 
   async getAllProducts(): Promise<Product[]> {
     try {
@@ -27,16 +26,9 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
           }));
           FirestoreProductRepositoryAdapter.localMemoryStore = products;
           return products;
-        } else if (FirestoreProductRepositoryAdapter.localMemoryStore.length === INITIAL_PRODUCTS.length) {
-          // Database is empty - seed initial products into Firestore
-          try {
-            for (const item of INITIAL_PRODUCTS) {
-              const docRef = doc(db, this.collectionName, item.id);
-              await setDoc(docRef, item, { merge: true });
-            }
-          } catch (seedErr) {
-            console.warn('Firestore seeding notice:', seedErr);
-          }
+        } else {
+          FirestoreProductRepositoryAdapter.localMemoryStore = [];
+          return [];
         }
       }
     } catch (err) {
@@ -44,6 +36,7 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
     }
     return FirestoreProductRepositoryAdapter.localMemoryStore;
   }
+
 
 
   async getPublishedProducts(): Promise<Product[]> {
