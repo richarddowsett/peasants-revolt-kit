@@ -27,7 +27,17 @@ provider "google-beta" {
   region  = var.region
 }
 
-# Enable Firebase & Firebase Hosting APIs
+# Enable required GCP APIs
+resource "google_project_service" "run_api" {
+  service            = "run.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "artifactregistry_api" {
+  service            = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_project_service" "firebase_api" {
   service            = "firebase.googleapis.com"
   disable_on_destroy = false
@@ -36,6 +46,66 @@ resource "google_project_service" "firebase_api" {
 resource "google_project_service" "firebase_hosting_api" {
   service            = "firebasehosting.googleapis.com"
   disable_on_destroy = false
+}
+
+resource "google_project_service" "firestore_api" {
+  service            = "firestore.googleapis.com"
+  disable_on_destroy = false
+}
+
+# Artifact Registry Repository for storing backend container images
+resource "google_artifact_registry_repository" "store_repo" {
+  location      = var.region
+  repository_id = "peasants-running-kit"
+  description   = "Docker repository for Peasants Running Kit backend API"
+  format        = "DOCKER"
+
+  depends_on = [google_project_service.artifactregistry_api]
+}
+
+# Cloud Run Service for Hexagonal Backend API
+resource "google_cloud_run_v2_service" "api" {
+  name     = "peasants-running-kit-api"
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
+
+      env {
+        name  = "PROJECT_ID"
+        value = var.project_id
+      }
+
+      ports {
+        container_port = 8080
+      }
+    }
+
+    scaling {
+      min_instance_count = 0 # Scales to 0 when idle ($0 cost when idle)
+      max_instance_count = 10
+    }
+  }
+
+  depends_on = [google_project_service.run_api]
+}
+
+# Allow public access to Cloud Run Backend API
+resource "google_cloud_run_v2_service_iam_member" "public_api_access" {
+  project  = google_cloud_run_v2_service.api.project
+  location = google_cloud_run_v2_service.api.location
+  name     = google_cloud_run_v2_service.api.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
 # Enable Firebase on the GCP project
