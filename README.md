@@ -28,14 +28,17 @@ The repository features comprehensive testing across unit, integration, and end-
 ### Test Commands
 
 ```bash
-# Run all tests (Unit + E2E)
-npm test
-
-# Run Unit Tests only (Backend + Frontend)
+# Run all unit tests (Backend + Frontend)
 npm run test:unit
 
-# Run Playwright E2E Journey Tests
+# Run Playwright E2E Journey Tests (against local Firestore emulator)
 npm run test:e2e
+
+# Run Playwright QA Smoke Tests (against live QA deployment)
+npm run test:smoke:qa
+
+# Or run smoke tests with custom QA base URL
+PLAYWRIGHT_BASE_URL="https://peasants-running-kit-qa.web.app" npm run test:smoke
 ```
 
 ---
@@ -64,12 +67,23 @@ This starts:
 
 ---
 
-## 🚀 Deployment Guide
+---
 
-### 1. Provision Infrastructure via Terraform
+## 🚀 Deployment Guide & Environments
+
+For complete IAM bindings, service account setup, and GitHub repository secrets configuration, refer to the [QA Environment Setup Guide](docs/QA_ENVIRONMENT_SETUP.md).
+
+### 1. Multi-Environment Infrastructure via Terraform
 
 ```bash
-cd infrastructure
+# Provision QA Environment
+cd infrastructure/environments/qa
+terraform init
+terraform plan
+terraform apply
+
+# Provision Production Environment
+cd infrastructure/environments/prod
 terraform init
 terraform plan
 terraform apply
@@ -77,16 +91,14 @@ terraform apply
 
 ### 2. Build & Push Backend Container Image
 
-Build the container image targeting `linux/amd64` architecture (required for Cloud Run execution):
-
 ```bash
+# For QA (peasants-running-kit-qa)
+docker build --pull --no-cache --platform linux/amd64 -t europe-west2-docker.pkg.dev/peasants-running-kit-qa/peasants-running-kit/backend-api:latest backend
+docker push europe-west2-docker.pkg.dev/peasants-running-kit-qa/peasants-running-kit/backend-api:latest
+
+# For Production (peasants-running-kit)
 docker build --pull --no-cache --platform linux/amd64 -t europe-west2-docker.pkg.dev/peasants-running-kit/peasants-running-kit/backend-api:latest backend
 docker push europe-west2-docker.pkg.dev/peasants-running-kit/peasants-running-kit/backend-api:latest
-```
-
-*Alternative via Cloud Build:*
-```bash
-gcloud builds submit --tag europe-west2-docker.pkg.dev/peasants-running-kit/peasants-running-kit/backend-api:latest backend
 ```
 
 ### 3. Build & Deploy Frontend to Firebase Hosting
@@ -94,8 +106,18 @@ gcloud builds submit --tag europe-west2-docker.pkg.dev/peasants-running-kit/peas
 ```bash
 cd app
 npm run build
+
+# Deploy to QA
+npx -y firebase-tools@latest deploy --only hosting --project peasants-running-kit-qa
+
+# Deploy to Production
 npx -y firebase-tools@latest deploy --only hosting --project peasants-running-kit
 ```
+
+### 4. CI/CD Pipeline Automation
+- **Continuous QA Deployment**: Pushes to `main` automatically deploy to `peasants-running-kit-qa` and run automated Playwright smoke tests against the live URL.
+- **Gated Production Deployment**: Production deployments can **only** be triggered via GitHub Actions `workflow_dispatch` requiring manual selection of `production` and safety confirmation `DEPLOY_PROD`.
+
 
 ---
 

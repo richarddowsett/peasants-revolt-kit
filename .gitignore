@@ -9,9 +9,13 @@ app/out/
 app/.firebase/
 
 # Terraform local state & lock files
-infrastructure/.terraform/
+.terraform/
+**/.terraform/
 *.tfstate
 *.tfstate.backup
+
+# Agent working files
+.agents/
 
 # Operating System
 .DS_Store

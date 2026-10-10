@@ -13,23 +13,68 @@ on:
     paths:
       - 'infrastructure/**'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - qa
+          - production
+      action:
+        description: 'Terraform Action'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+      confirm_production:
+        description: 'Safety Check: Enter "DEPLOY_PROD" to confirm production deployment'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   terraform:
-    name: Terraform Plan & Apply
+    name: Terraform Plan & Apply (${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'qa' }})
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./infrastructure
+        working-directory: ./infrastructure/environments/${{ (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') && 'prod' || 'qa' }}
+
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'qa' }}
+      TF_ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || (github.event_name == 'push' && 'apply' || 'plan') }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
+      - name: Validate Production Dispatch Confirmation
+        if: env.DEPLOY_ENV == 'production'
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "::error::Production actions can NEVER be triggered by push events!"
+            exit 1
+          fi
+          if [ "${{ env.TF_ACTION }}" = "apply" ] && [ "${{ inputs.confirm_production }}" != "DEPLOY_PROD" ]; then
+            echo "::error::Production apply blocked! Must provide confirm_production: 'DEPLOY_PROD'."
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud (QA)
+        if: env.DEPLOY_ENV == 'qa'
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.GCP_SA_KEY_QA }}
+
+      - name: Authenticate to Google Cloud (Production)
+        if: env.DEPLOY_ENV == 'production'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -37,7 +82,7 @@ jobs:
           terraform_version: 1.8.0
 
       - name: Terraform Format Check
-        run: terraform fmt -check
+        run: terraform fmt -check ../../
 
       - name: Terraform Init
         run: terraform init
@@ -46,5 +91,5 @@ jobs:
         run: terraform plan -no-color
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: env.TF_ACTION == 'apply'
         run: terraform apply -auto-approve

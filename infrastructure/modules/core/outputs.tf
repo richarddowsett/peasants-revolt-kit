@@ -8,33 +8,24 @@ output "artifact_registry_repo" {
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
 }
 
+output "artifact_registry_repository_id" {
+  description = "Artifact Registry repository ID"
+  value       = google_artifact_registry_repository.store_repo.repository_id
+}
+
 output "firebase_site_url" {
   description = "Default Firebase Hosting URL"
   value       = "https://${google_firebase_hosting_site.primary.site_id}.web.app"
 }
 
-output "apex_domain" {
-  description = "Custom apex domain mapped on Firebase Hosting"
-  value       = google_firebase_hosting_custom_domain.apex.custom_domain
-}
-
-output "www_domain" {
-  description = "Custom www subdomain mapped on Firebase Hosting"
-  value       = google_firebase_hosting_custom_domain.www.custom_domain
-}
-
-output "backend_docker_build_command" {
-  description = "Command to build backend container for Cloud Run (linux/amd64) and push to GCP Artifact Registry"
-  value       = "docker build --pull --no-cache --platform linux/amd64 -t ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend && docker push ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
-}
-
-output "backend_cloud_build_command" {
-  description = "Alternative: Cloud Build command (builds directly on GCP x86_64 servers)"
-  value       = "gcloud builds submit --tag ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../backend"
+output "firebase_hosting_site_id" {
+  description = "Firebase Hosting primary site ID"
+  value       = google_firebase_hosting_site.primary.site_id
 }
 
 output "firebase_web_app_config" {
   description = "Firebase Web App Configuration (API Key, App ID, Auth Domain)"
+  sensitive   = true
   value = {
     api_key             = data.google_firebase_web_app_config.web_app_config.api_key
     auth_domain         = data.google_firebase_web_app_config.web_app_config.auth_domain
@@ -50,3 +41,12 @@ output "firestore_database_name" {
   value       = google_firestore_database.database.name
 }
 
+output "backend_docker_build_command" {
+  description = "Command to build backend container for Cloud Run (linux/amd64) and push to GCP Artifact Registry"
+  value       = "docker build --pull --no-cache --platform linux/amd64 -t ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../../backend && docker push ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
+}
+
+output "backend_cloud_build_command" {
+  description = "Alternative: Cloud Build command (builds directly on GCP x86_64 servers)"
+  value       = "gcloud builds submit --tag ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../../backend"
+}

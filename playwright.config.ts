@@ -1,7 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const targetBaseURL = process.env.PLAYWRIGHT_BASE_URL || process.env.QA_URL || 'http://localhost:3000';
+const isLiveEnvironment = !!(process.env.PLAYWRIGHT_BASE_URL || process.env.QA_URL || process.env.NO_EMULATOR);
+
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: ['**/qa-smoke.spec.ts'],
   timeout: 60 * 1000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -9,7 +13,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: targetBaseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -35,10 +39,12 @@ export default defineConfig({
       use: { ...devices['iPhone 12'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev:emulator',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  webServer: isLiveEnvironment
+    ? undefined
+    : {
+        command: 'npm run dev:emulator',
+        url: 'http://localhost:3000',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000,
+      },
 });

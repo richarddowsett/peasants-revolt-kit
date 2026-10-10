@@ -1,7 +1,7 @@
 variable "project_id" {
   type        = string
   default     = "peasants-running-kit"
-  description = "GCP Project ID"
+  description = "GCP Project ID for Production"
 }
 
 variable "region" {
@@ -18,6 +18,13 @@ variable "domain_name" {
 
 variable "service_name" {
   type        = string
-  default     = "peasants-running-kit-store"
+  default     = "peasants-running-kit-api"
   description = "Cloud Run service name"
+}
+
+variable "admin_password" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Admin CMS authentication password override"
 }

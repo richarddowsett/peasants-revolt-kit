@@ -8,22 +8,62 @@ on:
       - 'backend/**'
       - '.github/workflows/backend.yml'
   workflow_dispatch:
-
-env:
-  PROJECT_ID: peasants-running-kit
-  REGION: europe-west2
-  SERVICE_NAME: peasants-running-kit-api
-  GAR_REPO: peasants-running-kit
-  IMAGE_NAME: backend-api
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - qa
+          - production
+      confirm_production:
+        description: 'Safety Check: Enter "DEPLOY_PROD" to confirm production deployment'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   deploy-backend:
-    name: Build & Deploy Backend Container
+    name: Build & Deploy Backend Container (${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'qa' }})
     runs-on: ubuntu-latest
+
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'qa' }}
+      REGION: europe-west2
+      SERVICE_NAME: peasants-running-kit-api
+      GAR_REPO: peasants-running-kit
+      IMAGE_NAME: backend-api
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Validate Production Dispatch Confirmation
+        if: env.DEPLOY_ENV == 'production'
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "::error::Production deployments can NEVER be triggered by push events!"
+            exit 1
+          fi
+          if [ "${{ inputs.confirm_production }}" != "DEPLOY_PROD" ]; then
+            echo "::error::Production deployment blocked! Must provide confirm_production: 'DEPLOY_PROD'."
+            exit 1
+          fi
+
+      - name: Set Environment Variables
+        run: |
+          if [ "${{ env.DEPLOY_ENV }}" = "production" ]; then
+            echo "TARGET_PROJECT_ID=peasants-running-kit" >> $GITHUB_ENV
+            echo "TARGET_ENVIRONMENT=production" >> $GITHUB_ENV
+            echo "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD || 'peasants2026!' }}" >> $GITHUB_ENV
+            echo "TARGET_STORAGE_BUCKET=peasants-running-kit-holding-page" >> $GITHUB_ENV
+          else
+            echo "TARGET_PROJECT_ID=peasants-running-kit-qa" >> $GITHUB_ENV
+            echo "TARGET_ENVIRONMENT=qa" >> $GITHUB_ENV
+            echo "ADMIN_PASSWORD=${{ secrets.QA_ADMIN_PASSWORD || 'peasants2026!' }}" >> $GITHUB_ENV
+            echo "TARGET_STORAGE_BUCKET=peasants-running-kit-qa.appspot.com" >> $GITHUB_ENV
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -41,10 +81,17 @@ jobs:
           cd backend
           npm test
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (QA)
+        if: env.DEPLOY_ENV == 'qa'
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.GCP_SA_KEY_QA }}
+
+      - name: Authenticate to Google Cloud (Production)
+        if: env.DEPLOY_ENV == 'production'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -55,15 +102,38 @@ jobs:
 
       - name: Build and Push Docker Image (linux/amd64)
         run: |
-          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.IMAGE_NAME }}"
+          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.TARGET_PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.IMAGE_NAME }}"
           docker build --platform linux/amd64 -t "${IMAGE_URI}:${{ github.sha }}" -t "${IMAGE_URI}:latest" ./backend
           docker push "${IMAGE_URI}:${{ github.sha }}"
           docker push "${IMAGE_URI}:latest"
 
       - name: Deploy to GCP Cloud Run
+        id: deploy-cloudrun
         uses: google-github-actions/deploy-cloudrun@v2
         with:
+          project_id: ${{ env.TARGET_PROJECT_ID }}
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.TARGET_PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          env_vars: |
+            PROJECT_ID=${{ env.TARGET_PROJECT_ID }}
+            ENVIRONMENT=${{ env.TARGET_ENVIRONMENT }}
+            ADMIN_PASSWORD=${{ env.ADMIN_PASSWORD }}
+            STORAGE_BUCKET=${{ env.TARGET_STORAGE_BUCKET }}
           flags: '--allow-unauthenticated --port=8080'
+
+      - name: Verify Backend Deployment Health Check
+        run: |
+          echo "Verifying Cloud Run backend deployment health for $DEPLOY_ENV ($TARGET_PROJECT_ID)..."
+          CLOUDRUN_URL="${{ steps.deploy-cloudrun.outputs.url }}"
+          if [ -z "$CLOUDRUN_URL" ]; then
+            CLOUDRUN_URL=$(gcloud run services describe "${{ env.SERVICE_NAME }}" --project="${{ env.TARGET_PROJECT_ID }}" --region="${{ env.REGION }}" --format='value(status.url)' 2>/dev/null || true)
+          fi
+          if [ -z "$CLOUDRUN_URL" ]; then
+            echo "::error::Could not determine Cloud Run service URL for health check verification!"
+            exit 1
+          fi
+          CLOUDRUN_URL="${CLOUDRUN_URL%/}"
+          curl -f -s -S --retry 5 --retry-delay 5 "$CLOUDRUN_URL/api/health"
+          echo ""
+          echo "Cloud Run $DEPLOY_ENV backend health check passed successfully."

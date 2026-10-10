@@ -8,15 +8,44 @@ on:
       - 'app/**'
       - '.github/workflows/frontend.yml'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - qa
+          - production
+      confirm_production:
+        description: 'Safety Check: Enter "DEPLOY_PROD" to confirm production deployment'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   deploy-frontend:
-    name: Build & Deploy Frontend App
+    name: Build & Deploy Frontend (${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'qa' }})
     runs-on: ubuntu-latest
+
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'qa' }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Validate Production Dispatch Confirmation
+        if: env.DEPLOY_ENV == 'production'
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "::error::Production deployments can NEVER be triggered by push events!"
+            exit 1
+          fi
+          if [ "${{ inputs.confirm_production }}" != "DEPLOY_PROD" ]; then
+            echo "::error::Production deployment blocked! Must provide confirm_production: 'DEPLOY_PROD'."
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,23 +64,73 @@ jobs:
           cd app
           npm test
 
-      - name: Build Next.js Static Export
+      - name: Build Next.js Static Export (QA)
+        if: env.DEPLOY_ENV == 'qa'
         env:
-          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
-          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: peasants-running-kit.firebaseapp.com
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: peasants-running-kit
-          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: peasants-running-kit.appspot.com
-          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "98587359280"
-          NEXT_PUBLIC_FIREBASE_APP_ID: "1:98587359280:web:8e3063a02fc4408c2f15f5"
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.QA_FIREBASE_API_KEY || secrets.NEXT_PUBLIC_FIREBASE_API_KEY_QA || 'AIzaSyQAKeyPlaceholder' }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: peasants-running-kit-qa.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: peasants-running-kit-qa
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: peasants-running-kit-qa.appspot.com
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "994022371480"
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.QA_FIREBASE_APP_ID || secrets.NEXT_PUBLIC_FIREBASE_APP_ID_QA || '1:994022371480:web:qa' }}
         run: |
           cd app
           npm run build
 
-      - name: Deploy to Firebase Hosting
+      - name: Build Next.js Static Export (Production)
+        if: env.DEPLOY_ENV == 'production'
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.PROD_FIREBASE_API_KEY || secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: peasants-running-kit.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: peasants-running-kit
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: peasants-running-kit.appspot.com
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "98587359280"
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.PROD_FIREBASE_APP_ID || secrets.NEXT_PUBLIC_FIREBASE_APP_ID || '1:98587359280:web:8e3063a02fc4408c2f15f5' }}
+        run: |
+          cd app
+          npm run build
+
+      - name: Deploy to Firebase Hosting (QA)
+        if: env.DEPLOY_ENV == 'qa'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.GCP_SA_KEY }}'
+          firebaseServiceAccount: '${{ secrets.GCP_SA_KEY_QA }}'
+          channelId: live
+          projectId: peasants-running-kit-qa
+          entryPoint: ./app
+
+      - name: Deploy to Firebase Hosting (Production)
+        if: env.DEPLOY_ENV == 'production'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY }}'
           channelId: live
           projectId: peasants-running-kit
           entryPoint: ./app
+
+      - name: Install Root Dependencies & Playwright Browsers for Smoke Tests
+        if: env.DEPLOY_ENV == 'qa'
+        run: |
+          npm ci || npm install
+          npx playwright install chromium --with-deps
+
+      - name: Run Automated Post-Deployment QA Smoke Tests
+        if: env.DEPLOY_ENV == 'qa'
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: https://peasants-running-kit-qa.web.app
+          QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD || 'peasants2026!' }}
+          QA_TEST_USER_EMAIL: ${{ secrets.QA_TEST_USER_EMAIL || '' }}
+          QA_TEST_USER_PASSWORD: ${{ secrets.QA_TEST_USER_PASSWORD || '' }}
+        run: |
+          npm run test:smoke
+
+      - name: Upload Smoke Test Artifacts on Failure
+        if: failure() && env.DEPLOY_ENV == 'qa'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-qa-smoke-report
+          path: playwright-report/
+          retention-days: 7

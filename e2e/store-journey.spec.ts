@@ -16,7 +16,8 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     await page.goto('/admin');
     
     // Fill in password and submit
-    await page.fill('input[type="password"]', 'peasants2026!');
+    const adminPassword = process.env.QA_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'peasants2026!';
+    await page.fill('input[type="password"]', adminPassword);
     await Promise.all([
       page.waitForResponse((resp) => resp.url().includes('/api/admin/login') && resp.ok()),
       page.click('button[type="submit"]'),
@@ -112,7 +113,7 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     const pwdInput = page.locator('input[type="password"]');
     await pwdInput.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
     if (await pwdInput.isVisible()) {
-      await pwdInput.fill('peasants2026!');
+      await pwdInput.fill(adminPassword);
       await Promise.all([
         page.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
         page.click('button[type="submit"]'),

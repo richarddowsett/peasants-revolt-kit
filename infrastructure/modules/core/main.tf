@@ -10,49 +10,35 @@ terraform {
       version = "~> 5.0"
     }
   }
-
-  backend "gcs" {
-    bucket = "peasants-running-kit-tfstate"
-    prefix = "holding-page"
-  }
-}
-
-provider "google" {
-  project               = var.project_id
-  region                = var.region
-  user_project_override = true
-  billing_project       = var.project_id
-}
-
-provider "google-beta" {
-  project               = var.project_id
-  region                = var.region
-  user_project_override = true
-  billing_project       = var.project_id
 }
 
 # Enable required GCP APIs
 resource "google_project_service" "run_api" {
+  project            = var.project_id
   service            = "run.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "artifactregistry_api" {
+  project            = var.project_id
   service            = "artifactregistry.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "firebase_api" {
+  project            = var.project_id
   service            = "firebase.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "firebase_hosting_api" {
+  project            = var.project_id
   service            = "firebasehosting.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "firestore_api" {
+  project            = var.project_id
   service            = "firestore.googleapis.com"
   disable_on_destroy = false
 }
@@ -70,8 +56,8 @@ resource "google_firestore_database" "database" {
   depends_on = [google_project_service.firestore_api]
 }
 
-
 resource "google_project_service" "identitytoolkit_api" {
+  project            = var.project_id
   service            = "identitytoolkit.googleapis.com"
   disable_on_destroy = false
 }
@@ -94,6 +80,7 @@ resource "google_identity_platform_config" "default" {
 
 # Artifact Registry Repository for storing backend container images
 resource "google_artifact_registry_repository" "store_repo" {
+  project       = var.project_id
   location      = var.region
   repository_id = "peasants-running-kit"
   description   = "Docker repository for Peasants Running Kit backend API"
@@ -104,13 +91,14 @@ resource "google_artifact_registry_repository" "store_repo" {
 
 # Cloud Run Service for Hexagonal Backend API
 resource "google_cloud_run_v2_service" "api" {
-  name     = "peasants-running-kit-api"
+  project  = var.project_id
+  name     = var.service_name
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest"
+      image = var.container_image
 
       resources {
         limits = {
@@ -124,6 +112,24 @@ resource "google_cloud_run_v2_service" "api" {
         value = var.project_id
       }
 
+      env {
+        name  = "ENVIRONMENT"
+        value = var.environment
+      }
+
+      env {
+        name  = "STORAGE_BUCKET"
+        value = coalesce(var.storage_bucket, "${var.project_id}.appspot.com")
+      }
+
+      dynamic "env" {
+        for_each = var.admin_password != "" ? [1] : []
+        content {
+          name  = "ADMIN_PASSWORD"
+          value = var.admin_password
+        }
+      }
+
       ports {
         container_port = 8080
       }
@@ -133,6 +139,14 @@ resource "google_cloud_run_v2_service" "api" {
       min_instance_count = 0 # Scales to 0 when idle ($0 cost when idle)
       max_instance_count = 10
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      client,
+      client_version,
+    ]
   }
 
   depends_on = [google_project_service.run_api]
@@ -164,27 +178,11 @@ resource "google_firebase_hosting_site" "primary" {
   depends_on = [google_firebase_project.default]
 }
 
-# Firebase Hosting Custom Domain for Apex (peasants-running-kit.store)
-resource "google_firebase_hosting_custom_domain" "apex" {
-  provider      = google-beta
-  project       = var.project_id
-  site_id       = google_firebase_hosting_site.primary.site_id
-  custom_domain = var.domain_name
-}
-
-# Firebase Hosting Custom Domain for www (www.peasants-running-kit.store)
-resource "google_firebase_hosting_custom_domain" "www" {
-  provider      = google-beta
-  project       = var.project_id
-  site_id       = google_firebase_hosting_site.primary.site_id
-  custom_domain = "www.${var.domain_name}"
-}
-
 # Firebase Web App Registration
 resource "google_firebase_web_app" "web_app" {
   provider     = google-beta
   project      = var.project_id
-  display_name = "Peasants Running Kit Web App"
+  display_name = "Peasants Running Kit Web App (${var.environment})"
 
   depends_on = [google_firebase_project.default]
 }

@@ -11,6 +11,8 @@
     "dev:emulator": "npm run kill-ports && npx -y concurrently@latest --names \"EMULATOR,BACKEND,FRONTEND\" -c \"yellow.bold,blue.bold,magenta.bold\" \"npm run emulator\" \"npm run backend:dev\" \"npm run frontend:dev\"",
     "test:unit": "cd backend && npm test && cd ../app && npm test",
     "test:e2e": "playwright test",
+    "test:smoke": "playwright test --config=playwright.smoke.config.ts",
+    "test:smoke:qa": "PLAYWRIGHT_BASE_URL=https://peasants-running-kit-qa.web.app playwright test --config=playwright.smoke.config.ts",
     "test": "npm run test:unit && npm run test:e2e"
   },
   "devDependencies": {

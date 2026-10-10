@@ -8,10 +8,24 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target test environment'
+        required: true
+        default: 'local-emulator'
+        type: choice
+        options:
+          - local-emulator
+          - qa
+      qa_url:
+        description: 'QA Environment URL (if target is qa)'
+        required: false
+        default: 'https://peasants-running-kit-qa.web.app'
+        type: string
 
 jobs:
   e2e-tests:
-    name: Playwright E2E Journey Tests
+    name: Playwright Tests (${{ github.event_name == 'workflow_dispatch' && inputs.target || 'local-emulator' }})
     runs-on: ubuntu-latest
 
     steps:
@@ -27,18 +41,31 @@ jobs:
       - name: Install Root Dependencies
         run: npm ci || npm install
 
-      - name: Install Backend & Frontend Dependencies
+      - name: Install Backend & Frontend Dependencies (Emulator Mode)
+        if: github.event_name != 'workflow_dispatch' || inputs.target == 'local-emulator'
         run: |
-          cd backend && npm ci || npm install
-          cd ../app && npm ci || npm install --legacy-peer-deps
+          cd backend && (npm ci || npm install)
+          cd ../app && (npm ci || npm install --legacy-peer-deps)
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      - name: Run Playwright E2E UI Journey Tests
+      - name: Run Playwright E2E UI Journey Tests (Local Emulator)
+        if: github.event_name != 'workflow_dispatch' || inputs.target == 'local-emulator'
         run: npx playwright test
         env:
           CI: true
+          QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD || 'peasants2026!' }}
+
+      - name: Run Playwright Smoke Tests (QA Target)
+        if: github.event_name == 'workflow_dispatch' && inputs.target == 'qa'
+        run: npm run test:smoke
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: ${{ inputs.qa_url }}
+          QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD || 'peasants2026!' }}
+          QA_TEST_USER_EMAIL: ${{ secrets.QA_TEST_USER_EMAIL || '' }}
+          QA_TEST_USER_PASSWORD: ${{ secrets.QA_TEST_USER_PASSWORD || '' }}
 
       - name: Upload Playwright Test Artifacts on Failure
         if: failure()
