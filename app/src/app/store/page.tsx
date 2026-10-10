@@ -10,7 +10,7 @@ import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler, Zoo
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { SIZE_GUIDE_TEMPLATES } from '@/domain/models/SizeGuide';
+import { SIZE_GUIDE_TEMPLATES, formatSizeMeasurement } from '@/domain/models/SizeGuide';
 
 export default function StoreCatalogPage() {
   const router = useRouter();
@@ -644,9 +644,9 @@ export default function StoreCatalogPage() {
                       <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
                         <tr>
                           <th className="py-3 px-4">Size</th>
-                          <th className="py-3 px-4">Chest / Bust</th>
-                          <th className="py-3 px-4">Waist</th>
-                          <th className="py-3 px-4">Length / Inseam</th>
+                          <th className="py-3 px-4">Chest / Bust ({sizeGuideUnit})</th>
+                          <th className="py-3 px-4">Waist ({sizeGuideUnit})</th>
+                          <th className="py-3 px-4">Length / Inseam ({sizeGuideUnit})</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -669,9 +669,9 @@ export default function StoreCatalogPage() {
                                   </span>
                                 )}
                               </td>
-                              <td className="py-3 px-4">{row.chest || '—'}</td>
-                              <td className="py-3 px-4">{row.waist || '—'}</td>
-                              <td className="py-3 px-4">{row.length || '—'}</td>
+                              <td className="py-3 px-4">{formatSizeMeasurement(row.chest, sizeGuideUnit)}</td>
+                              <td className="py-3 px-4">{formatSizeMeasurement(row.waist, sizeGuideUnit)}</td>
+                              <td className="py-3 px-4">{formatSizeMeasurement(row.length, sizeGuideUnit)}</td>
                             </tr>
                           );
                         })}

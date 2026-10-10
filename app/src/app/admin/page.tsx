@@ -716,7 +716,7 @@ export default function AdminCMSPage() {
                       <Ruler size={14} className="text-[rgb(202,88,46)]" /> Product Sizes & Sizing Guide
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      Define the custom sizes offered for this product and optional sizing measurements.
+                      Define the custom sizes offered for this product and sizing measurements in centimeters (cm). The store will automatically convert to inches when shoppers toggle units.
                     </p>
                   </div>
                   <button
@@ -739,9 +739,9 @@ export default function AdminCMSPage() {
                       <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
                         <tr>
                           <th className="py-2.5 px-3 w-28">Size Label *</th>
-                          <th className="py-2.5 px-3">Chest / Bust</th>
-                          <th className="py-2.5 px-3">Waist</th>
-                          <th className="py-2.5 px-3">Length / Inseam</th>
+                          <th className="py-2.5 px-3">Chest / Bust (cm)</th>
+                          <th className="py-2.5 px-3">Waist (cm)</th>
+                          <th className="py-2.5 px-3">Length / Inseam (cm)</th>
                           <th className="py-2.5 px-2 text-center w-10">Remove</th>
                         </tr>
                       </thead>

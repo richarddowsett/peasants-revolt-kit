@@ -69,3 +69,38 @@ export const SIZE_GUIDE_TEMPLATES: Record<string, SizeGuideTemplate> = {
     ],
   },
 };
+
+/**
+ * Converts a measurement string in centimeters (e.g. "90 – 95", "67 cm", "12 (Inseam)")
+ * to inches (1 inch = 2.54 cm), rounded to 1 decimal place.
+ */
+export function convertCmToInches(value: string): string {
+  if (!value || value.trim() === '' || value.toUpperCase() === 'N/A' || value === '—') {
+    return value || '—';
+  }
+
+  // Remove standalone or trailing "cm"
+  const stripped = value.replace(/\s*cm\b/gi, '');
+
+  // Convert each number in the string (integers or decimals)
+  return stripped.replace(/(\d+(?:\.\d+)?)/g, (match) => {
+    const num = parseFloat(match);
+    if (isNaN(num)) return match;
+    const inVal = Math.round((num / 2.54) * 10) / 10;
+    return inVal.toString();
+  }).trim();
+}
+
+/**
+ * Formats a measurement string according to the requested unit ('cm' or 'in').
+ * When unit is 'cm', displays the value entered by admin (stripping redundant 'cm' text).
+ * When unit is 'in', converts centimeters to inches.
+ */
+export function formatSizeMeasurement(value: string | undefined, unit: 'cm' | 'in'): string {
+  if (!value || value.trim() === '') return '—';
+  if (value.toUpperCase() === 'N/A' || value === '—') return value;
+  if (unit === 'cm') {
+    return value.replace(/\s*cm\b/gi, '').trim();
+  }
+  return convertCmToInches(value);
+}
