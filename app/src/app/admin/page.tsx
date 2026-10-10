@@ -15,41 +15,7 @@ import { Order, OrderStatus } from '@/domain/models/Order';
 import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler } from 'lucide-react';
 import Link from 'next/link';
 
-const DEFAULT_VEST_ROWS: SizeGuideRow[] = [
-  { size: 'XS', chest: '84 – 89 cm (33 – 35 in)', waist: '70 – 75 cm (27 – 29 in)', length: '65 cm (25.5 in)' },
-  { size: 'S',  chest: '90 – 95 cm (35 – 37 in)', waist: '76 – 81 cm (30 – 32 in)', length: '67 cm (26.4 in)' },
-  { size: 'M',  chest: '96 – 101 cm (38 – 40 in)', waist: '82 – 87 cm (32 – 34 in)', length: '69 cm (27.2 in)' },
-  { size: 'L',  chest: '102 – 107 cm (40 – 42 in)', waist: '88 – 93 cm (34 – 36 in)', length: '71 cm (28.0 in)' },
-  { size: 'XL', chest: '108 – 113 cm (43 – 45 in)', waist: '94 – 99 cm (37 – 39 in)', length: '73 cm (28.7 in)' },
-  { size: 'XXL', chest: '114 – 119 cm (45 – 47 in)', waist: '100 – 105 cm (39 – 41 in)', length: '75 cm (29.5 in)' },
-];
 
-const DEFAULT_TSHIRT_ROWS: SizeGuideRow[] = [
-  { size: 'XS', chest: '86 – 91 cm (34 – 36 in)', waist: '72 – 77 cm (28 – 30 in)', length: '66 cm (26.0 in)' },
-  { size: 'S',  chest: '92 – 97 cm (36 – 38 in)', waist: '78 – 83 cm (30 – 32 in)', length: '68 cm (26.8 in)' },
-  { size: 'M',  chest: '98 – 103 cm (38 – 40 in)', waist: '84 – 89 cm (33 – 35 in)', length: '70 cm (27.6 in)' },
-  { size: 'L',  chest: '104 – 109 cm (41 – 43 in)', waist: '90 – 95 cm (35 – 37 in)', length: '72 cm (28.3 in)' },
-  { size: 'XL', chest: '110 – 115 cm (43 – 45 in)', waist: '96 – 101 cm (38 – 40 in)', length: '74 cm (29.1 in)' },
-  { size: 'XXL', chest: '116 – 121 cm (46 – 48 in)', waist: '102 – 107 cm (40 – 42 in)', length: '76 cm (29.9 in)' },
-];
-
-const DEFAULT_SHORTS_ROWS: SizeGuideRow[] = [
-  { size: 'XS', chest: 'N/A', waist: '70 – 75 cm (27 – 29 in)', length: '12 cm / 4.7 in (Inseam)' },
-  { size: 'S',  chest: 'N/A', waist: '76 – 81 cm (30 – 32 in)', length: '13 cm / 5.1 in (Inseam)' },
-  { size: 'M',  chest: 'N/A', waist: '82 – 87 cm (32 – 34 in)', length: '13 cm / 5.1 in (Inseam)' },
-  { size: 'L',  chest: 'N/A', waist: '88 – 93 cm (34 – 36 in)', length: '14 cm / 5.5 in (Inseam)' },
-  { size: 'XL', chest: 'N/A', waist: '94 – 99 cm (37 – 39 in)', length: '14 cm / 5.5 in (Inseam)' },
-  { size: 'XXL', chest: 'N/A', waist: '100 – 105 cm (39 – 41 in)', length: '15 cm / 5.9 in (Inseam)' },
-];
-
-const DEFAULT_HOODIE_ROWS: SizeGuideRow[] = [
-  { size: 'XS', chest: '88 – 93 cm (35 – 37 in)', waist: '74 – 79 cm (29 – 31 in)', length: '68 cm (26.8 in)' },
-  { size: 'S',  chest: '94 – 99 cm (37 – 39 in)', waist: '80 – 85 cm (31 – 33 in)', length: '70 cm (27.6 in)' },
-  { size: 'M',  chest: '100 – 105 cm (39 – 41 in)', waist: '86 – 91 cm (34 – 36 in)', length: '72 cm (28.3 in)' },
-  { size: 'L',  chest: '106 – 111 cm (42 – 44 in)', waist: '92 – 97 cm (36 – 38 in)', length: '74 cm (29.1 in)' },
-  { size: 'XL', chest: '112 – 117 cm (44 – 46 in)', waist: '98 – 103 cm (38 – 40 in)', length: '76 cm (29.9 in)' },
-  { size: 'XXL', chest: '118 – 123 cm (46 – 48 in)', waist: '104 – 109 cm (41 – 43 in)', length: '78 cm (30.7 in)' },
-];
 
 export default function AdminCMSPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -71,7 +37,7 @@ export default function AdminCMSPage() {
   const [productImages, setProductImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>(DEFAULT_VEST_ROWS);
+  const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>([]);
 
 
   useEffect(() => {
@@ -266,7 +232,7 @@ export default function AdminCMSPage() {
     setProductDesc('');
     setProductPrice('25.00');
     setProductImages([]);
-    setSizeGuideRows(DEFAULT_VEST_ROWS);
+    setSizeGuideRows([]);
   };
 
   const openEditProductModal = (product: Product) => {
@@ -283,7 +249,7 @@ export default function AdminCMSPage() {
     } else if (product.sizes && product.sizes.length > 0) {
       setSizeGuideRows(product.sizes.map((s) => ({ size: s, chest: '', waist: '', length: '' })));
     } else {
-      setSizeGuideRows(DEFAULT_VEST_ROWS);
+      setSizeGuideRows([]);
     }
     setIsProductModalOpen(true);
   };
@@ -762,50 +728,10 @@ export default function AdminCMSPage() {
                   </button>
                 </div>
 
-                {/* Pre-fill Preset Buttons */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] font-bold uppercase text-slate-400">Pre-fill Presets:</span>
-                  <button
-                    type="button"
-                    onClick={() => setSizeGuideRows(DEFAULT_VEST_ROWS)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition"
-                  >
-                    🎽 Vest
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSizeGuideRows(DEFAULT_TSHIRT_ROWS)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition"
-                  >
-                    👕 T-Shirt
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSizeGuideRows(DEFAULT_SHORTS_ROWS)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition"
-                  >
-                    🩳 Shorts
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSizeGuideRows(DEFAULT_HOODIE_ROWS)}
-                    className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 rounded-lg text-slate-700 hover:border-slate-400 hover:bg-slate-100 transition"
-                  >
-                    🧥 Hoodie
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSizeGuideRows([])}
-                    className="px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50 rounded-lg transition"
-                  >
-                    Clear All
-                  </button>
-                </div>
-
                 {/* Interactive Table of Size Rows */}
                 {sizeGuideRows.length === 0 ? (
                   <div className="text-center py-4 bg-white rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 font-medium">
-                    No sizes defined. Click &quot;Add Size Row&quot; or choose a pre-fill preset above.
+                    No sizes defined. Click &quot;Add Size Row&quot; above to specify product sizes.
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">

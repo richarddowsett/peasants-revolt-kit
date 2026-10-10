@@ -10,10 +10,20 @@ export class FirestoreAdminProductRepositoryAdapter implements ProductRepository
     try {
       const snapshot = await adminDb.collection(this.collectionName).get();
       if (!snapshot.empty) {
-        const products: Product[] = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...(docSnap.data() as Omit<Product, 'id'>),
-        }));
+        const legacySeedIds = new Set(['prod_hoodie_01', 'prod_shorts_01', 'prod_tshirt_01', 'prod_vest_01']);
+
+        for (const docSnap of snapshot.docs) {
+          if (legacySeedIds.has(docSnap.id)) {
+            docSnap.ref.delete().catch(() => {});
+          }
+        }
+
+        const products: Product[] = snapshot.docs
+          .filter((docSnap) => !legacySeedIds.has(docSnap.id))
+          .map((docSnap) => ({
+            id: docSnap.id,
+            ...(docSnap.data() as Omit<Product, 'id'>),
+          }));
         FirestoreAdminProductRepositoryAdapter.localMemoryStore = products;
         return products;
       } else {
@@ -23,7 +33,9 @@ export class FirestoreAdminProductRepositoryAdapter implements ProductRepository
     } catch (err) {
       console.warn('Firestore admin products fetch notice:', err);
     }
-    return FirestoreAdminProductRepositoryAdapter.localMemoryStore;
+    return FirestoreAdminProductRepositoryAdapter.localMemoryStore.filter(
+      (p) => !['prod_hoodie_01', 'prod_shorts_01', 'prod_tshirt_01', 'prod_vest_01'].includes(p.id)
+    );
   }
 
 

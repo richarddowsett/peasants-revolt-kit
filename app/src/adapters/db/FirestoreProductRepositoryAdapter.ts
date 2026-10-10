@@ -20,10 +20,20 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
         const colRef = collection(db, this.collectionName);
         const snapshot = await getDocs(colRef);
         if (!snapshot.empty) {
-          const products: Product[] = snapshot.docs.map((docSnap) => ({
-            id: docSnap.id,
-            ...(docSnap.data() as Omit<Product, 'id'>),
-          }));
+          const legacySeedIds = new Set(['prod_hoodie_01', 'prod_shorts_01', 'prod_tshirt_01', 'prod_vest_01']);
+
+          for (const docSnap of snapshot.docs) {
+            if (legacySeedIds.has(docSnap.id)) {
+              deleteDoc(doc(db, this.collectionName, docSnap.id)).catch(() => {});
+            }
+          }
+
+          const products: Product[] = snapshot.docs
+            .filter((docSnap) => !legacySeedIds.has(docSnap.id))
+            .map((docSnap) => ({
+              id: docSnap.id,
+              ...(docSnap.data() as Omit<Product, 'id'>),
+            }));
           FirestoreProductRepositoryAdapter.localMemoryStore = products;
           return products;
         } else {
@@ -34,7 +44,9 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
     } catch (err) {
       console.warn('Firestore product fetch notice:', err);
     }
-    return FirestoreProductRepositoryAdapter.localMemoryStore;
+    return FirestoreProductRepositoryAdapter.localMemoryStore.filter(
+      (p) => !['prod_hoodie_01', 'prod_shorts_01', 'prod_tshirt_01', 'prod_vest_01'].includes(p.id)
+    );
   }
 
 
