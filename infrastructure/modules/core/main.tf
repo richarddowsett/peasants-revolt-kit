@@ -62,9 +62,8 @@ resource "google_project_service" "identitytoolkit_api" {
   disable_on_destroy = false
 }
 
-# Provision Identity Platform / Firebase Authentication (optional via var.enable_identity_platform_config)
+# Provision Identity Platform / Firebase Authentication
 resource "google_identity_platform_config" "default" {
-  count    = var.enable_identity_platform_config ? 1 : 0
   provider = google-beta
   project  = var.project_id
 
