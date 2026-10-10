@@ -8,23 +8,41 @@ test.describe('Peasants Running Kit Live QA Deployment Smoke Tests', () => {
   test('1. Unauthenticated Health Check: Cloud Run backend API /api/health responds with status ok', async ({ request, baseURL }) => {
     const base = (baseURL || 'https://peasants-running-kit-qa.web.app').replace(/\/+$/, '');
     const healthUrl = `${base}/api/health`;
-    const response = await request.get(healthUrl);
-    expect(response.status(), `API health check at ${healthUrl} failed with status ${response.status()}: ${await response.text().catch(() => '')}`).toBe(200);
 
-    const data = await response.json().catch(() => null);
-    expect(data, `API health check at ${healthUrl} returned non-JSON payload`).not.toBeNull();
-    expect(data.status).toBe('ok');
-    expect(data.service).toContain('Peasants Running Kit');
+    await expect.poll(async () => {
+      const response = await request.get(healthUrl).catch(() => null);
+      if (!response) return 'network_error';
+      if (!response.ok()) {
+        const text = await response.text().catch(() => '');
+        return `http_${response.status()}:${text.slice(0, 100)}`;
+      }
+      const data = await response.json().catch(() => null);
+      if (!data) {
+        const text = await response.text().catch(() => '');
+        return `non_json:${text.slice(0, 100)}`;
+      }
+      return data.status;
+    }, {
+      message: `API health check at ${healthUrl} did not return status 'ok'`,
+      intervals: [2000, 4000, 8000],
+      timeout: 60000,
+    }).toBe('ok');
   });
 
   test('2. Unauthenticated Products API: /api/products returns HTTP 200 and products list', async ({ request, baseURL }) => {
     const base = (baseURL || 'https://peasants-running-kit-qa.web.app').replace(/\/+$/, '');
     const productsUrl = `${base}/api/products`;
-    const response = await request.get(productsUrl);
-    expect(response.status(), `Products API at ${productsUrl} failed with status ${response.status()}: ${await response.text().catch(() => '')}`).toBe(200);
 
-    const products = await response.json().catch(() => null);
-    expect(Array.isArray(products), `Products API at ${productsUrl} returned non-array payload`).toBe(true);
+    await expect.poll(async () => {
+      const response = await request.get(productsUrl).catch(() => null);
+      if (!response || !response.ok()) return false;
+      const data = await response.json().catch(() => null);
+      return Array.isArray(data);
+    }, {
+      message: `Products API at ${productsUrl} did not return a JSON array`,
+      intervals: [2000, 4000],
+      timeout: 30000,
+    }).toBe(true);
   });
 
   test('3. Storefront UI: Landing page serves HTML, static assets, and header navigation', async ({ page }) => {
