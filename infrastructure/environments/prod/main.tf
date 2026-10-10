@@ -59,15 +59,16 @@ moved {
   to   = module.core.google_project_service.identitytoolkit_api
 }
 
-moved {
-  from = google_firestore_database.database
-  to   = module.core.google_firestore_database.database
+import {
+  to = module.core.google_firestore_database.database
+  id = "(default)"
 }
 
-moved {
-  from = google_identity_platform_config.default
-  to   = module.core.google_identity_platform_config.default
+import {
+  to = module.core.google_identity_platform_config.default
+  id = "projects/peasants-running-kit/config"
 }
+
 
 moved {
   from = google_artifact_registry_repository.store_repo
