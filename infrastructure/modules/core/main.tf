@@ -62,8 +62,9 @@ resource "google_project_service" "identitytoolkit_api" {
   disable_on_destroy = false
 }
 
-# Provision Identity Platform / Firebase Authentication
+# Provision Identity Platform / Firebase Authentication (optional via var.enable_identity_platform_config)
 resource "google_identity_platform_config" "default" {
+  count    = var.enable_identity_platform_config ? 1 : 0
   provider = google-beta
   project  = var.project_id
 
@@ -122,14 +123,6 @@ resource "google_cloud_run_v2_service" "api" {
         value = coalesce(var.storage_bucket, "${var.project_id}.appspot.com")
       }
 
-      dynamic "env" {
-        for_each = toset(compact([var.admin_password]))
-        content {
-          name  = "ADMIN_PASSWORD"
-          value = each.value
-        }
-      }
-
       ports {
         container_port = 8080
       }
@@ -144,6 +137,7 @@ resource "google_cloud_run_v2_service" "api" {
   lifecycle {
     ignore_changes = [
       template[0].containers[0].image,
+      template[0].containers[0].env,
       client,
       client_version,
     ]
