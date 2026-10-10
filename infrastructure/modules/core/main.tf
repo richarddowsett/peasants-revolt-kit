@@ -123,10 +123,10 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       dynamic "env" {
-        for_each = var.admin_password != "" ? [1] : []
+        for_each = toset(compact([var.admin_password]))
         content {
           name  = "ADMIN_PASSWORD"
-          value = var.admin_password
+          value = each.value
         }
       }
 
