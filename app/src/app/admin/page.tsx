@@ -12,7 +12,7 @@ import {
 } from '@/lib/api';
 import { Product, SizeGuideRow, GenderFit } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
-import { SIZING_PRESETS, formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
+import { formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
 import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
@@ -45,7 +45,7 @@ export default function AdminCMSPage() {
   const [productImages, setProductImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>([...SIZING_PRESETS[0].rows]);
+  const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>([]);
   const [adminSizeFilter, setAdminSizeFilter] = useState<'all' | 'men' | 'women' | 'unisex'>('all');
 
 
@@ -153,18 +153,6 @@ export default function AdminCMSPage() {
     ]);
   };
 
-  const handleLoadPreset = (presetId: string) => {
-    const preset = SIZING_PRESETS.find((p) => p.id === presetId);
-    if (!preset) return;
-    if (
-      sizeGuideRows.length > 0 &&
-      !confirm(`Load preset "${preset.name}"? This will replace the current size rows for this product.`)
-    ) {
-      return;
-    }
-    setSizeGuideRows([...preset.rows]);
-  };
-
   const handleUpdateSizeRow = (index: number, field: keyof SizeGuideRow, value: any) => {
     setSizeGuideRows((prev) => {
       const next = [...prev];
@@ -183,10 +171,12 @@ export default function AdminCMSPage() {
     if (isNaN(priceNum) || priceNum <= 0) return alert('Enter a valid price');
 
     const validRows = sizeGuideRows.filter((r) => r.size.trim().length > 0);
-    const effectiveRows = validRows.length > 0 ? validRows : [...SIZING_PRESETS[0].rows];
+    if (validRows.length === 0) {
+      return alert('Please add at least one size for the product.');
+    }
 
     const derivedSizes = Array.from(
-      new Set(effectiveRows.map((r) => formatFullSizeLabel(r.size, r.gender)))
+      new Set(validRows.map((r) => formatFullSizeLabel(r.size, r.gender)))
     );
 
     if (productImages.some((img) => img.startsWith('data:'))) {
@@ -204,7 +194,7 @@ export default function AdminCMSPage() {
         imageUrl: mainImageUrl,
         imageUrls: productImages.length > 0 ? productImages : [mainImageUrl],
         sizes: derivedSizes,
-        sizeGuideRows: effectiveRows,
+        sizeGuideRows: validRows,
         isPublished: true,
       });
 
@@ -261,7 +251,7 @@ export default function AdminCMSPage() {
     setProductDesc('');
     setProductPrice('25.00');
     setProductImages([]);
-    setSizeGuideRows([...SIZING_PRESETS[0].rows]);
+    setSizeGuideRows([]);
     setAdminSizeFilter('all');
   };
 
@@ -827,29 +817,8 @@ export default function AdminCMSPage() {
                       <Ruler size={14} className="text-[rgb(82,94,62)]" /> Product Sizes & Sizing Guide
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      Add Men&apos;s and Women&apos;s sizes and measurements in centimeters (cm). The store will display them separately and convert to inches on demand.
+                      Add Men&apos;s, Women&apos;s, and Unisex sizes and measurements in inches (in). All sizes are configured directly per item.
                     </p>
-                  </div>
-
-                  {/* Preset Selector */}
-                  <div className="flex items-center gap-2">
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          handleLoadPreset(e.target.value);
-                          e.target.value = '';
-                        }
-                      }}
-                      defaultValue=""
-                      className="text-xs font-bold bg-white text-slate-700 border border-slate-300 rounded-xl px-2.5 py-1.5 shadow-sm hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
-                    >
-                      <option value="" disabled>⚡ Load Preset...</option>
-                      {SIZING_PRESETS.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 
@@ -916,7 +885,7 @@ export default function AdminCMSPage() {
                 {/* Interactive Table of Size Rows */}
                 {sizeGuideRows.length === 0 ? (
                   <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 font-medium">
-                    No sizes defined. Click &quot;Add Men&apos;s&quot;, &quot;Add Women&apos;s&quot;, or &quot;Load Preset&quot; above.
+                    No sizes defined. Click &quot;Add Men&apos;s&quot;, &quot;Add Women&apos;s&quot;, or &quot;Add Unisex&quot; above to add sizes.
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -925,9 +894,9 @@ export default function AdminCMSPage() {
                         <tr>
                           <th className="py-2.5 px-3 w-32">Fit / Gender</th>
                           <th className="py-2.5 px-3 w-28">Size Label *</th>
-                          <th className="py-2.5 px-3">Chest / Bust (cm)</th>
-                          <th className="py-2.5 px-3">Waist (cm)</th>
-                          <th className="py-2.5 px-3">Length / Inseam (cm)</th>
+                          <th className="py-2.5 px-3">Chest / Bust (in)</th>
+                          <th className="py-2.5 px-3">Waist (in)</th>
+                          <th className="py-2.5 px-3">Length / Inseam (in)</th>
                           <th className="py-2.5 px-2 text-center w-10">Remove</th>
                         </tr>
                       </thead>
@@ -970,7 +939,7 @@ export default function AdminCMSPage() {
                               <td className="py-2 px-3">
                                 <input
                                   type="text"
-                                  placeholder="e.g. 90 – 95 cm"
+                                  placeholder="e.g. 38 – 40 in"
                                   value={row.chest || ''}
                                   onChange={(e) => handleUpdateSizeRow(idx, 'chest', e.target.value)}
                                   className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
@@ -979,7 +948,7 @@ export default function AdminCMSPage() {
                               <td className="py-2 px-3">
                                 <input
                                   type="text"
-                                  placeholder="e.g. 76 – 81 cm"
+                                  placeholder="e.g. 32 – 34 in"
                                   value={row.waist || ''}
                                   onChange={(e) => handleUpdateSizeRow(idx, 'waist', e.target.value)}
                                   className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
@@ -988,7 +957,7 @@ export default function AdminCMSPage() {
                               <td className="py-2 px-3">
                                 <input
                                   type="text"
-                                  placeholder="e.g. 67 cm"
+                                  placeholder="e.g. 27 in"
                                   value={row.length || ''}
                                   onChange={(e) => handleUpdateSizeRow(idx, 'length', e.target.value)}
                                   className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"

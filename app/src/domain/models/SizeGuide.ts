@@ -175,17 +175,39 @@ export function convertCmToInches(value: string): string {
 }
 
 /**
+ * Converts a measurement string in inches (e.g. "36 – 38", "26.4 in", "5 (Inseam)")
+ * to centimeters (1 inch = 2.54 cm), rounded to the nearest integer.
+ */
+export function convertInchesToCm(value: string): string {
+  if (!value || value.trim() === '' || value.toUpperCase() === 'N/A' || value === '—') {
+    return value || '—';
+  }
+
+  // Remove standalone or trailing "in", "inches", or quote marks
+  const stripped = value.replace(/\s*(?:in(?:ches)?\b|")/gi, '');
+
+  // Convert each number in the string (integers or decimals)
+  return stripped.replace(/(\d+(?:\.\d+)?)/g, (match) => {
+    const num = parseFloat(match);
+    if (isNaN(num)) return match;
+    const cmVal = Math.round(num * 2.54);
+    return cmVal.toString();
+  }).trim();
+}
+
+/**
  * Formats a measurement string according to the requested unit ('cm' or 'in').
- * When unit is 'cm', displays the value entered by admin (stripping redundant 'cm' text).
- * When unit is 'in', converts centimeters to inches.
+ * As CMS input units are in inches:
+ * When unit is 'in', displays the value entered by admin (stripping redundant 'in' or 'inches' text).
+ * When unit is 'cm', converts inches to centimeters.
  */
 export function formatSizeMeasurement(value: string | undefined, unit: 'cm' | 'in'): string {
   if (!value || value.trim() === '') return '—';
   if (value.toUpperCase() === 'N/A' || value === '—') return value;
-  if (unit === 'cm') {
-    return value.replace(/\s*cm\b/gi, '').trim();
+  if (unit === 'in') {
+    return value.replace(/\s*(?:in(?:ches)?\b|")/gi, '').trim();
   }
-  return convertCmToInches(value);
+  return convertInchesToCm(value);
 }
 
 /**

@@ -35,6 +35,10 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     await page.fill('textarea', 'High-performance moisture-wicking club running top for E2E tests.');
     await page.fill('input[type="number"]', '29.99');
 
+    // Add Size Directly (No default sizes in CMS)
+    await page.click('button:has-text("Add Men\'s")');
+    await page.fill('input[placeholder="e.g. S, M, L"]', 'M');
+
     // Save Product
     await Promise.all([
       page.waitForResponse((resp) => resp.url().includes('/api/products') && resp.ok()),

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   convertCmToInches,
+  convertInchesToCm,
   formatSizeMeasurement,
   formatFullSizeLabel,
   parseGenderFromSize,
@@ -10,7 +11,38 @@ import {
 } from './SizeGuide';
 
 describe('SizeGuide unit conversions', () => {
-  describe('convertCmToInches', () => {
+  describe('convertInchesToCm', () => {
+    it('converts single integer inches to centimeters rounded to nearest integer', () => {
+      expect(convertInchesToCm('27')).toBe('69');
+      expect(convertInchesToCm('38')).toBe('97');
+      expect(convertInchesToCm('26.4')).toBe('67');
+    });
+
+    it('converts ranges in inches to centimeters', () => {
+      expect(convertInchesToCm('38 – 40')).toBe('97 – 102');
+      expect(convertInchesToCm('30 - 32')).toBe('76 - 81');
+      expect(convertInchesToCm('35.4 – 37.4')).toBe('90 – 95');
+    });
+
+    it('strips in suffix or quotes and converts numbers', () => {
+      expect(convertInchesToCm('38 – 40 in')).toBe('97 – 102');
+      expect(convertInchesToCm('27"')).toBe('69');
+      expect(convertInchesToCm('27 inches')).toBe('69');
+    });
+
+    it('preserves text annotations like (Inseam)', () => {
+      expect(convertInchesToCm('5 (Inseam)')).toBe('13 (Inseam)');
+      expect(convertInchesToCm('5.5 in (Inseam)')).toBe('14 (Inseam)');
+    });
+
+    it('preserves N/A, dashes and empty strings', () => {
+      expect(convertInchesToCm('N/A')).toBe('N/A');
+      expect(convertInchesToCm('—')).toBe('—');
+      expect(convertInchesToCm('')).toBe('—');
+    });
+  });
+
+  describe('convertCmToInches (legacy helper)', () => {
     it('converts single integer centimeters to inches rounded to 1 decimal', () => {
       expect(convertCmToInches('67')).toBe('26.4');
       expect(convertCmToInches('65')).toBe('25.6');
@@ -27,36 +59,26 @@ describe('SizeGuide unit conversions', () => {
       expect(convertCmToInches('90 – 95 cm')).toBe('35.4 – 37.4');
       expect(convertCmToInches('67cm')).toBe('26.4');
     });
-
-    it('preserves text annotations like (Inseam)', () => {
-      expect(convertCmToInches('12 (Inseam)')).toBe('4.7 (Inseam)');
-      expect(convertCmToInches('14cm (Inseam)')).toBe('5.5 (Inseam)');
-    });
-
-    it('preserves N/A, dashes and empty strings', () => {
-      expect(convertCmToInches('N/A')).toBe('N/A');
-      expect(convertCmToInches('—')).toBe('—');
-      expect(convertCmToInches('')).toBe('—');
-    });
   });
 
   describe('formatSizeMeasurement', () => {
-    it('returns cm values when unit is cm, stripping redundant cm units', () => {
-      expect(formatSizeMeasurement('90 – 95 cm', 'cm')).toBe('90 – 95');
-      expect(formatSizeMeasurement('67', 'cm')).toBe('67');
-      expect(formatSizeMeasurement('12 (Inseam)', 'cm')).toBe('12 (Inseam)');
+    it('returns inches values when unit is in, stripping redundant in text', () => {
+      expect(formatSizeMeasurement('38 – 40 in', 'in')).toBe('38 – 40');
+      expect(formatSizeMeasurement('27', 'in')).toBe('27');
+      expect(formatSizeMeasurement('5 (Inseam)', 'in')).toBe('5 (Inseam)');
     });
 
-    it('returns converted inches when unit is in', () => {
-      expect(formatSizeMeasurement('90 – 95', 'in')).toBe('35.4 – 37.4');
-      expect(formatSizeMeasurement('67 cm', 'in')).toBe('26.4');
-      expect(formatSizeMeasurement('12 (Inseam)', 'in')).toBe('4.7 (Inseam)');
+    it('returns converted centimeters when unit is cm', () => {
+      expect(formatSizeMeasurement('38 – 40', 'cm')).toBe('97 – 102');
+      expect(formatSizeMeasurement('27 in', 'cm')).toBe('69');
+      expect(formatSizeMeasurement('5 (Inseam)', 'cm')).toBe('13 (Inseam)');
+      expect(formatSizeMeasurement('35.4 – 37.4', 'cm')).toBe('90 – 95');
     });
 
     it('handles empty or undefined values gracefully', () => {
-      expect(formatSizeMeasurement(undefined, 'cm')).toBe('—');
-      expect(formatSizeMeasurement('', 'in')).toBe('—');
-      expect(formatSizeMeasurement('N/A', 'in')).toBe('N/A');
+      expect(formatSizeMeasurement(undefined, 'in')).toBe('—');
+      expect(formatSizeMeasurement('', 'cm')).toBe('—');
+      expect(formatSizeMeasurement('N/A', 'cm')).toBe('N/A');
     });
   });
 

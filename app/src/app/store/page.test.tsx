@@ -14,6 +14,9 @@ vi.mock('@/lib/api', () => ({
       imageUrl: '/vest1.png',
       imageUrls: ['/vest1.png', '/vest2.png'],
       sizes: ["Men's S", "Men's M"],
+      sizeGuideRows: [
+        { gender: 'men', size: 'M', chest: '38 – 40', waist: '32 – 34', length: '27' },
+      ],
       isPublished: true,
     },
   ]),
@@ -115,5 +118,50 @@ describe('StoreCatalogPage - Image Zoom Lightbox', () => {
     // Press Escape to exit
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByText(/Photo 1 of 2/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('StoreCatalogPage - Sizing Guide Unit Switching (Inches & CM)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('converts sizes input in inches to cm when cm is selected, and displays inches when in is selected', async () => {
+    render(<StoreCatalogPage />);
+
+    // Wait for product to load
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    // Click Sizing Guide button
+    const sizeGuideButton = screen.getByRole('button', { name: /Sizing Guide/i });
+    fireEvent.click(sizeGuideButton);
+
+    // Modal opens
+    expect(screen.getByText(/Official Size Guide/i)).toBeInTheDocument();
+
+    // Default unit is cm: inches (38 - 40, 32 - 34, 27) are converted to cm
+    expect(screen.getByText('97 – 102')).toBeInTheDocument();
+    expect(screen.getByText('81 – 86')).toBeInTheDocument();
+    expect(screen.getByText('69')).toBeInTheDocument();
+
+    // Toggle unit to Inches (in)
+    const inchesToggle = screen.getByRole('button', { name: /Inches \(in\)/i });
+    fireEvent.click(inchesToggle);
+
+    // Converted cm values should now be replaced by raw input inches
+    expect(screen.getByText('38 – 40')).toBeInTheDocument();
+    expect(screen.getByText('32 – 34')).toBeInTheDocument();
+    expect(screen.getByText('27')).toBeInTheDocument();
+
+    // Toggle back to Centimeters (cm)
+    const cmToggle = screen.getByRole('button', { name: /Centimeters \(cm\)/i });
+    fireEvent.click(cmToggle);
+
+    // Converted back to cm
+    expect(screen.getByText('97 – 102')).toBeInTheDocument();
+    expect(screen.getByText('81 – 86')).toBeInTheDocument();
+    expect(screen.getByText('69')).toBeInTheDocument();
   });
 });
