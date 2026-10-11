@@ -23,6 +23,10 @@ on:
         default: 'https://peasants-running-kit-qa.web.app'
         type: string
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   e2e-tests:
     name: Playwright Tests (${{ github.event_name == 'workflow_dispatch' && inputs.target || 'local-emulator' }})
@@ -35,7 +39,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Root Dependencies

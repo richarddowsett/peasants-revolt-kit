@@ -36,6 +36,10 @@ on:
         default: ''
         type: string
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   terraform:
     name: Terraform Plan & Apply (${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'qa' }})

@@ -8,7 +8,7 @@
     "emulator": "npx -y firebase-tools@latest emulators:start --only firestore,auth --project peasants-running-kit",
     "backend:dev": "cd backend && FIRESTORE_EMULATOR_HOST=127.0.0.1:8085 npm run dev",
     "frontend:dev": "cd app && npm run dev",
-    "dev:emulator": "npm run kill-ports && npx -y concurrently@latest --names \"EMULATOR,BACKEND,FRONTEND\" -c \"yellow.bold,blue.bold,magenta.bold\" \"npm run emulator\" \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "dev:emulator": "npm run kill-ports && npx -y concurrently@^9 --names \"EMULATOR,BACKEND,FRONTEND\" -c \"yellow.bold,blue.bold,magenta.bold\" \"npm run emulator\" \"npm run backend:dev\" \"npm run frontend:dev\"",
     "test:unit": "cd backend && npm test && cd ../app && npm test",
     "test:e2e": "playwright test",
     "test:smoke": "playwright test --config=playwright.smoke.config.ts",
