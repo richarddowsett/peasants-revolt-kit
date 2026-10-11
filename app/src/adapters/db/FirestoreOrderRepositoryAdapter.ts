@@ -42,7 +42,8 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
         await setDoc(docRef, order);
       }
     } catch (err) {
-      console.warn('Firestore order save notice:', err);
+      console.error('Failed to persist order to Firestore database:', err);
+      throw new Error(`Failed to save order to database: ${(err as Error).message}`);
     }
 
     FirestoreOrderRepositoryAdapter.localMemoryStore.unshift(order);
@@ -117,7 +118,8 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
         await setDoc(docRef, updatedOrder, { merge: true });
       }
     } catch (err) {
-      console.warn('Firestore order update notice:', err);
+      console.error('Failed to update order status in Firestore database:', err);
+      throw new Error(`Failed to update order status in database: ${(err as Error).message}`);
     }
 
     const index = FirestoreOrderRepositoryAdapter.localMemoryStore.findIndex((o) => o.id === orderId);

@@ -71,7 +71,8 @@ export class FirestoreAdminProductRepositoryAdapter implements ProductRepository
     try {
       await adminDb.collection(this.collectionName).doc(id).set(product, { merge: true });
     } catch (err) {
-      console.warn('Firestore admin product save notice:', err);
+      console.error('Failed to persist product to Firestore database:', err);
+      throw new Error(`Failed to save product to database: ${(err as Error).message}`);
     }
 
     const index = FirestoreAdminProductRepositoryAdapter.localMemoryStore.findIndex((p) => p.id === id);
@@ -88,7 +89,8 @@ export class FirestoreAdminProductRepositoryAdapter implements ProductRepository
     try {
       await adminDb.collection(this.collectionName).doc(id).delete();
     } catch (err) {
-      console.warn('Firestore admin product delete notice:', err);
+      console.error('Failed to delete product from Firestore database:', err);
+      throw new Error(`Failed to delete product from database: ${(err as Error).message}`);
     }
     FirestoreAdminProductRepositoryAdapter.localMemoryStore =
       FirestoreAdminProductRepositoryAdapter.localMemoryStore.filter((p) => p.id !== id);

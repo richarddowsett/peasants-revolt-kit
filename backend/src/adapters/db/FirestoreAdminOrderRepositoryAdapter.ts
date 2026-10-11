@@ -29,8 +29,28 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryPort
         delete docData.userId;
       }
       await adminDb.collection(this.collectionName).doc(orderId).set(docData);
+      console.log(
+        `[Firestore DB] Order ${orderId} successfully persisted to collection '${this.collectionName}':`,
+        JSON.stringify({
+          id: order.id,
+          userEmail: order.userEmail,
+          userName: order.userName,
+          totalAmount: order.totalAmount,
+          itemCount: order.items?.length,
+          items: order.items,
+          monzoReference: order.monzoReference,
+          status: order.status,
+          createdAt: order.createdAt,
+        })
+      );
     } catch (err) {
-      console.warn('Firestore admin order save notice:', err);
+      console.error(
+        `[Firestore DB ERROR] Failed to persist order ${orderId} to collection '${this.collectionName}':`,
+        err,
+        'Order payload:',
+        JSON.stringify(order)
+      );
+      throw new Error(`Failed to persist order to database: ${(err as Error).message}`);
     }
 
     FirestoreAdminOrderRepositoryAdapter.localMemoryStore.unshift(order);
@@ -94,8 +114,13 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryPort
 
     try {
       await adminDb.collection(this.collectionName).doc(orderId).set(updatedOrder, { merge: true });
+      console.log(`[Firestore DB] Order ${orderId} status successfully updated to '${status}'`);
     } catch (err) {
-      console.warn('Firestore admin order update notice:', err);
+      console.error(
+        `[Firestore DB ERROR] Failed to update order ${orderId} status to '${status}':`,
+        err
+      );
+      throw new Error(`Failed to update order status in database: ${(err as Error).message}`);
     }
 
     const index = FirestoreAdminOrderRepositoryAdapter.localMemoryStore.findIndex(

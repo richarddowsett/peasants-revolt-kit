@@ -38,3 +38,6 @@ backend/dist/
 
 # TypeScript build info
 *.tsbuildinfo
+
+# IDE
+.idea/
