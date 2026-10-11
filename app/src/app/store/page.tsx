@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import StoreHeader from '@/components/StoreHeader';
 import StoreLoginScreen from '@/components/StoreLoginScreen';
 import { fetchProducts, createOrder } from '@/lib/api';
@@ -69,7 +69,65 @@ export default function StoreCatalogPage() {
   const handleResetZoom = () => {
     setZoomScale(1);
     setPanOffset({ x: 0, y: 0 });
+    setIsPanning(false);
   };
+
+  const handleCloseZoom = useCallback(() => {
+    setZoomProduct(null);
+    handleResetZoom();
+  }, []);
+
+  // Listen for Escape key to exit image zoom mode, and arrow keys to navigate images
+  useEffect(() => {
+    if (!zoomProduct) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        e.preventDefault();
+        setZoomProduct(null);
+        handleResetZoom();
+      } else if (e.key === 'ArrowLeft') {
+        const images = zoomProduct.imageUrls && zoomProduct.imageUrls.length > 0
+          ? zoomProduct.imageUrls
+          : [zoomProduct.imageUrl || '/logo.png'];
+        if (images.length > 1) {
+          e.preventDefault();
+          setZoomImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+          handleResetZoom();
+        }
+      } else if (e.key === 'ArrowRight') {
+        const images = zoomProduct.imageUrls && zoomProduct.imageUrls.length > 0
+          ? zoomProduct.imageUrls
+          : [zoomProduct.imageUrl || '/logo.png'];
+        if (images.length > 1) {
+          e.preventDefault();
+          setZoomImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+          handleResetZoom();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [zoomProduct]);
+
+  // Listen for Escape key to exit Size Guide modal
+  useEffect(() => {
+    if (!sizeGuideProduct) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        setSizeGuideProduct(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sizeGuideProduct]);
 
   // Checkout Form State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -945,7 +1003,14 @@ export default function StoreCatalogPage() {
         const currentImage = images[zoomImageIndex] || images[0];
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col justify-between p-4 select-none">
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col justify-between p-4 select-none"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleCloseZoom();
+              }
+            }}
+          >
             {/* Top Toolbar */}
             <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto w-full pt-2 px-2 text-white">
               <div>
@@ -993,14 +1058,14 @@ export default function StoreCatalogPage() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setZoomProduct(null);
-                    handleResetZoom();
-                  }}
-                  title="Close (Esc)"
-                  className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800 transition text-lg font-bold leading-none"
+                  onClick={handleCloseZoom}
+                  title="Exit image (Esc)"
+                  className="p-2 px-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5"
                 >
-                  &times;
+                  <span className="text-base font-bold leading-none">&times;</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-800 border border-slate-700/60 px-1.5 py-0.5 rounded text-slate-300">
+                    Esc
+                  </span>
                 </button>
               </div>
             </div>
@@ -1010,6 +1075,11 @@ export default function StoreCatalogPage() {
               className={`relative flex-1 my-4 flex items-center justify-center overflow-hidden rounded-3xl ${
                 zoomScale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'
               }`}
+              onClick={(e) => {
+                if (e.target === e.currentTarget && zoomScale <= 1) {
+                  handleCloseZoom();
+                }
+              }}
               onMouseDown={(e) => {
                 if (zoomScale > 1) {
                   setIsPanning(true);
@@ -1039,7 +1109,7 @@ export default function StoreCatalogPage() {
                     setZoomImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
                     handleResetZoom();
                   }}
-                  title="Previous Photo"
+                  title="Previous Photo (Left Arrow)"
                   className="absolute left-4 z-10 p-3 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white border border-slate-700/50 shadow-lg transition backdrop-blur-sm"
                 >
                   <ChevronLeft size={22} />
@@ -1068,7 +1138,7 @@ export default function StoreCatalogPage() {
                     setZoomImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
                     handleResetZoom();
                   }}
-                  title="Next Photo"
+                  title="Next Photo (Right Arrow)"
                   className="absolute right-4 z-10 p-3 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white border border-slate-700/50 shadow-lg transition backdrop-blur-sm"
                 >
                   <ChevronRight size={22} />
@@ -1102,8 +1172,8 @@ export default function StoreCatalogPage() {
 
               <p className="text-[11px] text-slate-400 font-medium">
                 {zoomScale > 1
-                  ? '🖱️ Click and drag to pan around image details'
-                  : '💡 Use mouse wheel or +/- buttons to zoom in'}
+                  ? '🖱️ Click and drag to pan around image details • Press Esc to exit'
+                  : '💡 Press Esc to exit • Use mouse wheel or +/- to zoom • Arrow keys for next/prev'}
               </p>
             </div>
           </div>
