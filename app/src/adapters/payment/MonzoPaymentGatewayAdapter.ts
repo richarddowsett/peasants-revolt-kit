@@ -3,7 +3,7 @@ import { PaymentGatewayPort } from '@/domain/ports/PaymentGatewayPort';
 export class MonzoPaymentGatewayAdapter implements PaymentGatewayPort {
   private readonly monzoUsername: string;
 
-  constructor(monzoUsername: string = 'peasantsrevolt') {
+  constructor(monzoUsername: string = process.env.NEXT_PUBLIC_MONZO_USERNAME || 'terenceanthonysumpter') {
     this.monzoUsername = monzoUsername;
   }
 
