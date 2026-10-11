@@ -10,9 +10,10 @@ import {
   fetchOrders,
   updateOrderStatus,
 } from '@/lib/api';
-import { Product, SizeGuideRow } from '@/domain/models/Product';
+import { Product, SizeGuideRow, GenderFit } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler } from 'lucide-react';
+import { SIZING_PRESETS, formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 
@@ -38,6 +39,7 @@ export default function AdminCMSPage() {
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>([]);
+  const [adminSizeFilter, setAdminSizeFilter] = useState<'all' | 'men' | 'women' | 'unisex'>('all');
 
 
   useEffect(() => {
@@ -137,11 +139,26 @@ export default function AdminCMSPage() {
     });
   };
 
-  const handleAddSizeRow = () => {
-    setSizeGuideRows((prev) => [...prev, { size: '', chest: '', waist: '', length: '' }]);
+  const handleAddSizeRow = (gender: GenderFit = 'men') => {
+    setSizeGuideRows((prev) => [
+      ...prev,
+      { gender, size: '', chest: '', waist: '', length: '' },
+    ]);
   };
 
-  const handleUpdateSizeRow = (index: number, field: keyof SizeGuideRow, value: string) => {
+  const handleLoadPreset = (presetId: string) => {
+    const preset = SIZING_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    if (
+      sizeGuideRows.length > 0 &&
+      !confirm(`Load preset "${preset.name}"? This will replace the current size rows for this product.`)
+    ) {
+      return;
+    }
+    setSizeGuideRows([...preset.rows]);
+  };
+
+  const handleUpdateSizeRow = (index: number, field: keyof SizeGuideRow, value: any) => {
     setSizeGuideRows((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };
@@ -163,7 +180,9 @@ export default function AdminCMSPage() {
       return alert('Please add at least one size for the product.');
     }
 
-    const derivedSizes = validRows.map((r) => r.size.trim().toUpperCase());
+    const derivedSizes = Array.from(
+      new Set(validRows.map((r) => formatFullSizeLabel(r.size, r.gender)))
+    );
     const mainImageUrl = productImages.length > 0 ? productImages[0] : '/logo.png';
 
     try {
@@ -233,6 +252,7 @@ export default function AdminCMSPage() {
     setProductPrice('25.00');
     setProductImages([]);
     setSizeGuideRows([]);
+    setAdminSizeFilter('all');
   };
 
   const openEditProductModal = (product: Product) => {
@@ -240,14 +260,32 @@ export default function AdminCMSPage() {
     setProductName(product.name);
     setProductDesc(product.description);
     setProductPrice(product.price.toString());
+    setAdminSizeFilter('all');
     const existingImages = product.imageUrls && product.imageUrls.length > 0
       ? product.imageUrls
       : product.imageUrl ? [product.imageUrl] : [];
     setProductImages(existingImages);
     if (product.sizeGuideRows && product.sizeGuideRows.length > 0) {
-      setSizeGuideRows(product.sizeGuideRows);
+      setSizeGuideRows(
+        product.sizeGuideRows.map((r) => ({
+          ...r,
+          gender: r.gender || parseGenderFromSize(r.size).gender,
+          size: r.gender ? r.size : parseGenderFromSize(r.size).rawSize,
+        }))
+      );
     } else if (product.sizes && product.sizes.length > 0) {
-      setSizeGuideRows(product.sizes.map((s) => ({ size: s, chest: '', waist: '', length: '' })));
+      setSizeGuideRows(
+        product.sizes.map((s) => {
+          const parsed = parseGenderFromSize(s);
+          return {
+            gender: parsed.gender,
+            size: parsed.rawSize,
+            chest: '',
+            waist: '',
+            length: '',
+          };
+        })
+      );
     } else {
       setSizeGuideRows([]);
     }
@@ -710,34 +748,109 @@ export default function AdminCMSPage() {
 
               {/* Product Sizes & Measurements Table Builder */}
               <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h4 className="text-xs font-black uppercase text-slate-800 tracking-wide flex items-center gap-1.5">
                       <Ruler size={14} className="text-[rgb(82,94,62)]" /> Product Sizes & Sizing Guide
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      Define the custom sizes offered for this product and sizing measurements in centimeters (cm). The store will automatically convert to inches when shoppers toggle units.
+                      Add Men&apos;s and Women&apos;s sizes and measurements in centimeters (cm). The store will display them separately and convert to inches on demand.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddSizeRow}
-                    className="bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
-                  >
-                    <Plus size={14} /> Add Size Row
-                  </button>
+
+                  {/* Preset Selector */}
+                  <div className="flex items-center gap-2">
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleLoadPreset(e.target.value);
+                          e.target.value = '';
+                        }
+                      }}
+                      defaultValue=""
+                      className="text-xs font-bold bg-white text-slate-700 border border-slate-300 rounded-xl px-2.5 py-1.5 shadow-sm hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                    >
+                      <option value="" disabled>⚡ Load Preset...</option>
+                      {SIZING_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Quick Add Buttons & Filter Tabs */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
+                  {/* Category Filter Tabs */}
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs">
+                    {(['all', 'men', 'women', 'unisex'] as const).map((filter) => {
+                      const count =
+                        filter === 'all'
+                          ? sizeGuideRows.length
+                          : sizeGuideRows.filter((r) => (r.gender || 'men') === filter).length;
+                      const label =
+                        filter === 'all'
+                          ? `All (${count})`
+                          : filter === 'men'
+                          ? `Men's (${count})`
+                          : filter === 'women'
+                          ? `Women's (${count})`
+                          : `Unisex (${count})`;
+                      return (
+                        <button
+                          key={filter}
+                          type="button"
+                          onClick={() => setAdminSizeFilter(filter)}
+                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
+                            adminSizeFilter === filter
+                              ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Size Buttons */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleAddSizeRow('men')}
+                      className="bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
+                    >
+                      <Plus size={13} /> Add Men&apos;s
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSizeRow('women')}
+                      className="bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
+                    >
+                      <Plus size={13} /> Add Women&apos;s
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSizeRow('unisex')}
+                      className="bg-slate-600 hover:bg-slate-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
+                    >
+                      <Plus size={13} /> Add Unisex
+                    </button>
+                  </div>
                 </div>
 
                 {/* Interactive Table of Size Rows */}
                 {sizeGuideRows.length === 0 ? (
-                  <div className="text-center py-4 bg-white rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 font-medium">
-                    No sizes defined. Click &quot;Add Size Row&quot; above to specify product sizes.
+                  <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 font-medium">
+                    No sizes defined. Click &quot;Add Men&apos;s&quot;, &quot;Add Women&apos;s&quot;, or &quot;Load Preset&quot; above.
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
                         <tr>
+                          <th className="py-2.5 px-3 w-32">Fit / Gender</th>
                           <th className="py-2.5 px-3 w-28">Size Label *</th>
                           <th className="py-2.5 px-3">Chest / Bust (cm)</th>
                           <th className="py-2.5 px-3">Waist (cm)</th>
@@ -746,57 +859,81 @@ export default function AdminCMSPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {sizeGuideRows.map((row, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="py-2 px-3">
-                              <input
-                                type="text"
-                                required
-                                placeholder="e.g. S, M, L"
-                                value={row.size}
-                                onChange={(e) => handleUpdateSizeRow(idx, 'size', e.target.value)}
-                                className="w-full text-xs font-bold p-1.5 rounded-lg border border-slate-300 uppercase focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
-                              />
-                            </td>
-                            <td className="py-2 px-3">
-                              <input
-                                type="text"
-                                placeholder="e.g. 90 – 95 cm"
-                                value={row.chest || ''}
-                                onChange={(e) => handleUpdateSizeRow(idx, 'chest', e.target.value)}
-                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
-                              />
-                            </td>
-                            <td className="py-2 px-3">
-                              <input
-                                type="text"
-                                placeholder="e.g. 76 – 81 cm"
-                                value={row.waist || ''}
-                                onChange={(e) => handleUpdateSizeRow(idx, 'waist', e.target.value)}
-                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
-                              />
-                            </td>
-                            <td className="py-2 px-3">
-                              <input
-                                type="text"
-                                placeholder="e.g. 67 cm"
-                                value={row.length || ''}
-                                onChange={(e) => handleUpdateSizeRow(idx, 'length', e.target.value)}
-                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
-                              />
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveSizeRow(idx)}
-                                className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition"
-                                title="Remove Size"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {sizeGuideRows.map((row, idx) => {
+                          if (adminSizeFilter !== 'all' && (row.gender || 'men') !== adminSizeFilter) {
+                            return null;
+                          }
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="py-2 px-3">
+                                <select
+                                  value={row.gender || 'men'}
+                                  onChange={(e) =>
+                                    handleUpdateSizeRow(idx, 'gender', e.target.value as GenderFit)
+                                  }
+                                  className={`text-xs font-black p-1.5 rounded-lg border focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] ${
+                                    (row.gender || 'men') === 'men'
+                                      ? 'bg-slate-100 text-slate-800 border-slate-300'
+                                      : (row.gender || 'men') === 'women'
+                                      ? 'bg-[rgb(242,245,236)] text-[rgb(82,94,62)] border-[rgb(155,165,130)]'
+                                      : 'bg-slate-50 text-slate-600 border-slate-200'
+                                  }`}
+                                >
+                                  <option value="men">Men&apos;s</option>
+                                  <option value="women">Women&apos;s</option>
+                                  <option value="unisex">Unisex</option>
+                                </select>
+                              </td>
+                              <td className="py-2 px-3">
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="e.g. S, M, L"
+                                  value={row.size}
+                                  onChange={(e) => handleUpdateSizeRow(idx, 'size', e.target.value)}
+                                  className="w-full text-xs font-bold p-1.5 rounded-lg border border-slate-300 uppercase focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                                />
+                              </td>
+                              <td className="py-2 px-3">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 90 – 95 cm"
+                                  value={row.chest || ''}
+                                  onChange={(e) => handleUpdateSizeRow(idx, 'chest', e.target.value)}
+                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
+                                />
+                              </td>
+                              <td className="py-2 px-3">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 76 – 81 cm"
+                                  value={row.waist || ''}
+                                  onChange={(e) => handleUpdateSizeRow(idx, 'waist', e.target.value)}
+                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
+                                />
+                              </td>
+                              <td className="py-2 px-3">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 67 cm"
+                                  value={row.length || ''}
+                                  onChange={(e) => handleUpdateSizeRow(idx, 'length', e.target.value)}
+                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
+                                />
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSizeRow(idx)}
+                                  className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition"
+                                  title="Remove Size"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

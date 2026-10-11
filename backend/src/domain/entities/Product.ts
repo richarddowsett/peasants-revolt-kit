@@ -1,5 +1,8 @@
+export type GenderFit = 'men' | 'women' | 'unisex';
+
 export interface SizeGuideRow {
   size: string;
+  gender?: GenderFit;
   chest?: string;
   waist?: string;
   length?: string;

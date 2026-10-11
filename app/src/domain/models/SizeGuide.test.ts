@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { convertCmToInches, formatSizeMeasurement } from './SizeGuide';
+import {
+  convertCmToInches,
+  formatSizeMeasurement,
+  formatFullSizeLabel,
+  parseGenderFromSize,
+  getAvailableGenders,
+  categorizeProductSizes,
+  SIZING_PRESETS,
+} from './SizeGuide';
 
 describe('SizeGuide unit conversions', () => {
   describe('convertCmToInches', () => {
@@ -49,6 +57,58 @@ describe('SizeGuide unit conversions', () => {
       expect(formatSizeMeasurement(undefined, 'cm')).toBe('—');
       expect(formatSizeMeasurement('', 'in')).toBe('—');
       expect(formatSizeMeasurement('N/A', 'in')).toBe('N/A');
+    });
+  });
+
+  describe('formatFullSizeLabel', () => {
+    it('formats Men and Women sizes with prefixes', () => {
+      expect(formatFullSizeLabel('M', 'men')).toBe("Men's M");
+      expect(formatFullSizeLabel('S', 'women')).toBe("Women's S");
+      expect(formatFullSizeLabel('L', 'unisex')).toBe('L');
+    });
+
+    it('does not duplicate existing gender prefix', () => {
+      expect(formatFullSizeLabel("Men's M", 'men')).toBe("Men's M");
+      expect(formatFullSizeLabel("Women's S", 'women')).toBe("Women's S");
+    });
+  });
+
+  describe('parseGenderFromSize', () => {
+    it('parses Men and Women sizes accurately', () => {
+      expect(parseGenderFromSize("Men's M")).toEqual({ gender: 'men', rawSize: 'M' });
+      expect(parseGenderFromSize("Women's S")).toEqual({ gender: 'women', rawSize: 'S' });
+      expect(parseGenderFromSize('L')).toEqual({ gender: 'unisex', rawSize: 'L' });
+    });
+  });
+
+  describe('getAvailableGenders and categorizeProductSizes', () => {
+    it('identifies men and women genders from rows', () => {
+      const rows = [
+        { gender: 'men' as const, size: 'M' },
+        { gender: 'women' as const, size: 'S' },
+      ];
+      expect(getAvailableGenders(rows)).toEqual(['men', 'women']);
+    });
+
+    it('categorizes sizes into separate sets for men and women', () => {
+      const rows = [
+        { gender: 'men' as const, size: 'S' },
+        { gender: 'men' as const, size: 'M' },
+        { gender: 'women' as const, size: 'XS' },
+        { gender: 'women' as const, size: 'S' },
+      ];
+      const result = categorizeProductSizes([], rows);
+      expect(result.hasGenderSplit).toBe(true);
+      expect(result.men.map((i) => i.fullSize)).toEqual(["Men's S", "Men's M"]);
+      expect(result.women.map((i) => i.fullSize)).toEqual(["Women's XS", "Women's S"]);
+    });
+
+    it('provides sizing presets with valid men and women rows', () => {
+      expect(SIZING_PRESETS.length).toBeGreaterThan(0);
+      const vestPreset = SIZING_PRESETS.find((p) => p.id === 'vest_gendered');
+      expect(vestPreset).toBeDefined();
+      expect(vestPreset!.rows.some((r) => r.gender === 'men')).toBe(true);
+      expect(vestPreset!.rows.some((r) => r.gender === 'women')).toBe(true);
     });
   });
 });

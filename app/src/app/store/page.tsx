@@ -4,13 +4,19 @@ import React, { useState, useEffect } from 'react';
 import StoreHeader from '@/components/StoreHeader';
 import StoreLoginScreen from '@/components/StoreLoginScreen';
 import { fetchProducts, createOrder } from '@/lib/api';
-import { Product } from '@/domain/models/Product';
+import { Product, GenderFit, SizeGuideRow } from '@/domain/models/Product';
 import { CartItem } from '@/domain/models/Cart';
 import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler, ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { SIZE_GUIDE_TEMPLATES, formatSizeMeasurement } from '@/domain/models/SizeGuide';
+import {
+  SIZE_GUIDE_TEMPLATES,
+  formatSizeMeasurement,
+  categorizeProductSizes,
+  parseGenderFromSize,
+  formatFullSizeLabel,
+} from '@/domain/models/SizeGuide';
 
 export default function StoreCatalogPage() {
   const router = useRouter();
@@ -22,10 +28,12 @@ export default function StoreCatalogPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
+  const [selectedFits, setSelectedFits] = useState<Record<string, GenderFit>>({});
   const [selectedImages, setSelectedImages] = useState<Record<string, string>>({});
 
   // Size Guide Modal State
   const [sizeGuideProduct, setSizeGuideProduct] = useState<Product | null>(null);
+  const [sizeGuideFit, setSizeGuideFit] = useState<GenderFit | 'all'>('men');
   const [sizeGuideUnit, setSizeGuideUnit] = useState<'cm' | 'in'>('cm');
 
   // Image Zoom Lightbox State
@@ -116,7 +124,14 @@ export default function StoreCatalogPage() {
   }, [currentUser]);
 
   const handleAddToCart = (product: Product) => {
-    const chosenSize = selectedSizes[product.id] || (product.sizes ? product.sizes[0] : 'M');
+    const { men, women, unisex } = categorizeProductSizes(
+      product.sizes,
+      product.sizeGuideRows
+    );
+    const fit = selectedFits[product.id] || (men.length > 0 ? 'men' : women.length > 0 ? 'women' : 'unisex');
+    const availableItems = fit === 'men' ? men : fit === 'women' ? women : unisex;
+    const defaultFullSize = availableItems[0]?.fullSize || (product.sizes ? product.sizes[0] : 'M');
+    const chosenSize = selectedSizes[product.id] || defaultFullSize;
     setCart((prev) => {
       const existingIndex = prev.findIndex(
         (item) => item.productId === product.id && item.size === chosenSize
@@ -324,43 +339,113 @@ export default function StoreCatalogPage() {
                   </div>
 
                   <div>
-                    {/* Size Selector */}
-                    {product.sizes && product.sizes.length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="text-[10px] uppercase font-bold text-slate-400 block">
-                            Select Size
-                          </label>
-                          {product.sizeGuideCategory !== 'none' && (
-                            <button
-                              type="button"
-                              onClick={() => setSizeGuideProduct(product)}
-                              className="text-[11px] font-bold text-[rgb(82,94,62)] hover:underline flex items-center gap-1"
-                            >
-                              <Ruler size={12} /> Sizing Guide
-                            </button>
+                    {/* Size & Fit Selector */}
+                    {product.sizes && product.sizes.length > 0 && (() => {
+                      const { men, women, unisex, hasGenderSplit } = categorizeProductSizes(
+                        product.sizes,
+                        product.sizeGuideRows
+                      );
+
+                      // Available fits
+                      const availableFits: GenderFit[] = [];
+                      if (men.length > 0) availableFits.push('men');
+                      if (women.length > 0) availableFits.push('women');
+                      if (unisex.length > 0 || availableFits.length === 0) availableFits.push('unisex');
+
+                      const currentFit = selectedFits[product.id] || availableFits[0];
+                      const activeSizes =
+                        currentFit === 'men' ? men : currentFit === 'women' ? women : unisex;
+                      const chosenFullSize =
+                        selectedSizes[product.id] || activeSizes[0]?.fullSize;
+
+                      return (
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-[10px] uppercase font-bold text-slate-400 block">
+                              Select Size
+                            </label>
+                            {product.sizeGuideCategory !== 'none' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSizeGuideProduct(product);
+                                  setSizeGuideFit(currentFit);
+                                }}
+                                className="text-[11px] font-bold text-[rgb(82,94,62)] hover:underline flex items-center gap-1"
+                              >
+                                <Ruler size={12} /> Sizing Guide
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Fit Selector when product has Men's and Women's options */}
+                          {hasGenderSplit && (
+                            <div className="flex items-center gap-1.5 mb-2.5 bg-slate-100 p-1 rounded-xl">
+                              {availableFits.map((fit) => {
+                                const isFitActive = currentFit === fit;
+                                const fitLabel =
+                                  fit === 'men'
+                                    ? "Men's"
+                                    : fit === 'women'
+                                    ? "Women's"
+                                    : 'Unisex';
+                                return (
+                                  <button
+                                    key={fit}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedFits((prev) => ({ ...prev, [product.id]: fit }));
+                                      // Select the corresponding size for this fit
+                                      const nextSizes =
+                                        fit === 'men' ? men : fit === 'women' ? women : unisex;
+                                      if (nextSizes.length > 0) {
+                                        setSelectedSizes((prev) => ({
+                                          ...prev,
+                                          [product.id]: nextSizes[0].fullSize,
+                                        }));
+                                      }
+                                    }}
+                                    className={`flex-1 py-1 text-xs font-bold rounded-lg transition ${
+                                      isFitActive
+                                        ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                  >
+                                    {fitLabel}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           )}
+
+                          {/* Size Pills */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {activeSizes.map((item) => {
+                              const isSelected = chosenFullSize === item.fullSize;
+                              return (
+                                <button
+                                  key={item.fullSize}
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedSizes((prev) => ({
+                                      ...prev,
+                                      [product.id]: item.fullSize,
+                                    }))
+                                  }
+                                  className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
+                                    isSelected
+                                      ? 'bg-[rgb(82,94,62)] text-white border-[rgb(82,94,62)] shadow-sm'
+                                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400'
+                                  }`}
+                                >
+                                  {item.rawSize}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {product.sizes.map((size) => (
-                            <button
-                              key={size}
-                              type="button"
-                              onClick={() =>
-                                setSelectedSizes((prev) => ({ ...prev, [product.id]: size }))
-                              }
-                              className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
-                                selectedSizes[product.id] === size
-                                  ? 'bg-[rgb(82,94,62)] text-white border-[rgb(82,94,62)]'
-                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400'
-                              }`}
-                            >
-                              {size}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Add to Basket Button */}
                     <button
@@ -635,48 +720,153 @@ export default function StoreCatalogPage() {
             {/* Size Table */}
             {(() => {
               const selectedSize = selectedSizes[sizeGuideProduct.id];
-              const hasCustomRows = sizeGuideProduct.sizeGuideRows && sizeGuideProduct.sizeGuideRows.length > 0;
+              const customRows = sizeGuideProduct.sizeGuideRows || [];
+              const hasCustomRows = customRows.length > 0;
 
               if (hasCustomRows) {
+                const menRows = customRows.filter(
+                  (r) => (r.gender || parseGenderFromSize(r.size).gender) === 'men'
+                );
+                const womenRows = customRows.filter(
+                  (r) => (r.gender || parseGenderFromSize(r.size).gender) === 'women'
+                );
+                const unisexRows = customRows.filter(
+                  (r) => (r.gender || parseGenderFromSize(r.size).gender) === 'unisex'
+                );
+                const hasGenderSplit = menRows.length > 0 && womenRows.length > 0;
+
+                const renderTable = (rows: SizeGuideRow[], title?: string, gender: GenderFit = 'unisex') => (
+                  <div key={title || gender} className="mb-4">
+                    {title && (
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black uppercase text-slate-800 tracking-wider">
+                          {title}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold">
+                          All measurements in {sizeGuideUnit}
+                        </span>
+                      </div>
+                    )}
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
+                          <tr>
+                            <th className="py-3 px-4">Size</th>
+                            <th className="py-3 px-4">Chest / Bust ({sizeGuideUnit})</th>
+                            <th className="py-3 px-4">Waist ({sizeGuideUnit})</th>
+                            <th className="py-3 px-4">Length / Inseam ({sizeGuideUnit})</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {rows.map((row, idx) => {
+                            const fullSize = formatFullSizeLabel(row.size, row.gender || gender);
+                            const isSelected = selectedSize === fullSize || selectedSize === row.size;
+                            return (
+                              <tr
+                                key={`${row.size}-${idx}`}
+                                onClick={() => {
+                                  setSelectedSizes((prev) => ({
+                                    ...prev,
+                                    [sizeGuideProduct.id]: fullSize,
+                                  }));
+                                  setSelectedFits((prev) => ({
+                                    ...prev,
+                                    [sizeGuideProduct.id]: row.gender || gender,
+                                  }));
+                                }}
+                                className={`transition cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[rgb(242,245,236)] font-bold text-[rgb(82,94,62)]'
+                                    : 'hover:bg-slate-50 text-slate-800'
+                                }`}
+                              >
+                                <td className="py-3 px-4 font-extrabold flex items-center gap-1.5">
+                                  <span>{row.size}</span>
+                                  {isSelected && (
+                                    <span className="bg-[rgb(155,165,130)] text-slate-900 text-[9px] px-1.5 py-0.5 rounded-full font-black shadow-xs">
+                                      Selected
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">{formatSizeMeasurement(row.chest, sizeGuideUnit)}</td>
+                                <td className="py-3 px-4">{formatSizeMeasurement(row.waist, sizeGuideUnit)}</td>
+                                <td className="py-3 px-4">{formatSizeMeasurement(row.length, sizeGuideUnit)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+
                 return (
-                  <div className="border border-slate-200 rounded-2xl overflow-hidden mb-4">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
-                        <tr>
-                          <th className="py-3 px-4">Size</th>
-                          <th className="py-3 px-4">Chest / Bust ({sizeGuideUnit})</th>
-                          <th className="py-3 px-4">Waist ({sizeGuideUnit})</th>
-                          <th className="py-3 px-4">Length / Inseam ({sizeGuideUnit})</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {sizeGuideProduct.sizeGuideRows!.map((row, idx) => {
-                           const isSelected = selectedSize === row.size;
-                          return (
-                            <tr
-                              key={`${row.size}-${idx}`}
-                              className={`transition ${
-                                isSelected
-                                  ? 'bg-[rgb(242,245,236)] font-bold text-[rgb(82,94,62)]'
-                                  : 'hover:bg-slate-50 text-slate-800'
-                              }`}
-                            >
-                              <td className="py-3 px-4 font-extrabold flex items-center gap-1.5">
-                                <span>{row.size}</span>
-                                {isSelected && (
-                                  <span className="bg-[rgb(155,165,130)] text-slate-900 text-[9px] px-1.5 py-0.5 rounded-full font-black">
-                                    Selected
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">{formatSizeMeasurement(row.chest, sizeGuideUnit)}</td>
-                              <td className="py-3 px-4">{formatSizeMeasurement(row.waist, sizeGuideUnit)}</td>
-                              <td className="py-3 px-4">{formatSizeMeasurement(row.length, sizeGuideUnit)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div>
+                    {/* Separate Gender Tabs when both Men and Women sizes exist */}
+                    {hasGenderSplit && (
+                      <div className="flex items-center gap-1.5 mb-4 bg-slate-100 p-1 rounded-2xl">
+                        <button
+                          type="button"
+                          onClick={() => setSizeGuideFit('men')}
+                          className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+                            sizeGuideFit === 'men'
+                              ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Men&apos;s Sizing ({menRows.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSizeGuideFit('women')}
+                          className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+                            sizeGuideFit === 'women'
+                              ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Women&apos;s Sizing ({womenRows.length})
+                        </button>
+                        {unisexRows.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSizeGuideFit('unisex')}
+                            className={`px-3 py-2 text-xs font-bold rounded-xl transition ${
+                              sizeGuideFit === 'unisex'
+                                ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            Unisex
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSizeGuideFit('all')}
+                          className={`px-3 py-2 text-xs font-bold rounded-xl transition ${
+                            sizeGuideFit === 'all'
+                              ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          View Both
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Render table based on active tab */}
+                    {hasGenderSplit ? (
+                      <>
+                        {(sizeGuideFit === 'men' || sizeGuideFit === 'all') &&
+                          renderTable(menRows, hasGenderSplit && sizeGuideFit === 'all' ? "Men's Sizing" : undefined, 'men')}
+                        {(sizeGuideFit === 'women' || sizeGuideFit === 'all') &&
+                          renderTable(womenRows, hasGenderSplit && sizeGuideFit === 'all' ? "Women's Sizing" : undefined, 'women')}
+                        {sizeGuideFit === 'unisex' &&
+                          renderTable(unisexRows, undefined, 'unisex')}
+                      </>
+                    ) : (
+                      renderTable(customRows, undefined, 'unisex')
+                    )}
                   </div>
                 );
               }
@@ -686,7 +876,7 @@ export default function StoreCatalogPage() {
                 SIZE_GUIDE_TEMPLATES['unisex_vest'];
 
               return (
-                <div className="border border-slate-200 rounded-2xl overflow-hidden mb-4">
+                <div className="border border-slate-200 rounded-2xl overflow-hidden mb-4 shadow-sm">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] font-extrabold border-b border-slate-200">
                       <tr>
@@ -702,7 +892,13 @@ export default function StoreCatalogPage() {
                         return (
                           <tr
                             key={m.size}
-                            className={`transition ${
+                            onClick={() => {
+                              setSelectedSizes((prev) => ({
+                                ...prev,
+                                [sizeGuideProduct.id]: m.size,
+                              }));
+                            }}
+                            className={`transition cursor-pointer ${
                               isSelected
                                 ? 'bg-[rgb(242,245,236)] font-bold text-[rgb(82,94,62)]'
                                 : 'hover:bg-slate-50 text-slate-800'
