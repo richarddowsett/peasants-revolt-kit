@@ -15,6 +15,19 @@ export class CreateOrderUseCase implements CreateOrderInboundPort {
       throw new Error('Order must contain at least one item.');
     }
 
+    if (!command.userName || !command.userName.trim()) {
+      throw new Error('Customer name is required.');
+    }
+
+    if (!command.userEmail || !command.userEmail.trim()) {
+      throw new Error('Customer email is required.');
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(command.userEmail.trim())) {
+      throw new Error('A valid customer email is required.');
+    }
+
     const calculatedItems: OrderItem[] = command.items.map((item) => ({
       ...item,
       subtotal: item.price * item.quantity,
@@ -30,8 +43,8 @@ export class CreateOrderUseCase implements CreateOrderInboundPort {
 
     const orderData = {
       id: orderRef,
-      userEmail: command.userEmail,
-      userName: command.userName,
+      userEmail: command.userEmail.trim(),
+      userName: command.userName.trim(),
       userId: command.userId,
       items: calculatedItems,
       totalAmount,

@@ -55,6 +55,62 @@ describe('CreateOrderUseCase', () => {
     );
   });
 
+  it('should throw an error if userName is missing or whitespace', async () => {
+    const commandWithoutName = {
+      userEmail: 'test@example.com',
+      userName: '',
+      items: [{ productId: 'p1', productName: 'Tee', price: 20, size: 'M', quantity: 1 }],
+    } as CreateOrderCommand;
+
+    await expect(useCase.execute(commandWithoutName)).rejects.toThrow(
+      'Customer name is required.'
+    );
+
+    const commandWithWhitespaceName = {
+      userEmail: 'test@example.com',
+      userName: '   ',
+      items: [{ productId: 'p1', productName: 'Tee', price: 20, size: 'M', quantity: 1 }],
+    } as CreateOrderCommand;
+
+    await expect(useCase.execute(commandWithWhitespaceName)).rejects.toThrow(
+      'Customer name is required.'
+    );
+  });
+
+  it('should throw an error if userEmail is missing or whitespace', async () => {
+    const commandWithoutEmail = {
+      userEmail: '',
+      userName: 'Alex Smith',
+      items: [{ productId: 'p1', productName: 'Tee', price: 20, size: 'M', quantity: 1 }],
+    } as CreateOrderCommand;
+
+    await expect(useCase.execute(commandWithoutEmail)).rejects.toThrow(
+      'Customer email is required.'
+    );
+
+    const commandWithWhitespaceEmail = {
+      userEmail: '   ',
+      userName: 'Alex Smith',
+      items: [{ productId: 'p1', productName: 'Tee', price: 20, size: 'M', quantity: 1 }],
+    } as CreateOrderCommand;
+
+    await expect(useCase.execute(commandWithWhitespaceEmail)).rejects.toThrow(
+      'Customer email is required.'
+    );
+  });
+
+  it('should throw an error if userEmail is not a valid email address', async () => {
+    const commandWithInvalidEmail = {
+      userEmail: 'not-an-email',
+      userName: 'Alex Smith',
+      items: [{ productId: 'p1', productName: 'Tee', price: 20, size: 'M', quantity: 1 }],
+    } as CreateOrderCommand;
+
+    await expect(useCase.execute(commandWithInvalidEmail)).rejects.toThrow(
+      'A valid customer email is required.'
+    );
+  });
+
   it('should calculate item subtotals and total amount correctly', async () => {
     const command: CreateOrderCommand = {
       userEmail: 'runner@example.com',

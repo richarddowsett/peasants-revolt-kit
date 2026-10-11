@@ -143,6 +143,7 @@ export default function StoreCatalogPage() {
 
   const [customerName, setCustomerName] = useState<string>('');
   const [customerEmail, setCustomerEmail] = useState<string>('');
+  const [checkoutError, setCheckoutError] = useState<string>('');
   const [createdOrder, setCreatedOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -281,12 +282,14 @@ export default function StoreCatalogPage() {
     setIsCartOpen(false);
     setCheckoutMode('guest');
     setCheckoutLoginError('');
+    setCheckoutError('');
     setIsCheckoutOpen(true);
   };
 
   const handleCheckoutLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setCheckoutLoginError('');
+    setCheckoutError('');
     if (!checkoutLoginEmail || !checkoutLoginPassword) {
       setCheckoutLoginError('Please enter both email address and password.');
       return;
@@ -321,14 +324,35 @@ export default function StoreCatalogPage() {
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !customerEmail || cart.length === 0) return;
+    setCheckoutError('');
+
+    const trimmedName = customerName.trim();
+    const trimmedEmail = customerEmail.trim();
+
+    if (!trimmedName) {
+      setCheckoutError('Please enter your full name.');
+      return;
+    }
+    if (!trimmedEmail) {
+      setCheckoutError('Please enter your email address.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setCheckoutError('Please enter a valid email address.');
+      return;
+    }
+    if (cart.length === 0) {
+      setCheckoutError('Your basket is empty.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const user = auth?.currentUser;
       const order = await createOrder({
-        userName: customerName.trim(),
-        userEmail: customerEmail.trim(),
+        userName: trimmedName,
+        userEmail: trimmedEmail,
         userId: user?.uid,
         items: cart.map((item) => ({
           productId: item.productId,
@@ -354,7 +378,7 @@ export default function StoreCatalogPage() {
         }
       } catch (_) {}
     } catch (err: any) {
-      alert(err.message || 'Failed to submit order.');
+      setCheckoutError(err.message || 'Failed to submit order.');
     } finally {
       setIsSubmitting(false);
     }
@@ -691,6 +715,7 @@ export default function StoreCatalogPage() {
                     setIsCheckoutOpen(false);
                     setCheckoutMode('guest');
                     setCheckoutLoginError('');
+                    setCheckoutError('');
                   }}
                   className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold"
                 >
@@ -720,6 +745,12 @@ export default function StoreCatalogPage() {
                     </div>
 
                     <form onSubmit={handleCreateOrder} className="space-y-4">
+                      {checkoutError && (
+                        <div role="alert" className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl mb-4 flex items-center gap-2">
+                          <AlertCircle size={14} className="shrink-0 text-red-500" />
+                          <span>{checkoutError}</span>
+                        </div>
+                      )}
                       <div>
                         <label className="text-xs font-bold text-slate-700 block mb-1">Your Full Name</label>
                         <input
@@ -782,6 +813,7 @@ export default function StoreCatalogPage() {
                         onClick={() => {
                           setCheckoutMode('guest');
                           setCheckoutLoginError('');
+                          setCheckoutError('');
                         }}
                         className="text-xs text-[rgb(82,94,62)] font-bold hover:underline flex items-center gap-1"
                       >
@@ -845,6 +877,7 @@ export default function StoreCatalogPage() {
                         onClick={() => {
                           setCheckoutMode('login');
                           setCheckoutLoginError('');
+                          setCheckoutError('');
                         }}
                         className="text-[rgb(82,94,62)] font-bold hover:underline ml-2"
                         aria-label="Sign in to member account"
@@ -852,6 +885,13 @@ export default function StoreCatalogPage() {
                         Sign in
                       </button>
                     </div>
+
+                    {checkoutError && (
+                      <div role="alert" className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl mb-4 flex items-center gap-2">
+                        <AlertCircle size={14} className="shrink-0 text-red-500" />
+                        <span>{checkoutError}</span>
+                      </div>
+                    )}
 
                     <form onSubmit={handleCreateOrder} className="space-y-4">
                       <div>

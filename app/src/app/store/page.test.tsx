@@ -272,6 +272,99 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
     expect(screen.queryByText(/view my order status/i)).not.toBeInTheDocument();
   });
 
+  it('shows an error and does not create order if guest name is missing or whitespace', async () => {
+    const { createOrder } = await import('@/lib/api');
+    render(<StoreCatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Your Basket')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /proceed to checkout/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Checkout as Guest')).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByPlaceholderText('e.g. Alex Smith');
+    const emailInput = screen.getByPlaceholderText('alex@example.com');
+
+    fireEvent.change(nameInput, { target: { value: '   ' } });
+    fireEvent.change(emailInput, { target: { value: 'guest@example.com' } });
+    fireEvent.submit(nameInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Please enter your full name.')).toBeInTheDocument();
+    });
+    expect(createOrder).not.toHaveBeenCalled();
+  });
+
+  it('shows an error and does not create order if guest email is missing or whitespace', async () => {
+    const { createOrder } = await import('@/lib/api');
+    render(<StoreCatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Your Basket')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /proceed to checkout/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Checkout as Guest')).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByPlaceholderText('e.g. Alex Smith');
+    const emailInput = screen.getByPlaceholderText('alex@example.com');
+
+    fireEvent.change(nameInput, { target: { value: 'Guest Runner' } });
+    fireEvent.change(emailInput, { target: { value: '   ' } });
+    fireEvent.submit(nameInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Please enter your email address.')).toBeInTheDocument();
+    });
+    expect(createOrder).not.toHaveBeenCalled();
+  });
+
+  it('shows an error and does not create order if guest email is an invalid format', async () => {
+    const { createOrder } = await import('@/lib/api');
+    render(<StoreCatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Your Basket')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /proceed to checkout/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Checkout as Guest')).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByPlaceholderText('e.g. Alex Smith');
+    const emailInput = screen.getByPlaceholderText('alex@example.com');
+
+    fireEvent.change(nameInput, { target: { value: 'Guest Runner' } });
+    fireEvent.change(emailInput, { target: { value: 'not-an-email' } });
+    fireEvent.submit(nameInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Please enter a valid email address.')).toBeInTheDocument();
+    });
+    expect(createOrder).not.toHaveBeenCalled();
+  });
+
   it('allows user to toggle between guest checkout and member sign-in within checkout modal', async () => {
     render(<StoreCatalogPage />);
 
