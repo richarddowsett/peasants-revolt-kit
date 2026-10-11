@@ -46,6 +46,18 @@ vi.mock('@/lib/api', () => ({
       createdAt: '2026-10-10T12:00:00.000Z',
       updatedAt: '2026-10-10T12:00:00.000Z',
     },
+    {
+      id: 'ORD-SENT',
+      userName: 'Dana White',
+      userEmail: 'dana@example.com',
+      status: 'order_sent',
+      items: [{ productId: 'p3', productName: 'Running Socks', price: 12, size: 'M', quantity: 2, subtotal: 24 }],
+      totalAmount: 24,
+      paymentLinkUrl: 'https://monzo.me/test',
+      monzoReference: 'ORD-SENT',
+      createdAt: '2026-10-10T13:00:00.000Z',
+      updatedAt: '2026-10-10T13:00:00.000Z',
+    },
   ]),
   updateOrderStatus: vi.fn().mockResolvedValue(true),
 }));
@@ -66,26 +78,28 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
     render(<AdminCMSPage />);
 
     // Switch to Customer Orders tab
-    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(3\)/i });
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
     fireEvent.click(ordersTabButton);
 
     // Verify filter buttons exist
-    expect(screen.getByRole('button', { name: /All 3/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /All 4/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Pending Payment 1/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Payment Received 1/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Order Sent 1/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Order Fulfilled 1/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Cancelled 0/i })).toBeInTheDocument();
 
-    // Verify all 3 orders are displayed initially
+    // Verify all 4 orders are displayed initially
     expect(screen.getByText('ORD-PENDING')).toBeInTheDocument();
     expect(screen.getByText('ORD-PAID')).toBeInTheDocument();
+    expect(screen.getByText('ORD-SENT')).toBeInTheDocument();
     expect(screen.getByText('ORD-COMPLETED')).toBeInTheDocument();
   });
 
   it('filters orders by Pending Payment', async () => {
     render(<AdminCMSPage />);
 
-    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(3\)/i });
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
     fireEvent.click(ordersTabButton);
 
     const pendingFilterButton = screen.getByRole('button', { name: /Pending Payment 1/i });
@@ -93,13 +107,14 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
 
     expect(screen.getByText('ORD-PENDING')).toBeInTheDocument();
     expect(screen.queryByText('ORD-PAID')).not.toBeInTheDocument();
+    expect(screen.queryByText('ORD-SENT')).not.toBeInTheDocument();
     expect(screen.queryByText('ORD-COMPLETED')).not.toBeInTheDocument();
   });
 
   it('filters orders by Payment Received', async () => {
     render(<AdminCMSPage />);
 
-    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(3\)/i });
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
     fireEvent.click(ordersTabButton);
 
     const paidFilterButton = screen.getByRole('button', { name: /Payment Received 1/i });
@@ -107,13 +122,29 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
 
     expect(screen.queryByText('ORD-PENDING')).not.toBeInTheDocument();
     expect(screen.getByText('ORD-PAID')).toBeInTheDocument();
+    expect(screen.queryByText('ORD-SENT')).not.toBeInTheDocument();
+    expect(screen.queryByText('ORD-COMPLETED')).not.toBeInTheDocument();
+  });
+
+  it('filters orders by Order Sent', async () => {
+    render(<AdminCMSPage />);
+
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
+    fireEvent.click(ordersTabButton);
+
+    const sentFilterButton = screen.getByRole('button', { name: /Order Sent 1/i });
+    fireEvent.click(sentFilterButton);
+
+    expect(screen.queryByText('ORD-PENDING')).not.toBeInTheDocument();
+    expect(screen.queryByText('ORD-PAID')).not.toBeInTheDocument();
+    expect(screen.getByText('ORD-SENT')).toBeInTheDocument();
     expect(screen.queryByText('ORD-COMPLETED')).not.toBeInTheDocument();
   });
 
   it('filters orders by Order Fulfilled', async () => {
     render(<AdminCMSPage />);
 
-    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(3\)/i });
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
     fireEvent.click(ordersTabButton);
 
     const fulfilledFilterButton = screen.getByRole('button', { name: /Order Fulfilled 1/i });
@@ -121,13 +152,33 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
 
     expect(screen.queryByText('ORD-PENDING')).not.toBeInTheDocument();
     expect(screen.queryByText('ORD-PAID')).not.toBeInTheDocument();
+    expect(screen.queryByText('ORD-SENT')).not.toBeInTheDocument();
     expect(screen.getByText('ORD-COMPLETED')).toBeInTheDocument();
+  });
+
+  it('allows organiser to mark order as Order Sent', async () => {
+    const { updateOrderStatus } = await import('@/lib/api');
+    render(<AdminCMSPage />);
+
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
+    fireEvent.click(ordersTabButton);
+
+    // Filter to Payment Received order (ORD-PAID)
+    const paidFilterButton = screen.getByRole('button', { name: /Payment Received 1/i });
+    fireEvent.click(paidFilterButton);
+
+    const markSentButton = screen.getByRole('button', { name: /Mark Order Sent/i });
+    fireEvent.click(markSentButton);
+
+    await waitFor(() => {
+      expect(updateOrderStatus).toHaveBeenCalledWith('ORD-PAID', 'order_sent');
+    });
   });
 
   it('displays empty state when no orders match selected filter and resets on Show All Orders', async () => {
     render(<AdminCMSPage />);
 
-    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(3\)/i });
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
     fireEvent.click(ordersTabButton);
 
     const cancelledFilterButton = screen.getByRole('button', { name: /Cancelled 0/i });
@@ -144,6 +195,7 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
     // All orders visible again
     expect(screen.getByText('ORD-PENDING')).toBeInTheDocument();
     expect(screen.getByText('ORD-PAID')).toBeInTheDocument();
+    expect(screen.getByText('ORD-SENT')).toBeInTheDocument();
     expect(screen.getByText('ORD-COMPLETED')).toBeInTheDocument();
   });
 });

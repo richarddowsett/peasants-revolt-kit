@@ -6,12 +6,13 @@ import { fetchOrders } from '@/lib/api';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Package, Clock, CheckCircle2, CheckCheck, ExternalLink } from 'lucide-react';
+import { Package, Clock, CheckCircle2, CheckCheck, ExternalLink, Send } from 'lucide-react';
 
 const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'pending_payment', label: 'Pending Payment' },
   { id: 'payment_successful', label: 'Payment Received' },
+  { id: 'order_sent', label: 'Order Sent' },
   { id: 'completed', label: 'Order Fulfilled' },
   { id: 'cancelled', label: 'Cancelled' },
 ];
@@ -56,6 +57,7 @@ export default function UserOrdersPage() {
     all: orders.length,
     pending_payment: orders.filter((o) => o.status === 'pending_payment').length,
     payment_successful: orders.filter((o) => o.status === 'payment_successful').length,
+    order_sent: orders.filter((o) => o.status === 'order_sent').length,
     completed: orders.filter((o) => o.status === 'completed').length,
     cancelled: orders.filter((o) => o.status === 'cancelled').length,
   };
@@ -76,6 +78,12 @@ export default function UserOrdersPage() {
         return (
           <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
             <CheckCircle2 size={14} /> Payment Received
+          </span>
+        );
+      case 'order_sent':
+        return (
+          <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full">
+            <Send size={14} /> Order Sent to Manufacturer
           </span>
         );
       case 'completed':

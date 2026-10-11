@@ -13,13 +13,14 @@ import {
 import { Product, SizeGuideRow, GenderFit } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { SIZING_PRESETS, formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles, Send } from 'lucide-react';
 import Link from 'next/link';
 
 const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'pending_payment', label: 'Pending Payment' },
   { id: 'payment_successful', label: 'Payment Received' },
+  { id: 'order_sent', label: 'Order Sent' },
   { id: 'completed', label: 'Order Fulfilled' },
   { id: 'cancelled', label: 'Cancelled' },
 ];
@@ -246,6 +247,8 @@ export default function AdminCMSPage() {
         return 'Pending Payment';
       case 'payment_successful':
         return 'Payment Received';
+      case 'order_sent':
+        return 'Order Sent';
       case 'completed':
         return 'Order Fulfilled';
       case 'cancelled':
@@ -365,6 +368,7 @@ export default function AdminCMSPage() {
     all: orders.length,
     pending_payment: orders.filter((o) => o.status === 'pending_payment').length,
     payment_successful: orders.filter((o) => o.status === 'payment_successful').length,
+    order_sent: orders.filter((o) => o.status === 'order_sent').length,
     completed: orders.filter((o) => o.status === 'completed').length,
     cancelled: orders.filter((o) => o.status === 'cancelled').length,
   };
@@ -620,6 +624,8 @@ export default function AdminCMSPage() {
                               ? 'bg-amber-100 text-amber-800'
                               : order.status === 'payment_successful'
                               ? 'bg-blue-100 text-blue-800'
+                              : order.status === 'order_sent'
+                              ? 'bg-purple-100 text-purple-800'
                               : order.status === 'completed'
                               ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-red-100 text-red-800'
@@ -653,6 +659,14 @@ export default function AdminCMSPage() {
                             className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1"
                           >
                             <CheckCircle size={14} /> Mark Payment Received
+                          </button>
+                        )}
+                        {order.status !== 'order_sent' && order.status !== 'completed' && order.status !== 'cancelled' && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(order.id, 'order_sent')}
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1"
+                          >
+                            <Send size={14} /> Mark Order Sent
                           </button>
                         )}
                         {order.status !== 'completed' && order.status !== 'cancelled' && (

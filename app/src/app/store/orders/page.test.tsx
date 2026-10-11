@@ -29,6 +29,18 @@ vi.mock('@/lib/api', () => ({
       createdAt: '2026-10-10T11:00:00.000Z',
       updatedAt: '2026-10-10T11:00:00.000Z',
     },
+    {
+      id: 'USER-ORD-3',
+      userEmail: 'runner@peasants.store',
+      userName: 'Runner One',
+      status: 'order_sent',
+      items: [{ productId: 'p3', productName: 'Race Shorts', price: 30, size: 'M', quantity: 1, subtotal: 30 }],
+      totalAmount: 30,
+      paymentLinkUrl: 'https://monzo.me/test',
+      monzoReference: 'USER-ORD-3',
+      createdAt: '2026-10-10T12:00:00.000Z',
+      updatedAt: '2026-10-10T12:00:00.000Z',
+    },
   ]),
 }));
 
@@ -65,18 +77,28 @@ describe('UserOrdersPage - Status Filtering', () => {
     await waitFor(() => {
       expect(screen.getAllByText('USER-ORD-1').length).toBeGreaterThan(0);
       expect(screen.getByText('USER-ORD-2')).toBeInTheDocument();
+      expect(screen.getByText('USER-ORD-3')).toBeInTheDocument();
     });
 
     // Check filter pills
-    expect(screen.getByRole('button', { name: /All 2/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /All 3/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Pending Payment 1/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Payment Received 0/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Order Sent 1/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Order Fulfilled 1/i })).toBeInTheDocument();
 
     // Filter by Pending Payment
     fireEvent.click(screen.getByRole('button', { name: /Pending Payment 1/i }));
     expect(screen.getAllByText('USER-ORD-1').length).toBeGreaterThan(0);
     expect(screen.queryByText('USER-ORD-2')).not.toBeInTheDocument();
+    expect(screen.queryByText('USER-ORD-3')).not.toBeInTheDocument();
+
+    // Filter by Order Sent
+    fireEvent.click(screen.getByRole('button', { name: /Order Sent 1/i }));
+    expect(screen.queryByText('USER-ORD-1')).not.toBeInTheDocument();
+    expect(screen.queryByText('USER-ORD-2')).not.toBeInTheDocument();
+    expect(screen.getByText('USER-ORD-3')).toBeInTheDocument();
+    expect(screen.getByText('Order Sent to Manufacturer')).toBeInTheDocument();
 
     // Filter by Payment Received (0 items) -> should show empty state
     fireEvent.click(screen.getByRole('button', { name: /Payment Received 0/i }));
@@ -87,5 +109,6 @@ describe('UserOrdersPage - Status Filtering', () => {
     fireEvent.click(screen.getByRole('button', { name: /Show All Orders/i }));
     expect(screen.getAllByText('USER-ORD-1').length).toBeGreaterThan(0);
     expect(screen.getByText('USER-ORD-2')).toBeInTheDocument();
+    expect(screen.getByText('USER-ORD-3')).toBeInTheDocument();
   });
 });
