@@ -139,14 +139,6 @@ resource "google_storage_bucket_iam_member" "compute_sa_storage_admin" {
   member = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
-# Grant Token Creator to Cloud Run Compute Service Account for signed URL generation via IAM Credentials API
-resource "google_project_iam_member" "compute_sa_token_creator" {
-  project    = var.project_id
-  role       = "roles/iam.serviceAccountTokenCreator"
-  member     = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
-  depends_on = [google_project_service.iamcredentials_api]
-}
-
 # Cloud Run Service for Hexagonal Backend API
 resource "google_cloud_run_v2_service" "api" {
   project  = var.project_id

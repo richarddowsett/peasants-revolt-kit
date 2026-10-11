@@ -39,7 +39,7 @@ export default function AdminCMSPage() {
   const [productImages, setProductImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>([]);
+  const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>([...SIZING_PRESETS[0].rows]);
   const [adminSizeFilter, setAdminSizeFilter] = useState<'all' | 'men' | 'women' | 'unisex'>('all');
 
 
@@ -177,12 +177,10 @@ export default function AdminCMSPage() {
     if (isNaN(priceNum) || priceNum <= 0) return alert('Enter a valid price');
 
     const validRows = sizeGuideRows.filter((r) => r.size.trim().length > 0);
-    if (validRows.length === 0) {
-      return alert('Please add at least one size for the product.');
-    }
+    const effectiveRows = validRows.length > 0 ? validRows : [...SIZING_PRESETS[0].rows];
 
     const derivedSizes = Array.from(
-      new Set(validRows.map((r) => formatFullSizeLabel(r.size, r.gender)))
+      new Set(effectiveRows.map((r) => formatFullSizeLabel(r.size, r.gender)))
     );
 
     if (productImages.some((img) => img.startsWith('data:'))) {
@@ -200,7 +198,7 @@ export default function AdminCMSPage() {
         imageUrl: mainImageUrl,
         imageUrls: productImages.length > 0 ? productImages : [mainImageUrl],
         sizes: derivedSizes,
-        sizeGuideRows: validRows,
+        sizeGuideRows: effectiveRows,
         isPublished: true,
       });
 
@@ -257,7 +255,7 @@ export default function AdminCMSPage() {
     setProductDesc('');
     setProductPrice('25.00');
     setProductImages([]);
-    setSizeGuideRows([]);
+    setSizeGuideRows([...SIZING_PRESETS[0].rows]);
     setAdminSizeFilter('all');
   };
 

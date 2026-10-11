@@ -71,7 +71,7 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
 
     // Select Size 'M'
     const productCard = page.locator('.bg-white', { hasText: productName });
-    await productCard.locator('button', { hasText: /^M$/ }).click();
+    await productCard.locator('button', { hasText: /^M$/ }).first().click();
 
 
     // Add to Basket
