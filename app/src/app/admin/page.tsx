@@ -15,10 +15,11 @@ import { Order, OrderStatus } from '@/domain/models/Order';
 import { SIZING_PRESETS, formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
 import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-
-
+import { useTheme } from '@/context/ThemeContext';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function AdminCMSPage() {
+  const { tokens } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -321,7 +322,7 @@ export default function AdminCMSPage() {
                   placeholder="Enter password..."
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full text-xs p-3 pr-10 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                  className={`w-full text-xs p-3 pr-10 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 ${tokens.focusRing}`}
                 />
                 <button
                   type="button"
@@ -335,7 +336,7 @@ export default function AdminCMSPage() {
             </div>
             <button
               type="submit"
-              className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition"
+              className={`w-full ${tokens.btnPrimary} font-bold text-xs py-3.5 rounded-xl shadow transition`}
             >
               Access CMS
             </button>
@@ -355,20 +356,21 @@ export default function AdminCMSPage() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Admin Header */}
       <header className="bg-slate-900 text-white shadow-md">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href="/store" className="text-slate-400 hover:text-white transition p-1">
               <ArrowLeft size={18} />
             </Link>
             <div>
               <span className="font-extrabold text-base block leading-tight">Organiser CMS</span>
-              <span className="text-[10px] uppercase font-bold text-[rgb(155,165,130)] block">
+              <span className={`text-[10px] uppercase font-bold ${tokens.textAccent} block`}>
                 Peasants Revolt Running Club
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <button
               onClick={loadAdminData}
               title="Refresh Data"
@@ -396,7 +398,7 @@ export default function AdminCMSPage() {
             onClick={() => setActiveTab('products')}
             className={`py-4 text-xs font-extrabold border-b-2 transition ${
               activeTab === 'products'
-                ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'
+                ? `${tokens.borderAccent} ${tokens.textAccent}`
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -406,7 +408,7 @@ export default function AdminCMSPage() {
             onClick={() => setActiveTab('orders')}
             className={`py-4 text-xs font-extrabold border-b-2 transition ${
               activeTab === 'orders'
-                ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'
+                ? `${tokens.borderAccent} ${tokens.textAccent}`
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -418,7 +420,7 @@ export default function AdminCMSPage() {
       <main className="max-w-6xl mx-auto px-4 py-8 w-full flex-1">
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-[rgb(155,165,130)] border-t-transparent rounded-full animate-spin" />
+            <div className={`w-8 h-8 border-4 ${tokens.spinnerBorder} border-t-transparent rounded-full animate-spin`} />
           </div>
         ) : activeTab === 'products' ? (
           /* Products Tab */
@@ -433,7 +435,7 @@ export default function AdminCMSPage() {
                   resetProductForm();
                   setIsProductModalOpen(true);
                 }}
-                className="bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-1.5 transition"
+                className={`${tokens.btnPrimary} text-xs font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-1.5 transition`}
               >
                 <Plus size={16} /> Add New Kit Item
               </button>
@@ -448,7 +450,7 @@ export default function AdminCMSPage() {
                     resetProductForm();
                     setIsProductModalOpen(true);
                   }}
-                  className="bg-[rgb(82,94,62)] text-white text-xs font-bold px-4 py-2 rounded-xl"
+                  className={`${tokens.btnPrimary} text-xs font-bold px-4 py-2 rounded-xl`}
                 >
                   Add First Product
                 </button>
@@ -470,7 +472,7 @@ export default function AdminCMSPage() {
                       </div>
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-slate-900 text-sm">{product.name}</h3>
-                        <span className="font-extrabold text-sm text-[rgb(82,94,62)]">
+                        <span className={`font-extrabold text-sm ${tokens.textAccent}`}>
                           £{product.price.toFixed(2)}
                         </span>
                       </div>
@@ -625,7 +627,7 @@ export default function AdminCMSPage() {
                     placeholder="e.g. Official Club Running Vest"
                     value={productName}
                     onChange={(e) => setProductName(e.target.value)}
-                    className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] font-semibold"
+                    className={`w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 ${tokens.focusRing} font-semibold`}
                   />
                 </div>
                 <div>
@@ -636,7 +638,7 @@ export default function AdminCMSPage() {
                     required
                     value={productPrice}
                     onChange={(e) => setProductPrice(e.target.value)}
-                    className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] font-bold"
+                    className={`w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 ${tokens.focusRing} font-bold`}
                   />
                 </div>
               </div>
@@ -644,10 +646,10 @@ export default function AdminCMSPage() {
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">Description</label>
                 <textarea
-                  placeholder="Breathable high-performance running top in club sage green."
+                  placeholder="Breathable high-performance running top in club colors."
                   value={productDesc}
                   onChange={(e) => setProductDesc(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] h-20"
+                  className={`w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 ${tokens.focusRing} h-20`}
                 />
               </div>
 
@@ -663,9 +665,10 @@ export default function AdminCMSPage() {
                   onDrop={handleDrop}
                   className={`border-2 border-dashed rounded-2xl p-5 text-center transition-all duration-200 cursor-pointer ${
                     isDragging
-                      ? 'border-[rgb(155,165,130)] bg-[rgba(155,165,130,0.08)] scale-[1.01]'
+                      ? `${tokens.borderAccent} scale-[1.01]`
                       : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'
                   }`}
+                  style={isDragging ? { backgroundColor: tokens.subtle } : undefined}
                 >
                   <input
                     type="file"
@@ -678,12 +681,12 @@ export default function AdminCMSPage() {
                   <label htmlFor="multi-file-input" className="cursor-pointer block">
                     {uploadingImage ? (
                       <div className="flex flex-col items-center justify-center gap-2 py-2">
-                        <Loader2 size={32} className="text-[rgb(155,165,130)] animate-spin" />
+                        <Loader2 size={32} className={`${tokens.textAccent} animate-spin`} />
                         <span className="text-xs font-bold text-slate-700">Uploading Images...</span>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-1.5 py-1">
-                        <div className="w-10 h-10 bg-white rounded-full border border-slate-200 flex items-center justify-center shadow-sm text-[rgb(82,94,62)] mx-auto mb-1">
+                        <div className={`w-10 h-10 bg-white rounded-full border border-slate-200 flex items-center justify-center shadow-sm ${tokens.textAccent} mx-auto mb-1`}>
                           <Upload size={18} />
                         </div>
                         <span className="text-xs font-bold text-slate-800 block">
@@ -715,7 +718,7 @@ export default function AdminCMSPage() {
                             className="max-h-full max-w-full object-contain rounded-lg"
                           />
                           {index === 0 && (
-                            <span className="absolute top-1 left-1 bg-[rgb(82,94,62)] text-white text-[8px] font-bold px-1 py-0.5 rounded shadow flex items-center gap-0.5">
+                            <span className={`absolute top-1 left-1 ${tokens.btnBg} text-white text-[8px] font-bold px-1 py-0.5 rounded shadow flex items-center gap-0.5`}>
                               <Star size={8} /> Main
                             </span>
                           )}
@@ -751,7 +754,7 @@ export default function AdminCMSPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h4 className="text-xs font-black uppercase text-slate-800 tracking-wide flex items-center gap-1.5">
-                      <Ruler size={14} className="text-[rgb(82,94,62)]" /> Product Sizes & Sizing Guide
+                      <Ruler size={14} className={tokens.textAccent} /> Product Sizes & Sizing Guide
                     </h4>
                     <p className="text-[11px] text-slate-500">
                       Add Men&apos;s and Women&apos;s sizes and measurements in centimeters (cm). The store will display them separately and convert to inches on demand.
@@ -768,7 +771,7 @@ export default function AdminCMSPage() {
                         }
                       }}
                       defaultValue=""
-                      className="text-xs font-bold bg-white text-slate-700 border border-slate-300 rounded-xl px-2.5 py-1.5 shadow-sm hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                      className={`text-xs font-bold bg-white text-slate-700 border border-slate-300 rounded-xl px-2.5 py-1.5 shadow-sm hover:border-slate-400 focus:outline-none focus:ring-2 ${tokens.focusRing}`}
                     >
                       <option value="" disabled>⚡ Load Preset...</option>
                       {SIZING_PRESETS.map((p) => (
@@ -804,7 +807,7 @@ export default function AdminCMSPage() {
                           onClick={() => setAdminSizeFilter(filter)}
                           className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
                             adminSizeFilter === filter
-                              ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                              ? tokens.activePill
                               : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
@@ -826,7 +829,7 @@ export default function AdminCMSPage() {
                     <button
                       type="button"
                       onClick={() => handleAddSizeRow('women')}
-                      className="bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition"
+                      className={`${tokens.btnPrimary} text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm transition`}
                     >
                       <Plus size={13} /> Add Women&apos;s
                     </button>
@@ -871,11 +874,11 @@ export default function AdminCMSPage() {
                                   onChange={(e) =>
                                     handleUpdateSizeRow(idx, 'gender', e.target.value as GenderFit)
                                   }
-                                  className={`text-xs font-black p-1.5 rounded-lg border focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] ${
+                                  className={`text-xs font-black p-1.5 rounded-lg border focus:outline-none focus:ring-2 ${tokens.focusRing} ${
                                     (row.gender || 'men') === 'men'
                                       ? 'bg-slate-100 text-slate-800 border-slate-300'
                                       : (row.gender || 'men') === 'women'
-                                      ? 'bg-[rgb(242,245,236)] text-[rgb(82,94,62)] border-[rgb(155,165,130)]'
+                                      ? `${tokens.tableSelectedRow} ${tokens.borderAccent}`
                                       : 'bg-slate-50 text-slate-600 border-slate-200'
                                   }`}
                                 >
@@ -891,7 +894,7 @@ export default function AdminCMSPage() {
                                   placeholder="e.g. S, M, L"
                                   value={row.size}
                                   onChange={(e) => handleUpdateSizeRow(idx, 'size', e.target.value)}
-                                  className="w-full text-xs font-bold p-1.5 rounded-lg border border-slate-300 uppercase focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                                  className={`w-full text-xs font-bold p-1.5 rounded-lg border border-slate-300 uppercase focus:outline-none focus:ring-2 ${tokens.focusRing}`}
                                 />
                               </td>
                               <td className="py-2 px-3">
@@ -900,7 +903,7 @@ export default function AdminCMSPage() {
                                   placeholder="e.g. 90 – 95 cm"
                                   value={row.chest || ''}
                                   onChange={(e) => handleUpdateSizeRow(idx, 'chest', e.target.value)}
-                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
+                                  className={`w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 ${tokens.focusRing} text-slate-700`}
                                 />
                               </td>
                               <td className="py-2 px-3">
@@ -909,7 +912,7 @@ export default function AdminCMSPage() {
                                   placeholder="e.g. 76 – 81 cm"
                                   value={row.waist || ''}
                                   onChange={(e) => handleUpdateSizeRow(idx, 'waist', e.target.value)}
-                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
+                                  className={`w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 ${tokens.focusRing} text-slate-700`}
                                 />
                               </td>
                               <td className="py-2 px-3">
@@ -918,7 +921,7 @@ export default function AdminCMSPage() {
                                   placeholder="e.g. 67 cm"
                                   value={row.length || ''}
                                   onChange={(e) => handleUpdateSizeRow(idx, 'length', e.target.value)}
-                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] text-slate-700"
+                                  className={`w-full text-xs p-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 ${tokens.focusRing} text-slate-700`}
                                 />
                               </td>
                               <td className="py-2 px-2 text-center">
@@ -953,7 +956,7 @@ export default function AdminCMSPage() {
                 <button
                   type="submit"
                   disabled={uploadingImage}
-                  className={`${editingProductId ? 'w-2/3' : 'w-full'} bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition`}
+                  className={`${editingProductId ? 'w-2/3' : 'w-full'} ${tokens.btnPrimary} font-bold text-xs py-3.5 rounded-xl shadow transition`}
                 >
                   {uploadingImage ? 'Uploading Image...' : editingProductId ? 'Save Changes' : 'Save Product'}
                 </button>
