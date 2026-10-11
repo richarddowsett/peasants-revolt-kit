@@ -71,7 +71,7 @@ export default function UserOrdersPage() {
       case 'pending_payment':
         return (
           <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">
-            <Clock size={14} /> Awaiting Monzo Transfer
+            <Clock size={14} /> Awaiting Payment Confirmation
           </span>
         );
       case 'payment_successful':

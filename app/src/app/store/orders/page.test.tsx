@@ -90,6 +90,7 @@ describe('UserOrdersPage - Status Filtering', () => {
     // Filter by Pending Payment
     fireEvent.click(screen.getByRole('button', { name: /Pending Payment 1/i }));
     expect(screen.getAllByText('USER-ORD-1').length).toBeGreaterThan(0);
+    expect(screen.getByText('Awaiting Payment Confirmation')).toBeInTheDocument();
     expect(screen.queryByText('USER-ORD-2')).not.toBeInTheDocument();
     expect(screen.queryByText('USER-ORD-3')).not.toBeInTheDocument();
 
