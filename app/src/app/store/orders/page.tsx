@@ -8,10 +8,19 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Package, Clock, CheckCircle2, CheckCheck, ExternalLink } from 'lucide-react';
 
+const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'pending_payment', label: 'Pending Payment' },
+  { id: 'payment_successful', label: 'Payment Received' },
+  { id: 'completed', label: 'Order Fulfilled' },
+  { id: 'cancelled', label: 'Cancelled' },
+];
+
 export default function UserOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all');
 
   useEffect(() => {
     if (!auth) {
@@ -42,6 +51,18 @@ export default function UserOrdersPage() {
       setLoading(false);
     }
   };
+
+  const orderCounts: Record<'all' | OrderStatus, number> = {
+    all: orders.length,
+    pending_payment: orders.filter((o) => o.status === 'pending_payment').length,
+    payment_successful: orders.filter((o) => o.status === 'payment_successful').length,
+    completed: orders.filter((o) => o.status === 'completed').length,
+    cancelled: orders.filter((o) => o.status === 'cancelled').length,
+  };
+
+  const filteredOrders = orders.filter((o) =>
+    statusFilter === 'all' ? true : o.status === statusFilter
+  );
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
@@ -77,11 +98,45 @@ export default function UserOrdersPage() {
       <StoreHeader cartItemCount={0} onOpenCart={() => {}} />
 
       <main className="max-w-4xl mx-auto px-4 py-10 w-full flex-1">
-        <div className="mb-8">
-          <h1 className="text-2xl font-black text-slate-900 mb-1">My Orders</h1>
-          <p className="text-xs text-slate-500">
-            View your order history and track payment & fulfillment status.
-          </p>
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 mb-1">My Orders</h1>
+            <p className="text-xs text-slate-500">
+              View your order history and track payment & fulfillment status.
+            </p>
+          </div>
+
+          {orders.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-200/70 p-1.5 rounded-2xl">
+              {ORDER_STATUS_FILTERS.map((filter) => {
+                const count = orderCounts[filter.id];
+                const isActive = statusFilter === filter.id;
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setStatusFilter(filter.id)}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    }`}
+                  >
+                    <span>{filter.label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-slate-300 text-slate-700'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -100,10 +155,22 @@ export default function UserOrdersPage() {
             <h3 className="text-base font-bold text-slate-900 mb-1">No Orders Found</h3>
             <p className="text-xs text-slate-500">You haven&apos;t placed any kit orders yet.</p>
           </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-sm max-w-sm mx-auto">
+            <Package size={40} className="text-slate-300 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-slate-900 mb-1">No Orders Found</h3>
+            <p className="text-xs text-slate-500 mb-4">No orders match the selected filter.</p>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className="px-4 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition"
+            >
+              Show All Orders
+            </button>
+          </div>
         ) : (
-
           <div className="space-y-6">
-            {orders.map((order) => (
+            {filteredOrders.map((order) => (
               <div
                 key={order.id}
                 className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition"

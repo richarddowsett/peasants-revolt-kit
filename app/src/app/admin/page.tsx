@@ -16,7 +16,13 @@ import { SIZING_PRESETS, formatFullSizeLabel, parseGenderFromSize } from '@/doma
 import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
-
+const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'pending_payment', label: 'Pending Payment' },
+  { id: 'payment_successful', label: 'Payment Received' },
+  { id: 'completed', label: 'Order Fulfilled' },
+  { id: 'cancelled', label: 'Cancelled' },
+];
 
 export default function AdminCMSPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -27,6 +33,7 @@ export default function AdminCMSPage() {
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | OrderStatus>('all');
   const [loading, setLoading] = useState<boolean>(false);
 
   // Product Form Modal State
@@ -354,6 +361,18 @@ export default function AdminCMSPage() {
     );
   }
 
+  const orderCounts: Record<'all' | OrderStatus, number> = {
+    all: orders.length,
+    pending_payment: orders.filter((o) => o.status === 'pending_payment').length,
+    payment_successful: orders.filter((o) => o.status === 'payment_successful').length,
+    completed: orders.filter((o) => o.status === 'completed').length,
+    cancelled: orders.filter((o) => o.status === 'cancelled').length,
+  };
+
+  const filteredOrders = orders.filter((order) =>
+    orderStatusFilter === 'all' ? true : order.status === orderStatusFilter
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Admin Header */}
@@ -517,11 +536,45 @@ export default function AdminCMSPage() {
         ) : (
           /* Orders Tab */
           <div>
-            <div className="mb-6">
-              <h2 className="text-xl font-black text-slate-900">Manage Customer Orders</h2>
-              <p className="text-xs text-slate-500">
-                Check Monzo transfers and mark payments as received or fulfilled.
-              </p>
+            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Manage Customer Orders</h2>
+                <p className="text-xs text-slate-500">
+                  Check Monzo transfers and mark payments as received or fulfilled.
+                </p>
+              </div>
+
+              {orders.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                  {ORDER_STATUS_FILTERS.map((filter) => {
+                    const count = orderCounts[filter.id];
+                    const isActive = orderStatusFilter === filter.id;
+                    return (
+                      <button
+                        key={filter.id}
+                        type="button"
+                        onClick={() => setOrderStatusFilter(filter.id)}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 ${
+                          isActive
+                            ? 'bg-[rgb(82,94,62)] text-white shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                        }`}
+                      >
+                        <span>{filter.label}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {orders.length === 0 ? (
@@ -529,9 +582,24 @@ export default function AdminCMSPage() {
                 <Package size={40} className="text-slate-300 mx-auto mb-3" />
                 <p className="text-sm text-slate-500">No customer orders yet.</p>
               </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
+                <Package size={40} className="text-slate-300 mx-auto mb-3" />
+                <p className="text-sm font-bold text-slate-800 mb-1">No orders found</p>
+                <p className="text-xs text-slate-500 mb-4">
+                  There are no orders with status &ldquo;{formatStatusLabel(orderStatusFilter)}&rdquo;.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setOrderStatusFilter('all')}
+                  className="px-4 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition"
+                >
+                  Show All Orders
+                </button>
+              </div>
             ) : (
               <div className="space-y-4">
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <div
                     key={order.id}
                     className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"
@@ -552,7 +620,9 @@ export default function AdminCMSPage() {
                               ? 'bg-amber-100 text-amber-800'
                               : order.status === 'payment_successful'
                               ? 'bg-blue-100 text-blue-800'
-                              : 'bg-emerald-100 text-emerald-800'
+                              : order.status === 'completed'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-red-100 text-red-800'
                           }`}
                         >
                           {formatStatusLabel(order.status)}
@@ -585,7 +655,7 @@ export default function AdminCMSPage() {
                             <CheckCircle size={14} /> Mark Payment Received
                           </button>
                         )}
-                        {order.status !== 'completed' && (
+                        {order.status !== 'completed' && order.status !== 'cancelled' && (
                           <button
                             onClick={() => handleUpdateOrderStatus(order.id, 'completed')}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1"
