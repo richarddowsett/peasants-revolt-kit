@@ -6,7 +6,19 @@ import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Lock, Mail, UserPlus, LogIn, AlertCircle, User as UserIcon, ShieldCheck } from 'lucide-react';
 
-export default function StoreLoginScreen() {
+interface StoreLoginScreenProps {
+  onSuccess?: () => void;
+  onClose?: () => void;
+  title?: string;
+  subtitle?: string;
+}
+
+export default function StoreLoginScreen({
+  onSuccess,
+  onClose,
+  title,
+  subtitle,
+}: StoreLoginScreenProps = {}) {
   const [isSignUp, setIsSignUp] = useState<boolean>(false);
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
@@ -46,6 +58,7 @@ export default function StoreLoginScreen() {
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
+      onSuccess?.();
     } catch (err: any) {
       console.error('Firebase Auth error:', err);
       let msg = err.message || 'Authentication failed.';
@@ -69,19 +82,29 @@ export default function StoreLoginScreen() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl max-w-md w-full overflow-hidden">
+    <div className="w-full flex items-center justify-center p-2">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl max-w-md w-full overflow-hidden relative">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 text-white flex items-center justify-center font-bold text-lg transition"
+            aria-label="Close"
+          >
+            &times;
+          </button>
+        )}
         {/* Header */}
-        <div className="bg-gradient-to-br from-[rgb(78,88,60)] via-[rgb(55,64,42)] to-slate-900 text-white p-8 text-center bg-[radial-gradient(circle_at_20%_20%,rgba(155,165,130,0.25)_0%,transparent_50%)]">
+        <div className="bg-gradient-to-br from-[rgb(78,88,60)] via-[rgb(55,64,42)] to-slate-900 text-white p-8 text-center bg-[radial-gradient(circle_at_20%_20%,rgba(155,165,130,0.25)_0%,transparent_50%)] relative">
           <div className="w-16 h-16 rounded-full border-2 border-[rgb(155,165,130)] bg-white p-1 mx-auto mb-3 shadow-md">
             <img src="/logo.png" alt="PRRC Logo" className="w-full h-full object-contain rounded-full" />
           </div>
           <span className="inline-block bg-[rgb(155,165,130)] text-slate-900 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-2 shadow-sm">
             Club Member Portal
           </span>
-          <h2 className="text-2xl font-black tracking-tight">Peasants Revolt Store</h2>
+          <h2 className="text-2xl font-black tracking-tight">{title || 'Peasants Revolt Store'}</h2>
           <p className="text-xs text-slate-200 mt-1">
-            {isSignUp ? 'Create a club member account to browse & order kit' : 'Sign in to access official club kit & orders'}
+            {subtitle || (isSignUp ? 'Create a club member account to browse & order kit' : 'Sign in to access official club kit & orders')}
           </p>
         </div>
 

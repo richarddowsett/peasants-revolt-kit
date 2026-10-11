@@ -5,6 +5,7 @@ import {
   deleteProduct,
   createOrder,
   fetchOrders,
+  lookupOrder,
   updateOrderStatus,
   verifyAdminPassword,
   uploadImages,
@@ -81,6 +82,21 @@ describe('Frontend API Client (lib/api)', () => {
       method: 'POST',
     }));
     expect(result.id).toBe('PRRC-1234');
+  });
+
+  it('lookupOrder calls /api/orders with orderRef and email query parameters', async () => {
+    const mockOrder = { id: 'PRRC-1234', userEmail: 'runner@example.com', status: 'pending_payment' };
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockOrder,
+    });
+
+    const result = await lookupOrder('PRRC-1234', 'runner@example.com');
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/orders?orderRef=PRRC-1234&email=runner%40example.com',
+      expect.objectContaining({ cache: 'no-store' })
+    );
+    expect(result).toEqual(mockOrder);
   });
 
   it('verifyAdminPassword sends password to /api/admin/login', async () => {

@@ -43,6 +43,7 @@ describe('OrdersController', () => {
 
     getUserOrdersUseCase = {
       getOrdersForUser: vi.fn().mockResolvedValue([mockOrder]),
+      getOrderByRefAndEmail: vi.fn().mockResolvedValue(mockOrder),
       getAllOrders: vi.fn().mockResolvedValue([mockOrder]),
     };
 
@@ -115,6 +116,41 @@ describe('OrdersController', () => {
       expect(getUserOrdersUseCase.getAllOrders).toHaveBeenCalledTimes(1);
       expect(getUserOrdersUseCase.getOrdersForUser).not.toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith([mockOrder]);
+    });
+
+    it('should fetch single order by ref and email when query.orderRef and query.email are provided', async () => {
+      req.query = { orderRef: 'PRRC-1111', email: 'user@example.com' };
+
+      await controller.getOrders(req as Request, res as Response);
+
+      expect(getUserOrdersUseCase.getOrderByRefAndEmail).toHaveBeenCalledWith(
+        'PRRC-1111',
+        'user@example.com'
+      );
+      expect(res.json).toHaveBeenCalledWith(mockOrder);
+    });
+
+    it('should respond with 404 when orderRef and email do not match any order', async () => {
+      req.query = { orderRef: 'PRRC-9999', email: 'user@example.com' };
+      vi.mocked(getUserOrdersUseCase.getOrderByRefAndEmail).mockResolvedValueOnce(null);
+
+      await controller.getOrders(req as Request, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'No order found matching that reference and email.',
+      });
+    });
+
+    it('should respond with 400 when orderRef is provided without email', async () => {
+      req.query = { orderRef: 'PRRC-1111' };
+
+      await controller.getOrders(req as Request, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Email address is required to track an order.',
+      });
     });
 
     it('should respond with status 500 when getUserOrdersUseCase throws an error', async () => {

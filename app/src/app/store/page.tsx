@@ -7,9 +7,9 @@ import StoreLoginScreen from '@/components/StoreLoginScreen';
 import { fetchProducts, createOrder } from '@/lib/api';
 import { Product, GenderFit, SizeGuideRow } from '@/domain/models/Product';
 import { CartItem } from '@/domain/models/Cart';
-import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler, ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler, ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, RotateCcw, AlertCircle, LogIn, UserCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import {
   SIZE_GUIDE_TEMPLATES,
@@ -23,10 +23,12 @@ export default function StoreCatalogPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartInitialized, setCartInitialized] = useState<boolean>(false);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
   const [selectedFits, setSelectedFits] = useState<Record<string, GenderFit>>({});
@@ -131,11 +133,46 @@ export default function StoreCatalogPage() {
   }, [sizeGuideProduct]);
 
   // Checkout Form State
+  // Checkout Form State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [checkoutMode, setCheckoutMode] = useState<'guest' | 'login'>('guest');
+  const [checkoutLoginEmail, setCheckoutLoginEmail] = useState<string>('');
+  const [checkoutLoginPassword, setCheckoutLoginPassword] = useState<string>('');
+  const [checkoutLoginError, setCheckoutLoginError] = useState<string>('');
+  const [checkoutLoginLoading, setCheckoutLoginLoading] = useState<boolean>(false);
+
   const [customerName, setCustomerName] = useState<string>('');
   const [customerEmail, setCustomerEmail] = useState<string>('');
   const [createdOrder, setCreatedOrder] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Load cart from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem('prrc_cart');
+      if (savedCart) {
+        setCart(JSON.parse(savedCart));
+      }
+    } catch (err) {
+      console.warn('Failed to load cart from localStorage:', err);
+    } finally {
+      setCartInitialized(true);
+    }
+  }, []);
+
+  // Save cart to localStorage on change
+  useEffect(() => {
+    if (!cartInitialized) return;
+    try {
+      if (cart.length === 0) {
+        localStorage.removeItem('prrc_cart');
+      } else {
+        localStorage.setItem('prrc_cart', JSON.stringify(cart));
+      }
+    } catch (err) {
+      console.warn('Failed to save cart to localStorage:', err);
+    }
+  }, [cart, cartInitialized]);
 
   useEffect(() => {
     if (!auth) {
@@ -148,13 +185,14 @@ export default function StoreCatalogPage() {
       if (user) {
         if (user.displayName) setCustomerName(user.displayName);
         if (user.email) setCustomerEmail(user.email);
+        setCheckoutMode('guest');
       }
     });
     return () => unsubscribe();
   }, []);
 
+  // Load products unconditionally on mount
   useEffect(() => {
-    if (!currentUser) return;
     async function loadData() {
       setLoading(true);
       try {
@@ -180,7 +218,7 @@ export default function StoreCatalogPage() {
       }
     }
     loadData();
-  }, [currentUser]);
+  }, []);
 
   const handleAddToCart = (product: Product) => {
     const { men, women, unisex } = categorizeProductSizes(
@@ -241,7 +279,44 @@ export default function StoreCatalogPage() {
     if (user?.email) setCustomerEmail(user.email);
     if (user?.displayName) setCustomerName(user.displayName);
     setIsCartOpen(false);
+    setCheckoutMode('guest');
+    setCheckoutLoginError('');
     setIsCheckoutOpen(true);
+  };
+
+  const handleCheckoutLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCheckoutLoginError('');
+    if (!checkoutLoginEmail || !checkoutLoginPassword) {
+      setCheckoutLoginError('Please enter both email address and password.');
+      return;
+    }
+    if (!auth) {
+      setCheckoutLoginError('Authentication service not available.');
+      return;
+    }
+    setCheckoutLoginLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, checkoutLoginEmail, checkoutLoginPassword);
+      if (userCredential.user) {
+        if (userCredential.user.displayName) setCustomerName(userCredential.user.displayName);
+        if (userCredential.user.email) setCustomerEmail(userCredential.user.email);
+      }
+      setCheckoutMode('guest');
+    } catch (err: any) {
+      console.error('Checkout login error:', err);
+      let msg = err.message || 'Login failed.';
+      if (
+        err.code === 'auth/invalid-credential' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/user-not-found'
+      ) {
+        msg = 'Invalid email or password.';
+      }
+      setCheckoutLoginError(msg);
+    } finally {
+      setCheckoutLoginLoading(false);
+    }
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -252,8 +327,8 @@ export default function StoreCatalogPage() {
     try {
       const user = auth?.currentUser;
       const order = await createOrder({
-        userName: customerName,
-        userEmail: customerEmail,
+        userName: customerName.trim(),
+        userEmail: customerEmail.trim(),
         userId: user?.uid,
         items: cart.map((item) => ({
           productId: item.productId,
@@ -266,6 +341,9 @@ export default function StoreCatalogPage() {
 
       setCreatedOrder(order);
       setCart([]); // Clear cart
+      try {
+        localStorage.removeItem('prrc_cart');
+      } catch (_) {}
     } catch (err: any) {
       alert(err.message || 'Failed to submit order.');
     } finally {
@@ -293,7 +371,11 @@ export default function StoreCatalogPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <StoreHeader cartItemCount={totalCartCount} onOpenCart={() => setIsCartOpen(true)} />
+      <StoreHeader
+        cartItemCount={totalCartCount}
+        onOpenCart={() => setIsCartOpen(true)}
+        onOpenLogin={() => setIsLoginModalOpen(true)}
+      />
 
       {/* Hero Banner */}
       <section className="bg-gradient-to-br from-[rgb(78,88,60)] via-[rgb(55,64,42)] to-slate-900 text-white py-12 px-4 shadow-md bg-[radial-gradient(circle_at_15%_15%,rgba(155,165,130,0.25)_0%,transparent_50%)] border-b border-[rgb(155,165,130)]/20">
@@ -614,65 +696,222 @@ export default function StoreCatalogPage() {
             {!createdOrder ? (
               <>
                 <button
-                  onClick={() => setIsCheckoutOpen(false)}
+                  onClick={() => {
+                    setIsCheckoutOpen(false);
+                    setCheckoutMode('guest');
+                    setCheckoutLoginError('');
+                  }}
                   className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold"
                 >
                   &times;
                 </button>
 
-                <h3 className="text-xl font-extrabold text-slate-900 mb-1">Confirm Order</h3>
-                <p className="text-xs text-slate-500 mb-4">
-                  Enter your details to generate your order reference and Monzo transfer link.
-                </p>
-
-                <form onSubmit={handleCreateOrder} className="space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Your Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Alex Smith"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Your Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="alex@example.com"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
-                    />
-                  </div>
-
-                  {/* Summary */}
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <h4 className="text-xs font-bold text-slate-800 mb-2">Order Summary</h4>
-                    {cart.map((i) => (
-                      <div key={`${i.productId}-${i.size}`} className="flex justify-between text-xs py-1 text-slate-600">
-                        <span>{i.quantity}x {i.productName} ({i.size})</span>
-                        <span className="font-bold">£{(i.price * i.quantity).toFixed(2)}</span>
+                {currentUser ? (
+                  // Logged-in Member Checkout
+                  <>
+                    <h3 className="text-xl font-extrabold text-slate-900 mb-1">Confirm Order</h3>
+                    <div className="bg-[rgb(242,245,236)] border border-[rgb(155,165,130)]/40 p-3 rounded-2xl mb-4 flex items-center justify-between text-xs text-slate-800">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="w-2 h-2 rounded-full bg-[rgb(82,94,62)] shrink-0" />
+                        <span className="truncate">
+                          Signed in as <strong>{currentUser.displayName || currentUser.email}</strong>
+                        </span>
                       </div>
-                    ))}
-                    <div className="border-t border-slate-200 mt-2 pt-2 flex justify-between font-extrabold text-sm text-slate-900">
-                      <span>Total</span>
-                      <span>£{cartTotal.toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (auth) await signOut(auth);
+                        }}
+                        className="text-[11px] text-slate-500 hover:text-red-600 underline font-medium shrink-0 ml-2"
+                      >
+                        Sign out
+                      </button>
                     </div>
-                  </div>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition flex justify-center items-center gap-2"
-                  >
-                    {isSubmitting ? 'Creating Order...' : 'Generate Monzo Payment Link'}
-                  </button>
-                </form>
+                    <form onSubmit={handleCreateOrder} className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">Your Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Alex Smith"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">Your Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="alex@example.com"
+                          value={customerEmail}
+                          onChange={(e) => setCustomerEmail(e.target.value)}
+                          className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                        />
+                      </div>
+
+                      {/* Summary */}
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        <h4 className="text-xs font-bold text-slate-800 mb-2">Order Summary</h4>
+                        {cart.map((i) => (
+                          <div key={`${i.productId}-${i.size}`} className="flex justify-between text-xs py-1 text-slate-600">
+                            <span>{i.quantity}x {i.productName} ({i.size})</span>
+                            <span className="font-bold">£{(i.price * i.quantity).toFixed(2)}</span>
+                          </div>
+                        ))}
+                        <div className="border-t border-slate-200 mt-2 pt-2 flex justify-between font-extrabold text-sm text-slate-900">
+                          <span>Total</span>
+                          <span>£{cartTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition flex justify-center items-center gap-2"
+                      >
+                        {isSubmitting ? 'Creating Order...' : 'Generate Monzo Payment Link'}
+                      </button>
+                    </form>
+                  </>
+                ) : checkoutMode === 'login' ? (
+                  // Sign In Mode during Checkout
+                  <div>
+                    <h3 className="text-xl font-extrabold text-slate-900 mb-1">Sign In to Account</h3>
+                    <p className="text-xs text-slate-500 mb-4">
+                      Sign in with your member account, or switch back to guest checkout.
+                    </p>
+
+                    <div className="mb-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCheckoutMode('guest');
+                          setCheckoutLoginError('');
+                        }}
+                        className="text-xs text-[rgb(82,94,62)] font-bold hover:underline flex items-center gap-1"
+                      >
+                        &larr; Continue as guest instead
+                      </button>
+                    </div>
+
+                    {checkoutLoginError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl mb-4 flex items-center gap-2">
+                        <AlertCircle size={14} className="shrink-0 text-red-500" />
+                        <span>{checkoutLoginError}</span>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleCheckoutLogin} className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="runner@peasants.store"
+                          value={checkoutLoginEmail}
+                          onChange={(e) => setCheckoutLoginEmail(e.target.value)}
+                          className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">Password</label>
+                        <input
+                          type="password"
+                          required
+                          placeholder="••••••••"
+                          value={checkoutLoginPassword}
+                          onChange={(e) => setCheckoutLoginPassword(e.target.value)}
+                          className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={checkoutLoginLoading}
+                        className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition flex justify-center items-center gap-2"
+                      >
+                        {checkoutLoginLoading ? 'Signing In...' : 'Sign In & Proceed'}
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  // Guest Checkout Form (Default)
+                  <>
+                    <h3 className="text-xl font-extrabold text-slate-900 mb-1">Checkout as Guest</h3>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Enter your name and email to place your kit order. No account required.
+                    </p>
+
+                    <div className="bg-slate-100 p-3 rounded-2xl mb-4 flex items-center justify-between text-xs text-slate-700">
+                      <span>Already a club member?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCheckoutMode('login');
+                          setCheckoutLoginError('');
+                        }}
+                        className="text-[rgb(82,94,62)] font-bold hover:underline ml-2"
+                        aria-label="Sign in to member account"
+                      >
+                        Sign in
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleCreateOrder} className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">Your Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Alex Smith"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">Your Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="alex@example.com"
+                          value={customerEmail}
+                          onChange={(e) => setCustomerEmail(e.target.value)}
+                          className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
+                        />
+                      </div>
+
+                      {/* Summary */}
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        <h4 className="text-xs font-bold text-slate-800 mb-2">Order Summary</h4>
+                        {cart.map((i) => (
+                          <div key={`${i.productId}-${i.size}`} className="flex justify-between text-xs py-1 text-slate-600">
+                            <span>{i.quantity}x {i.productName} ({i.size})</span>
+                            <span className="font-bold">£{(i.price * i.quantity).toFixed(2)}</span>
+                          </div>
+                        ))}
+                        <div className="border-t border-slate-200 mt-2 pt-2 flex justify-between font-extrabold text-sm text-slate-900">
+                          <span>Total</span>
+                          <span>£{cartTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition flex justify-center items-center gap-2"
+                      >
+                        {isSubmitting ? 'Creating Order...' : 'Generate Monzo Payment Link'}
+                      </button>
+                    </form>
+                  </>
+                )}
               </>
             ) : (
               /* Order Created & Monzo Link Modal */
@@ -709,18 +948,61 @@ export default function StoreCatalogPage() {
                   Pay £{createdOrder.totalAmount.toFixed(2)} via Monzo <ExternalLink size={16} />
                 </a>
 
-                <button
-                  onClick={() => {
-                    setIsCheckoutOpen(false);
-                    setCreatedOrder(null);
-                    router.push('/store/orders');
-                  }}
-                  className="text-xs text-slate-500 font-bold hover:underline"
-                >
-                  View My Order Status &rarr;
-                </button>
+                {currentUser ? (
+                  <button
+                    onClick={() => {
+                      setIsCheckoutOpen(false);
+                      setCreatedOrder(null);
+                      router.push('/store/orders');
+                    }}
+                    className="text-xs text-slate-500 font-bold hover:underline block mx-auto"
+                  >
+                    View My Order Status &rarr;
+                  </button>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[11px] text-slate-500">
+                      We&apos;ve recorded your order reference for <strong>{createdOrder.userEmail}</strong>.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetRef = createdOrder.id;
+                        const targetEmail = createdOrder.userEmail;
+                        setIsCheckoutOpen(false);
+                        setCreatedOrder(null);
+                        router.push(`/store/orders?ref=${encodeURIComponent(targetRef)}&email=${encodeURIComponent(targetEmail)}`);
+                      }}
+                      className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white text-xs font-bold py-2.5 rounded-xl transition shadow-sm block"
+                    >
+                      Track Order Status &rarr;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCheckoutOpen(false);
+                        setCreatedOrder(null);
+                      }}
+                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition"
+                    >
+                      Back to Store
+                    </button>
+                  </div>
+                )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Member Login Modal (triggered from StoreHeader) */}
+      {isLoginModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="max-w-md w-full">
+            <StoreLoginScreen
+              onClose={() => setIsLoginModalOpen(false)}
+              onSuccess={() => setIsLoginModalOpen(false)}
+            />
           </div>
         </div>
       )}

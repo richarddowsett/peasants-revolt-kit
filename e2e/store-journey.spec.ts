@@ -108,6 +108,13 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     const orderRef = (await orderRefElement.innerText()).trim();
     expect(orderRef).toMatch(/^PRRC-\d+$/);
 
+    // Verify Guest "Back to Store" button
+    const backToStoreBtn = page.locator('button', { hasText: 'Back to Store' });
+    if (await backToStoreBtn.isVisible()) {
+      await backToStoreBtn.click();
+      await expect(page.locator('text=Order Placed!')).not.toBeVisible();
+    }
+
     // ----------------------------------------------------
     // STEP 3: Organiser Manages Order in Admin CMS
     // ----------------------------------------------------
@@ -148,4 +155,99 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     await expect(orderCard.locator('text=Order Fulfilled')).toBeVisible();
 
   });
+
+  test('Guest Checkout Flow: Direct product browsing without login -> Add to basket -> Checkout as guest', async ({ page }) => {
+    // 1. Visit storefront directly as unauthenticated guest
+    await page.goto('/');
+
+    // 2. Verify homepage goes straight to products banner without any login gate
+    await expect(page.locator('text=Official Gear & Kit')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Peasants Revolt Running Club Store')).toBeVisible();
+
+    // 3. Header displays Sign In button for guest users
+    await expect(page.locator('header').locator('button:has-text("Sign In")')).toBeVisible();
+
+    // 4. Locate first product card and add to basket
+    const firstAddButton = page.locator('button:has-text("Add to Basket")').first();
+    await firstAddButton.click();
+
+    // 5. Basket drawer opens automatically
+    await expect(page.getByRole('heading', { name: 'Your Basket' })).toBeVisible();
+
+    // 6. Proceed to Checkout
+    await page.click('button:has-text("Proceed to Checkout")');
+
+    // 7. Verify Checkout as Guest header & fields
+    await expect(page.locator('text=Checkout as Guest')).toBeVisible();
+    await expect(page.locator('text=Already a club member?')).toBeVisible();
+
+    // 8. Fill Guest Details
+    const guestEmail = `guest_${Date.now()}@peasants.store`;
+    await page.fill('input[placeholder="e.g. Alex Smith"]', 'Guest Runner');
+    await page.fill('input[placeholder="alex@example.com"]', guestEmail);
+
+    // 9. Submit Order
+    await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes('/api/orders') && resp.ok()),
+      page.click('button[type="submit"]:has-text("Generate Monzo Payment Link")'),
+    ]);
+
+    // 10. Verify Order Placed modal
+    await expect(page.locator('text=Order Placed!')).toBeVisible();
+    await expect(page.locator('a', { hasText: 'via Monzo' })).toBeVisible();
+    await expect(page.locator('button:has-text("Back to Store")')).toBeVisible();
+
+    // 11. Click Back to Store
+    await page.click('button:has-text("Back to Store")');
+    await expect(page.locator('text=Order Placed!')).not.toBeVisible();
+  });
+
+  test('Guest Order Tracking Flow: Check order status on My Orders using order reference and email', async ({ page }) => {
+    // 1. Visit storefront directly as unauthenticated guest
+    await page.goto('/');
+    await expect(page.locator('text=Official Gear & Kit')).toBeVisible({ timeout: 10000 });
+
+    // 2. Add product to basket
+    const firstAddButton = page.locator('button:has-text("Add to Basket")').first();
+    await firstAddButton.click();
+    await expect(page.getByRole('heading', { name: 'Your Basket' })).toBeVisible();
+
+    // 3. Checkout as guest
+    await page.click('button:has-text("Proceed to Checkout")');
+    const guestEmail = `guest_tracker_${Date.now()}@peasants.store`;
+    const guestName = 'Tracker Runner';
+    await page.fill('input[placeholder="e.g. Alex Smith"]', guestName);
+    await page.fill('input[placeholder="alex@example.com"]', guestEmail);
+
+    await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes('/api/orders') && resp.ok()),
+      page.click('button[type="submit"]:has-text("Generate Monzo Payment Link")'),
+    ]);
+
+    await expect(page.locator('text=Order Placed!')).toBeVisible();
+
+    // 4. Click "Track Order Status ->"
+    await page.click('button:has-text("Track Order Status")');
+
+    // 5. Verify navigates to /store/orders with order found
+    await expect(page).toHaveURL(/\/store\/orders\?ref=PRRC-\d+&email=/);
+    await expect(page.locator('text=Order Found')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`text=${guestName}`)).toBeVisible();
+    await expect(page.locator('text=Awaiting Payment Confirmation')).toBeVisible();
+
+    // 6. Test manual lookup: Click "Look up another order"
+    await page.click('button:has-text("Look up another order")');
+    await expect(page.locator('text=Track Order Status')).toBeVisible();
+
+    // 7. Enter details manually and check status
+    const match = page.url().match(/ref=(PRRC-\d+)/);
+    const orderRef = match ? match[1] : 'PRRC-0001';
+    await page.fill('input#orderRef', orderRef);
+    await page.fill('input#guestEmail', guestEmail);
+    await page.click('button:has-text("Check Order Status")');
+
+    await expect(page.locator('text=Order Found')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`text=${guestName}`)).toBeVisible();
+  });
 });
+

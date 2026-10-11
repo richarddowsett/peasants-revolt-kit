@@ -21,7 +21,23 @@ export class OrdersController {
 
   async getOrders(req: Request, res: Response): Promise<void> {
     try {
-      const { email } = req.query;
+      const { email, orderRef } = req.query;
+      if (orderRef) {
+        if (!email) {
+          res.status(400).json({ error: 'Email address is required to track an order.' });
+          return;
+        }
+        const order = await this.getUserOrdersUseCase.getOrderByRefAndEmail(
+          String(orderRef),
+          String(email)
+        );
+        if (!order) {
+          res.status(404).json({ error: 'No order found matching that reference and email.' });
+          return;
+        }
+        res.json(order);
+        return;
+      }
       if (email) {
         const orders = await this.getUserOrdersUseCase.getOrdersForUser(String(email));
         res.json(orders);

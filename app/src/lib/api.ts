@@ -115,6 +115,12 @@ export async function fetchOrders(email?: string) {
   return handleResponse(res, 'Failed to fetch orders');
 }
 
+export async function lookupOrder(orderRef: string, email: string) {
+  const url = `${API_BASE}/orders?orderRef=${encodeURIComponent(orderRef.trim())}&email=${encodeURIComponent(email.trim())}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  return handleResponse(res, 'Failed to look up order');
+}
+
 
 export async function updateOrderStatus(orderId: string, status: string) {
   const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {

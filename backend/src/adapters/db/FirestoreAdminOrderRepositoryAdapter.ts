@@ -24,7 +24,11 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryPort
     };
 
     try {
-      await adminDb.collection(this.collectionName).doc(orderId).set(order);
+      const docData: Record<string, any> = { ...order };
+      if (docData.userId === undefined) {
+        delete docData.userId;
+      }
+      await adminDb.collection(this.collectionName).doc(orderId).set(docData);
     } catch (err) {
       console.warn('Firestore admin order save notice:', err);
     }
