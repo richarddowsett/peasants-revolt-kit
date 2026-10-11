@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { Lock, Mail, UserPlus, LogIn, AlertCircle, User as UserIcon } from 'lucide-react';
+import { Lock, Mail, UserPlus, LogIn, AlertCircle, User as UserIcon, ShieldCheck } from 'lucide-react';
 
 export default function StoreLoginScreen() {
   const [isSignUp, setIsSignUp] = useState<boolean>(false);
@@ -203,6 +204,23 @@ export default function StoreLoginScreen() {
                 <span>Don't have an account? <strong className="text-[rgb(82,94,62)] underline font-bold">Register now</strong></span>
               )}
             </button>
+          </div>
+
+          {/* Privacy & Strictly Necessary Storage Notice */}
+          <div className="mt-5 pt-4 border-t border-slate-100 text-center">
+            <p className="text-[11px] text-slate-500 leading-relaxed flex items-center justify-center gap-1.5">
+              <ShieldCheck size={14} className="text-[rgb(82,94,62)] shrink-0" />
+              <span>
+                We only use strictly necessary session storage to keep you signed in. Zero tracking cookies.{' '}
+                <Link
+                  href="/privacy"
+                  className="text-[rgb(82,94,62)] font-semibold underline hover:text-[rgb(68,78,50)]"
+                >
+                  Privacy & Cookies Policy
+                </Link>
+                .
+              </span>
+            </p>
           </div>
         </div>
       </div>

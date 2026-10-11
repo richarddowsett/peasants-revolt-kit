@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import StoreHeader from '@/components/StoreHeader';
+import StoreFooter from '@/components/StoreFooter';
 import StoreLoginScreen from '@/components/StoreLoginScreen';
 import { fetchProducts, createOrder } from '@/lib/api';
 import { Product, GenderFit, SizeGuideRow } from '@/domain/models/Product';
@@ -282,9 +283,10 @@ export default function StoreCatalogPage() {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
         <StoreHeader cartItemCount={0} onOpenCart={() => {}} />
         <StoreLoginScreen />
+        <StoreFooter />
       </div>
     );
   }
@@ -519,6 +521,8 @@ export default function StoreCatalogPage() {
           </div>
         )}
       </main>
+
+      <StoreFooter />
 
       {/* Cart Slide-Over Drawer */}
       {isCartOpen && (

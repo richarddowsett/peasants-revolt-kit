@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import StoreHeader from '@/components/StoreHeader';
+import StoreFooter from '@/components/StoreFooter';
 import { fetchOrders } from '@/lib/api';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { auth } from '@/lib/firebase';
@@ -230,6 +231,8 @@ export default function UserOrdersPage() {
           </div>
         )}
       </main>
+
+      <StoreFooter />
     </div>
   );
 }
