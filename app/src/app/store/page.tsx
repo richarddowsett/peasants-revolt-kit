@@ -202,7 +202,7 @@ export default function StoreCatalogPage() {
   if (authChecking) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center py-20">
-        <div className="w-10 h-10 border-4 border-[rgb(202,88,46)] border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-[rgb(155,165,130)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -221,16 +221,16 @@ export default function StoreCatalogPage() {
       <StoreHeader cartItemCount={totalCartCount} onOpenCart={() => setIsCartOpen(true)} />
 
       {/* Hero Banner */}
-      <section className="bg-[rgb(202,88,46)] text-white py-12 px-4 shadow-md bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.12)_0%,transparent_45%)]">
+      <section className="bg-gradient-to-br from-[rgb(78,88,60)] via-[rgb(55,64,42)] to-slate-900 text-white py-12 px-4 shadow-md bg-[radial-gradient(circle_at_15%_15%,rgba(155,165,130,0.25)_0%,transparent_50%)] border-b border-[rgb(155,165,130)]/20">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <span className="bg-white/20 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full inline-block mb-3">
+            <span className="bg-[rgb(155,165,130)] text-slate-900 text-xs font-black uppercase tracking-wider px-3.5 py-1 rounded-full inline-block mb-3 shadow-sm">
               Official Gear & Kit
             </span>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">
               Peasants Revolt Running Club Store
             </h1>
-            <p className="text-white/90 text-sm max-w-xl">
+            <p className="text-slate-200 text-sm max-w-xl">
               Order your official club tops and kit. Select your items, review your basket, and complete your order via Monzo transfer!
             </p>
           </div>
@@ -241,11 +241,11 @@ export default function StoreCatalogPage() {
       <main className="max-w-6xl mx-auto px-4 py-10 flex-1 w-full">
         {loading ? (
           <div className="flex justify-center items-center py-20">
-            <div className="w-10 h-10 border-4 border-[rgb(202,88,46)] border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-[rgb(155,165,130)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : products.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-md mx-auto my-12">
-            <div className="w-16 h-16 bg-[rgba(202,88,46,0.1)] text-[rgb(202,88,46)] rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-[rgba(155,165,130,0.15)] text-[rgb(82,94,62)] rounded-full flex items-center justify-center mx-auto mb-4">
               <ShoppingBag size={32} />
             </div>
             <h2 className="text-xl font-bold text-slate-900 mb-2">No Products Available</h2>
@@ -280,7 +280,7 @@ export default function StoreCatalogPage() {
                       e.stopPropagation();
                       openZoomModal(product);
                     }}
-                    className="absolute top-3 left-3 bg-white/90 hover:bg-white text-slate-700 hover:text-[rgb(202,88,46)] px-2.5 py-1 rounded-full shadow-sm transition flex items-center gap-1 text-[11px] font-bold border border-slate-200"
+                    className="absolute top-3 left-3 bg-white/90 hover:bg-white text-slate-700 hover:text-[rgb(82,94,62)] px-2.5 py-1 rounded-full shadow-sm transition flex items-center gap-1 text-[11px] font-bold border border-slate-200"
                     title="Click to zoom & inspect photo"
                   >
                     <ZoomIn size={13} />
@@ -303,7 +303,7 @@ export default function StoreCatalogPage() {
                           }
                           className={`w-8 h-8 rounded-lg border overflow-hidden p-0.5 transition ${
                             (selectedImages[product.id] || product.imageUrl) === imgUrl
-                              ? 'border-[rgb(202,88,46)] ring-2 ring-[rgb(202,88,46)]/20'
+                              ? 'border-[rgb(155,165,130)] ring-2 ring-[rgb(155,165,130)]/40'
                               : 'border-slate-200 hover:border-slate-400 opacity-70 hover:opacity-100'
                           }`}
                         >
@@ -335,7 +335,7 @@ export default function StoreCatalogPage() {
                             <button
                               type="button"
                               onClick={() => setSizeGuideProduct(product)}
-                              className="text-[11px] font-bold text-[rgb(202,88,46)] hover:underline flex items-center gap-1"
+                              className="text-[11px] font-bold text-[rgb(82,94,62)] hover:underline flex items-center gap-1"
                             >
                               <Ruler size={12} /> Sizing Guide
                             </button>
@@ -351,7 +351,7 @@ export default function StoreCatalogPage() {
                               }
                               className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
                                 selectedSizes[product.id] === size
-                                  ? 'bg-[rgb(202,88,46)] text-white border-[rgb(202,88,46)]'
+                                  ? 'bg-[rgb(82,94,62)] text-white border-[rgb(82,94,62)]'
                                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400'
                               }`}
                             >
@@ -365,7 +365,7 @@ export default function StoreCatalogPage() {
                     {/* Add to Basket Button */}
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className="w-full bg-[rgb(202,88,46)] hover:bg-[rgb(165,68,32)] text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition"
+                      className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition"
                     >
                       <Plus size={16} /> Add to Basket
                     </button>
@@ -384,7 +384,7 @@ export default function StoreCatalogPage() {
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <ShoppingBag size={20} className="text-[rgb(202,88,46)]" /> Your Basket
+                  <ShoppingBag size={20} className="text-[rgb(82,94,62)]" /> Your Basket
                 </h3>
                 <button
                   onClick={() => setIsCartOpen(false)}
@@ -450,7 +450,7 @@ export default function StoreCatalogPage() {
                 </div>
                 <button
                   onClick={handleProceedToCheckout}
-                  className="w-full bg-[rgb(202,88,46)] hover:bg-[rgb(165,68,32)] text-white font-bold text-sm py-3.5 rounded-2xl shadow transition"
+                  className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-sm py-3.5 rounded-2xl shadow transition"
                 >
                   Proceed to Checkout
                 </button>
@@ -487,7 +487,7 @@ export default function StoreCatalogPage() {
                       placeholder="e.g. Alex Smith"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
+                      className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
                     />
                   </div>
 
@@ -499,7 +499,7 @@ export default function StoreCatalogPage() {
                       placeholder="alex@example.com"
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
-                      className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(202,88,46)]"
+                      className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)]"
                     />
                   </div>
 
@@ -521,7 +521,7 @@ export default function StoreCatalogPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-[rgb(202,88,46)] hover:bg-[rgb(165,68,32)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition flex justify-center items-center gap-2"
+                    className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition flex justify-center items-center gap-2"
                   >
                     {isSubmitting ? 'Creating Order...' : 'Generate Monzo Payment Link'}
                   </button>
@@ -534,7 +534,7 @@ export default function StoreCatalogPage() {
                   <Check size={32} />
                 </div>
                 <h3 className="text-2xl font-extrabold text-slate-900 mb-1">Order Placed!</h3>
-                <p className="text-xs font-bold text-[rgb(202,88,46)] mb-4">
+                <p className="text-xs font-bold text-[rgb(82,94,62)] mb-4">
                   Order Reference: <span className="font-mono text-sm underline">{createdOrder.id}</span>
                 </p>
 
@@ -589,7 +589,7 @@ export default function StoreCatalogPage() {
               &times;
             </button>
 
-            <div className="flex items-center gap-2 text-[rgb(202,88,46)] mb-1">
+            <div className="flex items-center gap-2 text-[rgb(82,94,62)] mb-1">
               <Ruler size={20} />
               <span className="text-xs uppercase font-extrabold tracking-wider">
                 Official Size Guide
@@ -612,7 +612,7 @@ export default function StoreCatalogPage() {
                   onClick={() => setSizeGuideUnit('cm')}
                   className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
                     sizeGuideUnit === 'cm'
-                      ? 'bg-[rgb(202,88,46)] text-white'
+                      ? 'bg-[rgb(82,94,62)] text-white'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -623,7 +623,7 @@ export default function StoreCatalogPage() {
                   onClick={() => setSizeGuideUnit('in')}
                   className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
                     sizeGuideUnit === 'in'
-                      ? 'bg-[rgb(202,88,46)] text-white'
+                      ? 'bg-[rgb(82,94,62)] text-white'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -651,20 +651,20 @@ export default function StoreCatalogPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {sizeGuideProduct.sizeGuideRows!.map((row, idx) => {
-                          const isSelected = selectedSize === row.size;
+                           const isSelected = selectedSize === row.size;
                           return (
                             <tr
                               key={`${row.size}-${idx}`}
                               className={`transition ${
                                 isSelected
-                                  ? 'bg-amber-50 font-bold text-[rgb(202,88,46)]'
+                                  ? 'bg-[rgb(242,245,236)] font-bold text-[rgb(82,94,62)]'
                                   : 'hover:bg-slate-50 text-slate-800'
                               }`}
                             >
                               <td className="py-3 px-4 font-extrabold flex items-center gap-1.5">
                                 <span>{row.size}</span>
                                 {isSelected && (
-                                  <span className="bg-[rgb(202,88,46)] text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                                  <span className="bg-[rgb(155,165,130)] text-slate-900 text-[9px] px-1.5 py-0.5 rounded-full font-black">
                                     Selected
                                   </span>
                                 )}
@@ -704,14 +704,14 @@ export default function StoreCatalogPage() {
                             key={m.size}
                             className={`transition ${
                               isSelected
-                                ? 'bg-amber-50 font-bold text-[rgb(202,88,46)]'
+                                ? 'bg-[rgb(242,245,236)] font-bold text-[rgb(82,94,62)]'
                                 : 'hover:bg-slate-50 text-slate-800'
                             }`}
                           >
                             <td className="py-3 px-4 font-extrabold flex items-center gap-1.5">
                               <span>{m.size}</span>
                               {isSelected && (
-                                <span className="bg-[rgb(202,88,46)] text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                                <span className="bg-[rgb(155,165,130)] text-slate-900 text-[9px] px-1.5 py-0.5 rounded-full font-black">
                                   Selected
                                 </span>
                               )}
@@ -894,7 +894,7 @@ export default function StoreCatalogPage() {
                       }}
                       className={`w-12 h-12 rounded-xl overflow-hidden border p-0.5 transition ${
                         zoomImageIndex === idx
-                          ? 'border-[rgb(202,88,46)] ring-2 ring-[rgb(202,88,46)]/50 opacity-100'
+                          ? 'border-[rgb(155,165,130)] ring-2 ring-[rgb(155,165,130)]/50 opacity-100'
                           : 'border-slate-800 opacity-50 hover:opacity-100'
                       }`}
                     >

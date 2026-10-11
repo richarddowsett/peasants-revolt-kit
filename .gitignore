@@ -36,4 +36,5 @@ playwright-report/
 # Backend build output
 backend/dist/
 
-
+# TypeScript build info
+*.tsbuildinfo

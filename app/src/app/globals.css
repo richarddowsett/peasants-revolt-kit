@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --brand-color: rgb(202, 88, 46);
-  --brand-dark: rgb(165, 68, 32);
+  --brand-color: rgb(155, 165, 130);
+  --brand-dark: rgb(125, 135, 100);
+  --brand-darker: rgb(82, 94, 62);
+  --brand-light: rgb(185, 195, 160);
+  --brand-soft: rgb(242, 245, 236);
+  --brand-subtle: rgba(155, 165, 130, 0.15);
 }
 
 body {
