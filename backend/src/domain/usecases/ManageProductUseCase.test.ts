@@ -63,6 +63,23 @@ describe('ManageProductUseCase', () => {
 
       await expect(useCase.saveProduct(command)).rejects.toThrow('Save failed');
     });
+
+    it('should throw an error if imageUrls contains base64 data URLs', async () => {
+      const command: SaveProductCommand = {
+        name: 'Vest',
+        description: 'Running vest',
+        price: 30,
+        imageUrl: 'https://storage.googleapis.com/bucket/thumb.jpg',
+        imageUrls: ['https://storage.googleapis.com/bucket/thumb.jpg', 'data:image/png;base64,iVBORw0KGgo...'],
+        sizes: ['M'],
+        isPublished: true,
+      };
+
+      await expect(useCase.saveProduct(command)).rejects.toThrow(
+        'Base64 image data is not allowed in product records'
+      );
+      expect(productRepo.saveProduct).not.toHaveBeenCalled();
+    });
   });
 
   describe('deleteProduct', () => {

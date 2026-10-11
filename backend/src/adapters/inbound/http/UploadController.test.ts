@@ -29,6 +29,15 @@ describe('UploadController', () => {
         .mockImplementation((buffer, filename) =>
           Promise.resolve(`https://storage.googleapis.com/bucket/${filename}`)
         ),
+      getSignedUploadUrl: vi
+        .fn()
+        .mockImplementation((filename, contentType) =>
+          Promise.resolve({
+            uploadUrl: `https://storage.googleapis.com/signed/${filename}`,
+            publicUrl: `https://storage.googleapis.com/bucket/product-images/${filename}`,
+            filePath: `product-images/${filename}`,
+          })
+        ),
     };
 
     controller = new UploadController(storageAdapter);
@@ -132,5 +141,50 @@ describe('UploadController', () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: 'Storage service unavailable' });
+  });
+
+  describe('getSignedUploadUrl', () => {
+    it('should return 400 if fileName is missing or empty', async () => {
+      req.body = { contentType: 'image/jpeg' };
+
+      await controller.getSignedUploadUrl(req as Request, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Missing or invalid fileName' });
+    });
+
+    it('should return 400 if contentType is missing or not an image', async () => {
+      req.body = { fileName: 'photo.pdf', contentType: 'application/pdf' };
+
+      await controller.getSignedUploadUrl(req as Request, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Missing or invalid image contentType' });
+    });
+
+    it('should return signed URL and public URL on success', async () => {
+      req.body = { fileName: 'vest.jpg', contentType: 'image/jpeg' };
+
+      await controller.getSignedUploadUrl(req as Request, res as Response);
+
+      expect(storageAdapter.getSignedUploadUrl).toHaveBeenCalledWith('vest.jpg', 'image/jpeg');
+      expect(res.json).toHaveBeenCalledWith({
+        uploadUrl: 'https://storage.googleapis.com/signed/vest.jpg',
+        publicUrl: 'https://storage.googleapis.com/bucket/product-images/vest.jpg',
+        filePath: 'product-images/vest.jpg',
+      });
+    });
+
+    it('should return 500 when storage adapter fails', async () => {
+      req.body = { fileName: 'vest.jpg', contentType: 'image/jpeg' };
+      vi.mocked(storageAdapter.getSignedUploadUrl).mockRejectedValueOnce(
+        new Error('GCP IAM permission denied')
+      );
+
+      await controller.getSignedUploadUrl(req as Request, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: 'GCP IAM permission denied' });
+    });
   });
 });

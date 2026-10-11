@@ -24,8 +24,9 @@ apiRouter.get('/products', (req, res) => productsController.getProducts(req, res
 apiRouter.post('/products', (req, res) => productsController.saveProduct(req, res));
 apiRouter.delete('/products/:id', (req, res) => productsController.deleteProduct(req, res));
 
-// Image Upload (single or multiple files)
+// Image Upload (single or multiple files via multipart, or signed URL for direct bucket upload)
 apiRouter.post('/upload', upload.any(), (req, res) => uploadController.uploadImage(req, res));
+apiRouter.post('/upload/signed-url', (req, res) => uploadController.getSignedUploadUrl(req, res));
 
 // Orders
 apiRouter.post('/orders', (req, res) => ordersController.createOrder(req, res));

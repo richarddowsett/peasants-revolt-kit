@@ -93,8 +93,8 @@ export default function AdminCMSPage() {
     try {
       const uploadedUrls = await uploadImages(imageFiles);
       setProductImages((prev) => [...prev, ...uploadedUrls]);
-    } catch (err) {
-      alert('Failed to upload images to backend.');
+    } catch (err: any) {
+      alert(`Failed to upload images: ${err.message || 'Storage upload error'}`);
     } finally {
       setUploadingImage(false);
     }
@@ -184,6 +184,11 @@ export default function AdminCMSPage() {
     const derivedSizes = Array.from(
       new Set(validRows.map((r) => formatFullSizeLabel(r.size, r.gender)))
     );
+
+    if (productImages.some((img) => img.startsWith('data:'))) {
+      return alert('Images cannot be base64 data URLs. Please re-upload your images.');
+    }
+
     const mainImageUrl = productImages.length > 0 ? productImages[0] : '/logo.png';
 
     try {

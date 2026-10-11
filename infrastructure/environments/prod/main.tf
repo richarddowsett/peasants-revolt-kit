@@ -5,7 +5,6 @@ module "core" {
   environment    = "production"
   region         = var.region
   service_name   = var.service_name
-  storage_bucket = "peasants-running-kit-holding-page"
   admin_password = var.admin_password
 }
 

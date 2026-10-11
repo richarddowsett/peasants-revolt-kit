@@ -61,12 +61,12 @@ jobs:
             echo "TARGET_PROJECT_ID=peasants-running-kit" >> $GITHUB_ENV
             echo "TARGET_ENVIRONMENT=production" >> $GITHUB_ENV
             echo "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD || 'peasants2026!' }}" >> $GITHUB_ENV
-            echo "TARGET_STORAGE_BUCKET=peasants-running-kit-holding-page" >> $GITHUB_ENV
+            echo "TARGET_STORAGE_BUCKET=peasants-running-kit-product-images" >> $GITHUB_ENV
           else
             echo "TARGET_PROJECT_ID=peasants-running-kit-qa" >> $GITHUB_ENV
             echo "TARGET_ENVIRONMENT=qa" >> $GITHUB_ENV
             echo "ADMIN_PASSWORD=${{ secrets.QA_ADMIN_PASSWORD || 'peasants2026!' }}" >> $GITHUB_ENV
-            echo "TARGET_STORAGE_BUCKET=peasants-running-kit-qa.appspot.com" >> $GITHUB_ENV
+            echo "TARGET_STORAGE_BUCKET=peasants-running-kit-qa-product-images" >> $GITHUB_ENV
           fi
 
       - name: Setup Node.js

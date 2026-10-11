@@ -50,3 +50,9 @@ output "backend_cloud_build_command" {
   description = "Alternative: Cloud Build command (builds directly on GCP x86_64 servers)"
   value       = "gcloud builds submit --tag ${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.store_repo.repository_id}/backend-api:latest ../../backend"
 }
+
+output "product_images_bucket" {
+  description = "Name of dedicated GCS bucket for product images"
+  value       = google_storage_bucket.product_images.name
+}
+

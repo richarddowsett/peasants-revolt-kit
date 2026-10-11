@@ -41,27 +41,63 @@ export async function deleteProduct(id: string) {
   return handleResponse(res, 'Failed to delete product');
 }
 
-export async function uploadImage(file: File) {
-  const formData = new FormData();
-  formData.append('images', file);
-  const res = await fetch(`${API_BASE}/upload`, {
+export async function getSignedUploadUrl(
+  fileName: string,
+  contentType: string
+): Promise<{ uploadUrl: string; publicUrl: string; filePath: string }> {
+  const res = await fetch(`${API_BASE}/upload/signed-url`, {
     method: 'POST',
-    body: formData,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileName, contentType }),
   });
-  const data = await handleResponse(res, 'Failed to upload image');
-  return data.imageUrl;
+  return handleResponse(res, 'Failed to generate signed upload URL');
+}
+
+export async function uploadImageViaSignedUrl(file: File): Promise<string> {
+  const contentType = file.type || 'image/jpeg';
+  const { uploadUrl, publicUrl } = await getSignedUploadUrl(file.name, contentType);
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: file,
+  });
+  if (!res.ok) {
+    throw new Error(`Direct bucket upload failed with status ${res.status}`);
+  }
+  return publicUrl;
+}
+
+export async function uploadImage(file: File): Promise<string> {
+  try {
+    return await uploadImageViaSignedUrl(file);
+  } catch (err) {
+    console.warn('Signed URL direct upload failed, attempting fallback multipart upload:', err);
+    const formData = new FormData();
+    formData.append('images', file);
+    const res = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await handleResponse(res, 'Failed to upload image');
+    return data.imageUrl || (data.imageUrls && data.imageUrls[0]);
+  }
 }
 
 export async function uploadImages(files: File[]): Promise<string[]> {
   if (!files || files.length === 0) return [];
-  const formData = new FormData();
-  files.forEach((file) => formData.append('images', file));
-  const res = await fetch(`${API_BASE}/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-  const data = await handleResponse(res, 'Failed to upload images');
-  return data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
+  try {
+    return await Promise.all(files.map((file) => uploadImageViaSignedUrl(file)));
+  } catch (err) {
+    console.warn('Signed URL direct uploads failed, attempting fallback multipart upload:', err);
+    const formData = new FormData();
+    files.forEach((file) => formData.append('images', file));
+    const res = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await handleResponse(res, 'Failed to upload images');
+    return data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
+  }
 }
 
 export async function createOrder(orderCommand: any) {

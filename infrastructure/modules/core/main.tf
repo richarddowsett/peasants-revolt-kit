@@ -43,6 +43,18 @@ resource "google_project_service" "firestore_api" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "storage_api" {
+  project            = var.project_id
+  service            = "storage.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "iamcredentials_api" {
+  project            = var.project_id
+  service            = "iamcredentials.googleapis.com"
+  disable_on_destroy = false
+}
+
 # Provision Firestore NoSQL Database
 resource "google_firestore_database" "database" {
   provider                    = google-beta
@@ -89,6 +101,52 @@ resource "google_artifact_registry_repository" "store_repo" {
   depends_on = [google_project_service.artifactregistry_api]
 }
 
+# Fetch GCP project metadata
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+# Dedicated Google Cloud Storage Bucket for product images
+resource "google_storage_bucket" "product_images" {
+  name          = "${var.project_id}-product-images"
+  location      = var.region
+  project       = var.project_id
+  force_destroy = false
+
+  uniform_bucket_level_access = true
+
+  cors {
+    origin          = ["*"]
+    method          = ["GET", "HEAD", "PUT", "POST", "OPTIONS"]
+    response_header = ["*"]
+    max_age_seconds = 3600
+  }
+
+  depends_on = [google_project_service.storage_api]
+}
+
+# Allow public read access to uploaded product images
+resource "google_storage_bucket_iam_member" "product_images_public_read" {
+  bucket = google_storage_bucket.product_images.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+# Cloud Run Compute Service Account Storage Admin access on product images bucket
+resource "google_storage_bucket_iam_member" "compute_sa_storage_admin" {
+  bucket = google_storage_bucket.product_images.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+# Grant Token Creator to Cloud Run Compute Service Account for signed URL generation via IAM Credentials API
+resource "google_project_iam_member" "compute_sa_token_creator" {
+  project    = var.project_id
+  role       = "roles/iam.serviceAccountTokenCreator"
+  member     = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+  depends_on = [google_project_service.iamcredentials_api]
+}
+
 # Cloud Run Service for Hexagonal Backend API
 resource "google_cloud_run_v2_service" "api" {
   project  = var.project_id
@@ -119,7 +177,7 @@ resource "google_cloud_run_v2_service" "api" {
 
       env {
         name  = "STORAGE_BUCKET"
-        value = coalesce(var.storage_bucket, "${var.project_id}.appspot.com")
+        value = coalesce(var.storage_bucket, google_storage_bucket.product_images.name)
       }
 
       ports {
@@ -142,7 +200,7 @@ resource "google_cloud_run_v2_service" "api" {
     ]
   }
 
-  depends_on = [google_project_service.run_api]
+  depends_on = [google_project_service.run_api, google_storage_bucket.product_images]
 }
 
 # Allow public access to Cloud Run Backend API

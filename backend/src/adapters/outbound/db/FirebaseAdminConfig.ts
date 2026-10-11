@@ -1,9 +1,10 @@
 import * as admin from 'firebase-admin';
 
 if (!admin.apps.length) {
+  const projectId = process.env.GCP_PROJECT || process.env.PROJECT_ID || 'peasants-running-kit';
   admin.initializeApp({
-    projectId: process.env.GCP_PROJECT || process.env.PROJECT_ID || 'peasants-running-kit',
-    storageBucket: process.env.STORAGE_BUCKET || 'peasants-running-kit-holding-page',
+    projectId,
+    storageBucket: process.env.STORAGE_BUCKET || `${projectId}-product-images`,
   });
 }
 
