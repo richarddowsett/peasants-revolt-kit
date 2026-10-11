@@ -437,6 +437,8 @@ function UserOrdersContent() {
         )}
       </main>
 
+      <StoreFooter />
+
       {isLoginModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="max-w-md w-full">
@@ -461,8 +463,6 @@ export default function UserOrdersPage() {
       }
     >
       <UserOrdersContent />
-
-      <StoreFooter />
     </Suspense>
   );
 }

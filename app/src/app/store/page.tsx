@@ -351,24 +351,6 @@ export default function StoreCatalogPage() {
     }
   };
 
-  if (authChecking) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center py-20">
-        <div className="w-10 h-10 border-4 border-[rgb(155,165,130)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
-        <StoreHeader cartItemCount={0} onOpenCart={() => {}} />
-        <StoreLoginScreen />
-        <StoreFooter />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <StoreHeader
