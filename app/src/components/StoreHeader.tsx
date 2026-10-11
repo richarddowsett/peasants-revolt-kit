@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, LogOut, PackageCheck, Lock } from 'lucide-react';
+import { ShoppingBag, LogOut, PackageCheck, Lock, LogIn } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut, onAuthStateChanged, User } from 'firebase/auth';
 
 interface StoreHeaderProps {
   cartItemCount: number;
   onOpenCart: () => void;
+  onOpenLogin?: () => void;
 }
 
-export default function StoreHeader({ cartItemCount, onOpenCart }: StoreHeaderProps) {
+export default function StoreHeader({ cartItemCount, onOpenCart, onOpenLogin }: StoreHeaderProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -69,8 +70,8 @@ export default function StoreHeader({ cartItemCount, onOpenCart }: StoreHeaderPr
             )}
           </button>
 
-          {/* User Auth Pill */}
-          {currentUser && (
+          {/* User Auth Pill or Sign In Button */}
+          {currentUser ? (
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
               <div className="text-right hidden md:block">
                 <span className="text-xs font-bold text-slate-800 block truncate max-w-[120px]">
@@ -85,6 +86,16 @@ export default function StoreHeader({ cartItemCount, onOpenCart }: StoreHeaderPr
                 <LogOut size={16} />
               </button>
             </div>
+          ) : (
+            onOpenLogin && (
+              <button
+                onClick={onOpenLogin}
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-[rgb(82,94,62)] bg-slate-100 hover:bg-[rgb(242,245,236)] px-3 py-2 rounded-xl transition"
+              >
+                <LogIn size={16} />
+                <span>Sign In</span>
+              </button>
+            )
           )}
 
           {/* Admin Link */}

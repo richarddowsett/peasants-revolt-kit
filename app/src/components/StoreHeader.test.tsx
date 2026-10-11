@@ -33,4 +33,15 @@ describe('StoreHeader Component', () => {
 
     expect(onOpenCartMock).toHaveBeenCalledTimes(1);
   });
+
+  it('renders Sign In button and calls onOpenLogin when clicked for unauthenticated user', () => {
+    const onOpenLoginMock = vi.fn();
+    render(<StoreHeader cartItemCount={0} onOpenCart={vi.fn()} onOpenLogin={onOpenLoginMock} />);
+
+    const signInButton = screen.getByRole('button', { name: /sign in/i });
+    expect(signInButton).toBeInTheDocument();
+
+    fireEvent.click(signInButton);
+    expect(onOpenLoginMock).toHaveBeenCalledTimes(1);
+  });
 });

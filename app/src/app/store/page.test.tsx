@@ -23,14 +23,28 @@ vi.mock('@/lib/api', () => ({
   createOrder: vi.fn(),
 }));
 
+let mockCurrentUser: any = null;
+
 vi.mock('@/lib/firebase', () => ({
-  auth: { currentUser: { uid: 'test-user', email: 'runner@peasants.store', displayName: 'Runner' } },
+  auth: {
+    get currentUser() {
+      return mockCurrentUser;
+    },
+  },
 }));
 
 vi.mock('firebase/auth', () => ({
   onAuthStateChanged: vi.fn((auth, cb) => {
-    cb({ uid: 'test-user', email: 'runner@peasants.store', displayName: 'Runner' });
+    cb(mockCurrentUser);
     return () => {};
+  }),
+  signInWithEmailAndPassword: vi.fn().mockImplementation((auth, email, password) => {
+    mockCurrentUser = { uid: 'logged-in-user', email, displayName: 'Logged In User' };
+    return Promise.resolve({ user: mockCurrentUser });
+  }),
+  signOut: vi.fn().mockImplementation(() => {
+    mockCurrentUser = null;
+    return Promise.resolve();
   }),
 }));
 
@@ -163,5 +177,173 @@ describe('StoreCatalogPage - Sizing Guide Unit Switching (Inches & CM)', () => {
     expect(screen.getByText('97 – 102')).toBeInTheDocument();
     expect(screen.getByText('81 – 86')).toBeInTheDocument();
     expect(screen.getByText('69')).toBeInTheDocument();
+  });
+});
+
+describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
+  beforeEach(() => {
+    mockCurrentUser = null;
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('renders products directly for guest users without showing a login gate', async () => {
+    render(<StoreCatalogPage />);
+
+    // Should immediately display the official store banner and product without login blocking
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Revolt Running Club Store')).toBeInTheDocument();
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    // Sign in button is visible in header for guests
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+  });
+
+  it('allows guest to add product to basket, open checkout, and complete order as guest', async () => {
+    const { createOrder } = await import('@/lib/api');
+    vi.mocked(createOrder).mockResolvedValue({
+      id: 'PRRC-5555',
+      totalAmount: 25,
+      paymentLinkUrl: 'https://monzo.me/pay/PRRC-5555?amount=25',
+      userEmail: 'guest@example.com',
+      userName: 'Guest Runner',
+    } as any);
+
+    render(<StoreCatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    // Add to Basket
+    const addButton = screen.getByRole('button', { name: /add to basket/i });
+    fireEvent.click(addButton);
+
+    // Basket Drawer should open and display item
+    await waitFor(() => {
+      expect(screen.getByText('Your Basket')).toBeInTheDocument();
+      expect(screen.getByText('Subtotal')).toBeInTheDocument();
+    });
+
+    // Click Proceed to Checkout
+    const checkoutButton = screen.getByRole('button', { name: /proceed to checkout/i });
+    fireEvent.click(checkoutButton);
+
+    // Modal should show "Checkout as Guest"
+    await waitFor(() => {
+      expect(screen.getByText('Checkout as Guest')).toBeInTheDocument();
+    });
+
+    // Fill Name and Email
+    const nameInput = screen.getByPlaceholderText('e.g. Alex Smith');
+    const emailInput = screen.getByPlaceholderText('alex@example.com');
+    fireEvent.change(nameInput, { target: { value: 'Guest Runner' } });
+    fireEvent.change(emailInput, { target: { value: 'guest@example.com' } });
+
+    // Submit order form
+    fireEvent.submit(nameInput.closest('form')!);
+
+    // Verify createOrder called without userId
+    await waitFor(() => {
+      expect(createOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userName: 'Guest Runner',
+          userEmail: 'guest@example.com',
+          userId: undefined,
+          items: expect.arrayContaining([
+            expect.objectContaining({
+              productId: 'prod-1',
+              price: 25,
+              quantity: 1,
+            }),
+          ]),
+        })
+      );
+    });
+
+    // Order Placed modal should render
+    await waitFor(() => {
+      expect(screen.getByText('Order Placed!')).toBeInTheDocument();
+    });
+    expect(screen.getAllByText('PRRC-5555').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: /pay £25.00 via monzo/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to store/i })).toBeInTheDocument();
+    expect(screen.queryByText(/view my order status/i)).not.toBeInTheDocument();
+  });
+
+  it('allows user to toggle between guest checkout and member sign-in within checkout modal', async () => {
+    render(<StoreCatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Your Basket')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /proceed to checkout/i }));
+
+    // In guest view, click "Sign in" toggle inside the checkout modal
+    await waitFor(() => {
+      expect(screen.getByText('Checkout as Guest')).toBeInTheDocument();
+    });
+    const signInToggle = screen.getByRole('button', { name: /sign in to member account/i });
+    fireEvent.click(signInToggle);
+
+    // Now in member sign in view
+    expect(screen.getByText('Sign In to Account')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('runner@peasants.store')).toBeInTheDocument();
+
+    // Click back to guest view
+    const backToGuest = screen.getByRole('button', { name: /continue as guest instead/i });
+    fireEvent.click(backToGuest);
+
+    expect(screen.getByText('Checkout as Guest')).toBeInTheDocument();
+  });
+
+  it('persists basket items to localStorage and clears them upon successful order', async () => {
+    const { createOrder } = await import('@/lib/api');
+    vi.mocked(createOrder).mockResolvedValueOnce({
+      id: 'PRRC-7777',
+      totalAmount: 25,
+      paymentLinkUrl: 'https://monzo.me/pay/PRRC-7777?amount=25',
+      userEmail: 'guest@example.com',
+      userName: 'Guest Runner',
+    } as any);
+
+    render(<StoreCatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    // Add item
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+
+    // Check localStorage
+    await waitFor(() => {
+      const stored = localStorage.getItem('prrc_cart');
+      expect(stored).toBeTruthy();
+      expect(JSON.parse(stored!)).toHaveLength(1);
+    });
+
+    // Complete order
+    fireEvent.click(screen.getByRole('button', { name: /proceed to checkout/i }));
+    const nameInput = screen.getByPlaceholderText('e.g. Alex Smith');
+    const emailInput = screen.getByPlaceholderText('alex@example.com');
+    fireEvent.change(nameInput, { target: { value: 'Guest' } });
+    fireEvent.change(emailInput, { target: { value: 'guest@test.com' } });
+    fireEvent.submit(nameInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Order Placed!')).toBeInTheDocument();
+    });
+
+    // localStorage should be cleared
+    await waitFor(() => {
+      expect(localStorage.getItem('prrc_cart')).toBeNull();
+    });
   });
 });
