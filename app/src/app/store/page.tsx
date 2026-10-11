@@ -343,6 +343,15 @@ export default function StoreCatalogPage() {
       setCart([]); // Clear cart
       try {
         localStorage.removeItem('prrc_cart');
+        if (!user) {
+          localStorage.setItem(
+            'prrc_last_guest_order',
+            JSON.stringify({
+              orderRef: order.id,
+              email: order.userEmail,
+            })
+          );
+        }
       } catch (_) {}
     } catch (err: any) {
       alert(err.message || 'Failed to submit order.');

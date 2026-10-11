@@ -9,6 +9,7 @@ if (!admin.apps.length) {
 }
 
 export const adminDb = admin.firestore();
+adminDb.settings({ ignoreUndefinedProperties: true });
 
 if (process.env.FIRESTORE_EMULATOR_HOST) {
   console.log(`[Firestore] Connected to local Firestore emulator at ${process.env.FIRESTORE_EMULATOR_HOST}`);

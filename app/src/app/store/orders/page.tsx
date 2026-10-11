@@ -87,6 +87,19 @@ function UserOrdersContent() {
       setSearchRef(refParam);
       setSearchEmail(emailParam);
       runLookup(refParam, emailParam);
+    } else {
+      // Check localStorage for the recent guest order placed from this browser
+      try {
+        const saved = localStorage.getItem('prrc_last_guest_order');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.orderRef && parsed.email) {
+            setSearchRef(parsed.orderRef);
+            setSearchEmail(parsed.email);
+            runLookup(parsed.orderRef, parsed.email);
+          }
+        }
+      } catch (_) {}
     }
   }, [searchParams]);
 
@@ -290,6 +303,9 @@ function UserOrdersContent() {
                       setSearchRef('');
                       setSearchEmail('');
                       setSearchError('');
+                      try {
+                        localStorage.removeItem('prrc_last_guest_order');
+                      } catch (_) {}
                     }}
                     className="text-xs text-[rgb(82,94,62)] font-bold hover:underline flex items-center gap-1"
                   >

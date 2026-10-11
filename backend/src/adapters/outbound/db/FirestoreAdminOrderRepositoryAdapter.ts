@@ -20,6 +20,7 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     const order: Order = {
       ...orderData,
       id: orderId,
+      userEmail: orderData.userEmail.trim().toLowerCase(),
       status: 'pending_payment',
       paymentLinkUrl,
       monzoReference: orderId,
@@ -28,7 +29,11 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     };
 
     try {
-      await adminDb.collection(this.collectionName).doc(orderId).set(order);
+      const docData: Record<string, any> = { ...order };
+      if (docData.userId === undefined) {
+        delete docData.userId;
+      }
+      await adminDb.collection(this.collectionName).doc(orderId).set(docData);
     } catch (err) {
       console.warn('Firestore admin order save notice:', err);
     }
@@ -46,14 +51,21 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     } catch (err) {
       console.warn('Firestore admin order getById notice:', err);
     }
-    return FirestoreAdminOrderRepositoryAdapter.localMemoryStore.find((o) => o.id === id) || null;
+    return (
+      FirestoreAdminOrderRepositoryAdapter.localMemoryStore.find(
+        (o) =>
+          o.id.toUpperCase() === id.toUpperCase() ||
+          (o.monzoReference && o.monzoReference.toUpperCase() === id.toUpperCase())
+      ) || null
+    );
   }
 
   async getOrdersByUserEmail(email: string): Promise<Order[]> {
+    const normalized = email.trim().toLowerCase();
     try {
       const snapshot = await adminDb
         .collection(this.collectionName)
-        .where('userEmail', '==', email.toLowerCase())
+        .where('userEmail', '==', normalized)
         .get();
       if (!snapshot.empty) {
         return snapshot.docs.map((docSnap) => docSnap.data() as Order);
@@ -62,7 +74,7 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
       console.warn('Firestore admin order getByUserEmail notice:', err);
     }
     return FirestoreAdminOrderRepositoryAdapter.localMemoryStore.filter(
-      (o) => o.userEmail.toLowerCase() === email.toLowerCase()
+      (o) => o.userEmail.trim().toLowerCase() === normalized
     );
   }
 
@@ -71,8 +83,16 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
       const snapshot = await adminDb.collection(this.collectionName).get();
       if (!snapshot.empty) {
         const orders = snapshot.docs.map((docSnap) => docSnap.data() as Order);
-        FirestoreAdminOrderRepositoryAdapter.localMemoryStore = orders;
-        return orders;
+        const orderMap = new Map<string, Order>();
+        for (const o of orders) orderMap.set(o.id, o);
+        for (const o of FirestoreAdminOrderRepositoryAdapter.localMemoryStore) {
+          if (!orderMap.has(o.id)) orderMap.set(o.id, o);
+        }
+        const merged = Array.from(orderMap.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        FirestoreAdminOrderRepositoryAdapter.localMemoryStore = merged;
+        return merged;
       }
     } catch (err) {
       console.warn('Firestore admin order getAll notice:', err);
