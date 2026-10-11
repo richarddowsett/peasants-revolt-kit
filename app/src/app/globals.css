@@ -2,16 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root, [data-theme="orange"] {
-  --brand-color: rgb(202, 88, 46);
-  --brand-dark: rgb(165, 68, 32);
-  --brand-darker: rgb(165, 68, 32);
-  --brand-light: rgb(225, 110, 68);
-  --brand-soft: rgb(255, 247, 237);
-  --brand-subtle: rgba(202, 88, 46, 0.12);
-}
-
-[data-theme="green"] {
+:root {
   --brand-color: rgb(155, 165, 130);
   --brand-dark: rgb(125, 135, 100);
   --brand-darker: rgb(82, 94, 62);

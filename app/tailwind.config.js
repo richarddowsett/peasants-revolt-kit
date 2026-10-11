@@ -7,12 +7,12 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "var(--brand-color)",
-          dark: "var(--brand-dark)",
-          darker: "var(--brand-darker)",
-          light: "var(--brand-light)",
-          soft: "var(--brand-soft)",
-          subtle: "var(--brand-subtle)"
+          DEFAULT: "rgb(155, 165, 130)",
+          dark: "rgb(125, 135, 100)",
+          darker: "rgb(82, 94, 62)",
+          light: "rgb(185, 195, 160)",
+          soft: "rgb(242, 245, 236)",
+          subtle: "rgba(155, 165, 130, 0.15)"
         }
       }
     },

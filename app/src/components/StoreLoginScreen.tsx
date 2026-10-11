@@ -4,11 +4,8 @@ import React, { useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Lock, Mail, UserPlus, LogIn, AlertCircle, User as UserIcon } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
-import ThemeToggle from './ThemeToggle';
 
 export default function StoreLoginScreen() {
-  const { tokens } = useTheme();
   const [isSignUp, setIsSignUp] = useState<boolean>(false);
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
@@ -71,23 +68,14 @@ export default function StoreLoginScreen() {
   };
 
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-12">
-      <div className="mb-4 flex justify-center">
-        <ThemeToggle />
-      </div>
-
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl max-w-md w-full overflow-hidden">
         {/* Header */}
-        <div
-          className={`${tokens.heroGradient} text-white p-8 text-center transition-colors duration-300`}
-          style={{
-            backgroundImage: `radial-gradient(circle at 20% 20%, ${tokens.heroGlow} 0%, transparent 50%)`,
-          }}
-        >
-          <div className={`w-16 h-16 rounded-full border-2 ${tokens.borderAccent} bg-white p-1 mx-auto mb-3 shadow-md`}>
+        <div className="bg-gradient-to-br from-[rgb(78,88,60)] via-[rgb(55,64,42)] to-slate-900 text-white p-8 text-center bg-[radial-gradient(circle_at_20%_20%,rgba(155,165,130,0.25)_0%,transparent_50%)]">
+          <div className="w-16 h-16 rounded-full border-2 border-[rgb(155,165,130)] bg-white p-1 mx-auto mb-3 shadow-md">
             <img src="/logo.png" alt="PRRC Logo" className="w-full h-full object-contain rounded-full" />
           </div>
-          <span className={`inline-block ${tokens.badgeBg} text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-2 shadow-sm`}>
+          <span className="inline-block bg-[rgb(155,165,130)] text-slate-900 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-2 shadow-sm">
             Club Member Portal
           </span>
           <h2 className="text-2xl font-black tracking-tight">Peasants Revolt Store</h2>
@@ -120,7 +108,7 @@ export default function StoreLoginScreen() {
                       placeholder="Alex"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className={`w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 ${tokens.focusRing} focus:border-transparent transition`}
+                      className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] focus:border-transparent transition"
                     />
                   </div>
                 </div>
@@ -137,7 +125,7 @@ export default function StoreLoginScreen() {
                       placeholder="Runner"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className={`w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 ${tokens.focusRing} focus:border-transparent transition`}
+                      className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] focus:border-transparent transition"
                     />
                   </div>
                 </div>
@@ -156,7 +144,7 @@ export default function StoreLoginScreen() {
                   placeholder="runner@peasants.store"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 ${tokens.focusRing} focus:border-transparent transition`}
+                  className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] focus:border-transparent transition"
                 />
               </div>
             </div>
@@ -173,7 +161,7 @@ export default function StoreLoginScreen() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 ${tokens.focusRing} focus:border-transparent transition`}
+                  className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[rgb(155,165,130)] focus:border-transparent transition"
                 />
               </div>
             </div>
@@ -181,7 +169,7 @@ export default function StoreLoginScreen() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full ${tokens.btnPrimary} font-bold text-xs py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-6 disabled:opacity-50`}
+              className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-6 disabled:opacity-50"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -207,12 +195,12 @@ export default function StoreLoginScreen() {
                 setIsSignUp(!isSignUp);
                 setError('');
               }}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition block w-full"
+              className="text-xs font-semibold text-slate-600 hover:text-[rgb(82,94,62)] transition block w-full"
             >
               {isSignUp ? (
-                <span>Already have an account? <strong className={`${tokens.textAccent} underline font-bold`}>Sign In</strong></span>
+                <span>Already have an account? <strong className="text-[rgb(82,94,62)] underline font-bold">Sign In</strong></span>
               ) : (
-                <span>Don't have an account? <strong className={`${tokens.textAccent} underline font-bold`}>Register now</strong></span>
+                <span>Don't have an account? <strong className="text-[rgb(82,94,62)] underline font-bold">Register now</strong></span>
               )}
             </button>
           </div>

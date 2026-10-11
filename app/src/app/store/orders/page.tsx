@@ -7,10 +7,8 @@ import { Order, OrderStatus } from '@/domain/models/Order';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Package, Clock, CheckCircle2, CheckCheck, ExternalLink } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
 
 export default function UserOrdersPage() {
-  const { tokens } = useTheme();
   const [orders, setOrders] = useState<Order[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -88,7 +86,7 @@ export default function UserOrdersPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className={`w-8 h-8 border-4 ${tokens.spinnerBorder} border-t-transparent rounded-full animate-spin`} />
+            <div className="w-8 h-8 border-4 border-[rgb(155,165,130)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : !userEmail ? (
           <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-sm max-w-sm mx-auto">
