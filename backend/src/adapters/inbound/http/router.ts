@@ -5,6 +5,7 @@ import {
   ordersController,
   adminController,
   uploadController,
+  featureFlagsController,
 } from '../../../config/container';
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -19,6 +20,12 @@ apiRouter.get('/health', (req, res) => {
 // Admin Auth
 apiRouter.post('/admin/login', (req, res) => adminController.login(req, res));
 
+// Feature Flags
+apiRouter.get('/feature-flags', (req, res) => featureFlagsController.getFlags(req, res));
+apiRouter.get('/feature-flags/:id', (req, res) => featureFlagsController.getFlag(req, res));
+apiRouter.patch('/feature-flags/:id', (req, res) => featureFlagsController.setFlag(req, res));
+apiRouter.post('/feature-flags/:id', (req, res) => featureFlagsController.setFlag(req, res));
+
 // Products
 apiRouter.get('/products', (req, res) => productsController.getProducts(req, res));
 apiRouter.post('/products', (req, res) => productsController.saveProduct(req, res));
@@ -32,3 +39,4 @@ apiRouter.post('/upload/signed-url', (req, res) => uploadController.getSignedUpl
 apiRouter.post('/orders', (req, res) => ordersController.createOrder(req, res));
 apiRouter.get('/orders', (req, res) => ordersController.getOrders(req, res));
 apiRouter.patch('/orders/:id/status', (req, res) => ordersController.updateStatus(req, res));
+

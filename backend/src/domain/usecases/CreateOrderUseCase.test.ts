@@ -214,4 +214,57 @@ describe('CreateOrderUseCase', () => {
     expect(order.totalAmount).toBe(15);
     expect(order.status).toBe('pending_payment');
   });
+
+  it('should throw an error if store_closed feature flag is enabled', async () => {
+    const mockFlagRepo = {
+      getFeatureFlag: vi.fn().mockResolvedValue({
+        id: 'store_closed',
+        name: 'Store Closed',
+        enabled: true,
+        updatedAt: '2026-01-01T00:00:00Z',
+      }),
+      getAllFeatureFlags: vi.fn(),
+      setFeatureFlag: vi.fn(),
+    };
+
+    const closedUseCase = new CreateOrderUseCase(orderRepo, paymentGateway, mockFlagRepo);
+
+    const command: CreateOrderCommand = {
+      userEmail: 'runner@example.com',
+      userName: 'Fast Runner',
+      items: [{ productId: 'p1', productName: 'Cap', price: 15, size: 'L', quantity: 1 }],
+    };
+
+    await expect(closedUseCase.execute(command)).rejects.toThrow(
+      'The store is currently closed for new orders.'
+    );
+    expect(mockFlagRepo.getFeatureFlag).toHaveBeenCalledWith('store_closed');
+    expect(orderRepo.createOrder).not.toHaveBeenCalled();
+  });
+
+  it('should allow order creation if store_closed feature flag is disabled', async () => {
+    const mockFlagRepo = {
+      getFeatureFlag: vi.fn().mockResolvedValue({
+        id: 'store_closed',
+        name: 'Store Closed',
+        enabled: false,
+        updatedAt: '2026-01-01T00:00:00Z',
+      }),
+      getAllFeatureFlags: vi.fn(),
+      setFeatureFlag: vi.fn(),
+    };
+
+    const openUseCase = new CreateOrderUseCase(orderRepo, paymentGateway, mockFlagRepo);
+
+    const command: CreateOrderCommand = {
+      userEmail: 'runner@example.com',
+      userName: 'Fast Runner',
+      items: [{ productId: 'p1', productName: 'Cap', price: 15, size: 'L', quantity: 1 }],
+    };
+
+    const order = await openUseCase.execute(command);
+    expect(order).toBeDefined();
+    expect(order.id).toMatch(/^PRRC-\d{4}$/);
+  });
 });
+

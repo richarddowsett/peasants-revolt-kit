@@ -11,6 +11,9 @@ import {
   uploadImages,
   getSignedUploadUrl,
   uploadImageViaSignedUrl,
+  fetchFeatureFlags,
+  fetchFeatureFlag,
+  updateFeatureFlag,
 } from './api';
 
 global.fetch = vi.fn();
@@ -200,5 +203,53 @@ describe('Frontend API Client (lib/api)', () => {
       body: expect.any(FormData),
     }));
     expect(urls).toEqual(['https://storage.googleapis.com/bucket/product-images/fallback.jpg']);
+  });
+
+  it('fetchFeatureFlags calls GET /api/feature-flags', async () => {
+    const mockFlags = [{ id: 'store_closed', enabled: true }];
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockFlags,
+    });
+
+    const flags = await fetchFeatureFlags();
+    expect(global.fetch).toHaveBeenCalledWith('/api/feature-flags', expect.objectContaining({ cache: 'no-store' }));
+    expect(flags).toEqual(mockFlags);
+  });
+
+  it('fetchFeatureFlag calls GET /api/feature-flags/:id and returns null on 404', async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    });
+
+    const notFound = await fetchFeatureFlag('unknown');
+    expect(global.fetch).toHaveBeenCalledWith('/api/feature-flags/unknown', expect.objectContaining({ cache: 'no-store' }));
+    expect(notFound).toBeNull();
+
+    const mockFlag = { id: 'store_closed', enabled: false };
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockFlag,
+    });
+
+    const flag = await fetchFeatureFlag('store_closed');
+    expect(flag).toEqual(mockFlag);
+  });
+
+  it('updateFeatureFlag sends PATCH to /api/feature-flags/:id', async () => {
+    const updatedFlag = { id: 'store_closed', enabled: true };
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => updatedFlag,
+    });
+
+    const result = await updateFeatureFlag('store_closed', true);
+    expect(global.fetch).toHaveBeenCalledWith('/api/feature-flags/store_closed', expect.objectContaining({
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true }),
+    }));
+    expect(result).toEqual(updatedFlag);
   });
 });

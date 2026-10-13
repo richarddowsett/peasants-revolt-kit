@@ -21,7 +21,9 @@ vi.mock('@/lib/api', () => ({
     },
   ]),
   createOrder: vi.fn(),
+  fetchFeatureFlag: vi.fn().mockResolvedValue({ id: 'store_closed', enabled: false }),
 }));
+
 
 let mockCurrentUser: any = null;
 
@@ -438,5 +440,30 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
     await waitFor(() => {
       expect(localStorage.getItem('prrc_cart')).toBeNull();
     });
+  });
+
+  it('renders the holding page with Instagram link when store_closed flag is true', async () => {
+    const { fetchFeatureFlag } = await import('@/lib/api');
+    vi.mocked(fetchFeatureFlag).mockResolvedValueOnce({
+      id: 'store_closed',
+      enabled: true,
+      name: 'Store Closed',
+      updatedAt: '2026-01-01T00:00:00Z',
+    });
+
+    render(<StoreCatalogPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { level: 1, name: /The Store Is Currently Closed/i })
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText(/store is currently closed but check back again soon for further updates/i)
+    ).toBeInTheDocument();
+
+    const instagramLink = screen.getByRole('link', { name: /Follow @prrcbrentwood/i });
+    expect(instagramLink).toHaveAttribute('href', 'https://www.instagram.com/prrcbrentwood/');
   });
 });

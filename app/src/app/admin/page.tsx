@@ -9,11 +9,13 @@ import {
   uploadImages,
   fetchOrders,
   updateOrderStatus,
+  fetchFeatureFlag,
+  updateFeatureFlag,
 } from '@/lib/api';
 import { Product, SizeGuideRow, GenderFit } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles, Send } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles, Send, Store, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 
 const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
@@ -36,6 +38,8 @@ export default function AdminCMSPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | OrderStatus>('all');
   const [loading, setLoading] = useState<boolean>(false);
+  const [isStoreClosed, setIsStoreClosed] = useState<boolean>(false);
+  const [togglingStore, setTogglingStore] = useState<boolean>(false);
 
   // Product Form Modal State
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
@@ -78,18 +82,42 @@ export default function AdminCMSPage() {
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [allProds, allOrds] = await Promise.all([
+      const [allProds, allOrds, storeFlag] = await Promise.all([
         fetchProducts(true), // fetch all products including drafts from backend API
         fetchOrders(),       // fetch all orders from backend API
+        fetchFeatureFlag('store_closed').catch(() => null),
       ]);
       setProducts(allProds);
       setOrders(allOrds);
+      if (storeFlag) {
+        setIsStoreClosed(storeFlag.enabled === true);
+      }
     } catch (err) {
       console.error('Failed to load admin data from API:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleToggleStoreStatus = async () => {
+    const nextClosedState = !isStoreClosed;
+    const confirmMessage = nextClosedState
+      ? 'Are you sure you want to CLOSE the store?\n\nVisitors to the store will see the holding page with the Instagram link, and new customer orders will be blocked.'
+      : 'Are you sure you want to REOPEN the store?\n\nVisitors will be able to browse kit items and place orders normally.';
+
+    if (!confirm(confirmMessage)) return;
+
+    setTogglingStore(true);
+    try {
+      await updateFeatureFlag('store_closed', nextClosedState);
+      setIsStoreClosed(nextClosedState);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update store status');
+    } finally {
+      setTogglingStore(false);
+    }
+  };
+
 
   const processFiles = async (files: File[]) => {
     if (!files || files.length === 0) return;
@@ -384,7 +412,39 @@ export default function AdminCMSPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Store Status Toggle Control */}
+            <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 rounded-xl px-2.5 py-1.5 shadow-inner">
+              <div className="flex items-center gap-1.5 text-xs font-semibold pr-1">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isStoreClosed ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'
+                  }`}
+                />
+                <span className={`hidden sm:inline ${isStoreClosed ? 'text-amber-300' : 'text-emerald-300'}`}>
+                  {isStoreClosed ? 'Store Closed' : 'Store Open'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleStoreStatus}
+                disabled={togglingStore}
+                className={`text-xs font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1.5 ${
+                  isStoreClosed
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white shadow-sm'
+                }`}
+                aria-label={isStoreClosed ? 'Reopen store' : 'Close store'}
+              >
+                {togglingStore ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Store size={13} />
+                )}
+                <span>{isStoreClosed ? 'Reopen Store' : 'Close Store'}</span>
+              </button>
+            </div>
+
             <button
               onClick={loadAdminData}
               title="Refresh Data"
@@ -404,6 +464,29 @@ export default function AdminCMSPage() {
           </div>
         </div>
       </header>
+
+      {/* Alert Banner when Store is Closed */}
+      {isStoreClosed && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-3 text-xs">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+              <span>
+                <strong>Store is currently closed:</strong> Public storefront displays the holding page with the Instagram link. Customers cannot place new orders until reopened.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleStoreStatus}
+              disabled={togglingStore}
+              className="self-start sm:self-auto bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold px-3 py-1 rounded-lg transition shrink-0"
+            >
+              Reopen Store
+            </button>
+          </div>
+        </div>
+      )}
+
 
       {/* Tabs */}
       <div className="bg-white border-b border-slate-200">

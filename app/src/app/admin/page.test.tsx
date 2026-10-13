@@ -10,6 +10,8 @@ vi.mock('@/lib/api', () => ({
   saveProduct: vi.fn(),
   deleteProduct: vi.fn(),
   uploadImages: vi.fn(),
+  fetchFeatureFlag: vi.fn().mockResolvedValue({ id: 'store_closed', enabled: false }),
+  updateFeatureFlag: vi.fn().mockResolvedValue({ id: 'store_closed', enabled: true }),
   fetchOrders: vi.fn().mockResolvedValue([
     {
       id: 'ORD-PENDING',
@@ -297,6 +299,55 @@ describe('AdminCMSPage - Product Sizing Direct Input (No CMS Defaults or Presets
           ],
         })
       );
+    });
+  });
+
+  it('displays store status in header and closes the store when confirmed', async () => {
+    const { updateFeatureFlag } = await import('@/lib/api');
+    window.confirm = vi.fn().mockReturnValue(true);
+
+    render(<AdminCMSPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Store Open')).toBeInTheDocument();
+    });
+
+    const closeBtn = screen.getByRole('button', { name: /close store/i });
+    expect(closeBtn).toBeInTheDocument();
+
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(updateFeatureFlag).toHaveBeenCalledWith('store_closed', true);
+      expect(screen.getByText('Store Closed')).toBeInTheDocument();
+    });
+  });
+
+  it('displays store closed banner and reopens the store when confirmed', async () => {
+    const { fetchFeatureFlag, updateFeatureFlag } = await import('@/lib/api');
+    vi.mocked(fetchFeatureFlag).mockResolvedValueOnce({
+      id: 'store_closed',
+      enabled: true,
+      name: 'Store Closed',
+      updatedAt: '2026-01-01T00:00:00Z',
+    });
+    window.confirm = vi.fn().mockReturnValue(true);
+
+    render(<AdminCMSPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Store Closed')).toBeInTheDocument();
+    });
+
+    // Alert banner should also be visible
+    expect(screen.getByText(/Store is currently closed:/i)).toBeInTheDocument();
+
+    const reopenBtn = screen.getAllByRole('button', { name: /reopen store/i })[0];
+    fireEvent.click(reopenBtn);
+
+    await waitFor(() => {
+      expect(updateFeatureFlag).toHaveBeenCalledWith('store_closed', false);
+      expect(screen.getByText('Store Open')).toBeInTheDocument();
     });
   });
 });

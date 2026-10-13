@@ -141,3 +141,24 @@ export async function verifyAdminPassword(password: string) {
   const data = await res.json();
   return data.success === true;
 }
+
+export async function fetchFeatureFlags() {
+  const res = await fetch(`${API_BASE}/feature-flags`, { cache: 'no-store' });
+  return handleResponse(res, 'Failed to fetch feature flags');
+}
+
+export async function fetchFeatureFlag(id: string) {
+  const res = await fetch(`${API_BASE}/feature-flags/${encodeURIComponent(id)}`, { cache: 'no-store' });
+  if (res.status === 404) return null;
+  return handleResponse(res, `Failed to fetch feature flag ${id}`);
+}
+
+export async function updateFeatureFlag(id: string, enabled: boolean) {
+  const res = await fetch(`${API_BASE}/feature-flags/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  return handleResponse(res, `Failed to update feature flag ${id}`);
+}
+
