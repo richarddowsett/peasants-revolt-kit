@@ -1,16 +1,24 @@
 import { CreateOrderInboundPort, CreateOrderCommand } from '../ports/inbound/CreateOrderInboundPort';
 import { OrderRepositoryOutboundPort } from '../ports/outbound/OrderRepositoryOutboundPort';
 import { PaymentGatewayOutboundPort } from '../ports/outbound/PaymentGatewayOutboundPort';
+import { FeatureFlagRepositoryOutboundPort } from '../ports/outbound/FeatureFlagRepositoryOutboundPort';
 import { Order, OrderItem } from '../entities/Order';
 import { generateNextMonzoReference } from '../utils/orderRef';
 
 export class CreateOrderUseCase implements CreateOrderInboundPort {
   constructor(
     private orderRepo: OrderRepositoryOutboundPort,
-    private paymentGateway: PaymentGatewayOutboundPort
+    private paymentGateway: PaymentGatewayOutboundPort,
+    private featureFlagRepo?: FeatureFlagRepositoryOutboundPort
   ) {}
 
   async execute(command: CreateOrderCommand): Promise<Order> {
+    if (this.featureFlagRepo) {
+      const storeClosedFlag = await this.featureFlagRepo.getFeatureFlag('store_closed');
+      if (storeClosedFlag?.enabled) {
+        throw new Error('The store is currently closed for new orders.');
+      }
+    }
     if (!command.items || command.items.length === 0) {
       throw new Error('Order must contain at least one item.');
     }

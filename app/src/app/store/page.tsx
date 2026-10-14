@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import StoreHeader from '@/components/StoreHeader';
 import StoreFooter from '@/components/StoreFooter';
 import StoreLoginScreen from '@/components/StoreLoginScreen';
-import { fetchProducts, createOrder } from '@/lib/api';
+import StoreHoldingPage from '@/components/StoreHoldingPage';
+import { fetchProducts, createOrder, fetchFeatureFlag } from '@/lib/api';
 import { Product, GenderFit, SizeGuideRow } from '@/domain/models/Product';
 import { CartItem } from '@/domain/models/Cart';
 import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler, ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, RotateCcw, AlertCircle, LogIn, UserCheck } from 'lucide-react';
@@ -24,6 +25,9 @@ export default function StoreCatalogPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+
+  const [isStoreClosed, setIsStoreClosed] = useState<boolean>(false);
+  const [checkingStoreStatus, setCheckingStoreStatus] = useState<boolean>(true);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -192,12 +196,28 @@ export default function StoreCatalogPage() {
     return () => unsubscribe();
   }, []);
 
-  // Load products unconditionally on mount
+  // Load products and store_closed feature flag on mount
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const items = await fetchProducts(false); // Fetch published products from API
+        const [items, flag] = await Promise.all([
+          fetchProducts(false).catch((err) => {
+            console.error('Failed to load products from API:', err);
+            return [];
+          }),
+          fetchFeatureFlag('store_closed').catch((err) => {
+            console.warn('Failed to fetch store_closed feature flag:', err);
+            return null;
+          }),
+        ]);
+
+        if (flag && flag.enabled === true) {
+          setIsStoreClosed(true);
+        } else {
+          setIsStoreClosed(false);
+        }
+
         setProducts(items);
 
         // Default selected sizes & images
@@ -213,13 +233,15 @@ export default function StoreCatalogPage() {
         setSelectedSizes(defaultSizes);
         setSelectedImages(defaultImages);
       } catch (err) {
-        console.error('Failed to load products from API:', err);
+        console.error('Failed to load store data:', err);
       } finally {
         setLoading(false);
+        setCheckingStoreStatus(false);
       }
     }
     loadData();
   }, []);
+
 
   const handleAddToCart = (product: Product) => {
     const { men, women, unisex } = categorizeProductSizes(
@@ -383,6 +405,18 @@ export default function StoreCatalogPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (checkingStoreStatus) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[rgb(155,165,130)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isStoreClosed) {
+    return <StoreHoldingPage />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
