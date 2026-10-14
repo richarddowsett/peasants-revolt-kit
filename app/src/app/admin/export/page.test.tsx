@@ -151,27 +151,80 @@ describe('ManufacturerExportPage', () => {
     expect(screen.getAllByText(/items/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('triggers window.print when Print / Save as PDF is clicked', async () => {
+  it('displays red error labels and disables export buttons when mandatory fields are empty', async () => {
     sessionStorage.setItem('admin_authenticated', 'true');
     render(<ManufacturerExportPage />);
     await waitFor(() => {
       expect(screen.getByText('Running Vest')).toBeInTheDocument();
     });
 
+    // Both error labels should be visible initially
+    expect(screen.getByTestId('admin-email-error')).toHaveTextContent('Club admin email is required');
+    expect(screen.getByTestId('shipping-address-error')).toHaveTextContent('Shipping address is required');
+
+    // Print button should be disabled
     const printButton = screen.getByRole('button', { name: /Print \/ Save as PDF/i });
+    expect(printButton).toBeDisabled();
+
+    // Mark as Sent button should be disabled
+    const markSentButton = screen.getByRole('button', { name: /Mark 2 as Sent/i });
+    expect(markSentButton).toBeDisabled();
+
+    // Fill in only email
+    const emailInput = screen.getByPlaceholderText('e.g. admin@peasantsrc.co.uk');
+    fireEvent.change(emailInput, { target: { value: 'admin@peasantsrc.co.uk' } });
+
+    // Email error is gone, address error still remains, print still disabled
+    expect(screen.queryByTestId('admin-email-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('shipping-address-error')).toBeInTheDocument();
+    expect(printButton).toBeDisabled();
+
+    // Fill in shipping address
+    const addressInput = screen.getByPlaceholderText('Enter shipping address...');
+    fireEvent.change(addressInput, { target: { value: '123 Club Street, London' } });
+
+    // Both errors are gone and print button is enabled
+    expect(screen.queryByTestId('admin-email-error')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('shipping-address-error')).not.toBeInTheDocument();
+    expect(printButton).not.toBeDisabled();
+    expect(markSentButton).not.toBeDisabled();
+  });
+
+  it('triggers window.print when Print / Save as PDF is clicked after mandatory fields are completed', async () => {
+    sessionStorage.setItem('admin_authenticated', 'true');
+    render(<ManufacturerExportPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Running Vest')).toBeInTheDocument();
+    });
+
+    const emailInput = screen.getByPlaceholderText('e.g. admin@peasantsrc.co.uk');
+    fireEvent.change(emailInput, { target: { value: 'admin@peasantsrc.co.uk' } });
+
+    const addressInput = screen.getByPlaceholderText('Enter shipping address...');
+    fireEvent.change(addressInput, { target: { value: '123 Club Street, London' } });
+
+    const printButton = screen.getByRole('button', { name: /Print \/ Save as PDF/i });
+    expect(printButton).not.toBeDisabled();
     fireEvent.click(printButton);
 
     expect(window.print).toHaveBeenCalled();
   });
 
-  it('marks paid orders as Order Sent when action button is confirmed', async () => {
+  it('marks paid orders as Order Sent when action button is confirmed and mandatory fields are completed', async () => {
     sessionStorage.setItem('admin_authenticated', 'true');
     render(<ManufacturerExportPage />);
     await waitFor(() => {
       expect(screen.getByText('Running Vest')).toBeInTheDocument();
     });
 
+    const emailInput = screen.getByPlaceholderText('e.g. admin@peasantsrc.co.uk');
+    fireEvent.change(emailInput, { target: { value: 'admin@peasantsrc.co.uk' } });
+
+    const addressInput = screen.getByPlaceholderText('Enter shipping address...');
+    fireEvent.change(addressInput, { target: { value: '123 Club Street, London' } });
+
     const markSentButton = screen.getByRole('button', { name: /Mark 2 as Sent/i });
+    expect(markSentButton).not.toBeDisabled();
     fireEvent.click(markSentButton);
 
     await waitFor(() => {
@@ -239,7 +292,7 @@ describe('ManufacturerExportPage', () => {
     });
 
     const emailInput = screen.getByPlaceholderText('e.g. admin@peasantsrc.co.uk');
-    expect(emailInput).toHaveValue('peasantsrunningclub@gmail.com');
+    expect(emailInput).toHaveValue('');
 
     fireEvent.change(emailInput, { target: { value: 'kit-officer@peasantsrc.org' } });
     expect(emailInput).toHaveValue('kit-officer@peasantsrc.org');
@@ -255,9 +308,7 @@ describe('ManufacturerExportPage', () => {
     });
 
     const addressInput = screen.getByPlaceholderText('Enter shipping address...');
-    expect(addressInput).toHaveValue(
-      'Peasants Revolt Running Club\nAttn: Kit Coordinator\nUnited Kingdom'
-    );
+    expect(addressInput).toHaveValue('');
 
     fireEvent.change(addressInput, {
       target: { value: 'Peasants RC Depot\nUnit 4, Industrial Park\nLondon EC1A 1BB' },

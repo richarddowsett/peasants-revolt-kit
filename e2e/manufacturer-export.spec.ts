@@ -163,27 +163,44 @@ test.describe('Manufacturer Order Export E2E Tests', () => {
     // Verify Document Title
     await expect(page.locator('text=Manufacturer Production Order')).toBeVisible();
 
-    // Verify Print Button
-    await expect(page.locator('button:has-text("Print / Save as PDF")')).toBeVisible();
+    // Verify Print Button is initially disabled because email & address are required
+    const printBtn = page.locator('button:has-text("Print / Save as PDF")');
+    await expect(printBtn).toBeVisible();
+    await expect(printBtn).toBeDisabled();
 
     // ----------------------------------------------------
-    // STEP 5: Verify & Test Customisation Fields
+    // STEP 5: Verify & Test Mandatory Customisation Fields & Error Labels
     // ----------------------------------------------------
-    // 1. Customizable Club Admin Email
+    // Verify initial red error labels are displayed
+    const emailError = page.locator('[data-testid="admin-email-error"]');
+    const addressError = page.locator('[data-testid="shipping-address-error"]');
+    await expect(emailError).toBeVisible();
+    await expect(emailError).toHaveText('Club admin email is required');
+    await expect(addressError).toBeVisible();
+    await expect(addressError).toHaveText('Shipping address is required');
+
+    // 1. Fill Mandatory Club Admin Email
     const emailInput = page.locator('input[placeholder="e.g. admin@peasantsrc.co.uk"]');
     await expect(emailInput).toBeVisible();
-    await expect(emailInput).toHaveValue('peasantsrunningclub@gmail.com');
+    await expect(emailInput).toHaveValue('');
 
     await emailInput.fill('kit-director@peasantsrc.org');
     await expect(emailInput).toHaveValue('kit-director@peasantsrc.org');
+    // Admin email error should disappear, but address error and disabled print remain
+    await expect(emailError).not.toBeVisible();
+    await expect(addressError).toBeVisible();
+    await expect(printBtn).toBeDisabled();
 
-    // 2. Customizable Shipping Address
+    // 2. Fill Mandatory Shipping Address
     const addressInput = page.locator('textarea[placeholder="Enter shipping address..."]');
     await expect(addressInput).toBeVisible();
-    await expect(addressInput).toHaveValue(/Peasants Revolt Running Club/);
+    await expect(addressInput).toHaveValue('');
 
     await addressInput.fill('PRRC Clubhouse & Dispatch\nUnit 5, Riverside Mile\nLondon SW1A 2AA');
     await expect(addressInput).toHaveValue('PRRC Clubhouse & Dispatch\nUnit 5, Riverside Mile\nLondon SW1A 2AA');
+    // Shipping address error should disappear, and print button becomes enabled
+    await expect(addressError).not.toBeVisible();
+    await expect(printBtn).toBeEnabled();
 
     // 3. Customizable Production Notes
     const notesInput = page.locator('textarea[placeholder="Add specific instructions for the manufacturer..."]');

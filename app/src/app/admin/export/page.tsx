@@ -40,12 +40,14 @@ export default function ManufacturerExportPage() {
     'Standard Peasants Revolt Running Club kit specifications. Items to be individually bagged and labelled with size.'
   );
   const [contactName, setContactName] = useState<string>('Kit Coordinator');
-  const [adminEmail, setAdminEmail] = useState<string>('peasantsrunningclub@gmail.com');
-  const [shippingAddress, setShippingAddress] = useState<string>(
-    'Peasants Revolt Running Club\nAttn: Kit Coordinator\nUnited Kingdom'
-  );
+  const [adminEmail, setAdminEmail] = useState<string>('');
+  const [shippingAddress, setShippingAddress] = useState<string>('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const isEmailValid = adminEmail.trim().length > 0;
+  const isAddressValid = shippingAddress.trim().length > 0;
+  const isExportValid = isEmailValid && isAddressValid;
 
   // Check authentication on mount
   useEffect(() => {
@@ -107,6 +109,14 @@ export default function ManufacturerExportPage() {
     .map((o) => o.id);
 
   const handleMarkAsSent = async () => {
+    if (!isExportValid) {
+      setStatusMessage({
+        type: 'error',
+        text: 'Please enter both Club Admin Email and Shipping Address before exporting.',
+      });
+      return;
+    }
+
     if (pendingSentOrderIds.length === 0) return;
 
     const confirmed = window.confirm(
@@ -146,6 +156,13 @@ export default function ManufacturerExportPage() {
   };
 
   const handlePrint = () => {
+    if (!isExportValid) {
+      setStatusMessage({
+        type: 'error',
+        text: 'Please enter both Club Admin Email and Shipping Address before exporting.',
+      });
+      return;
+    }
     window.print();
   };
 
@@ -242,7 +259,8 @@ export default function ManufacturerExportPage() {
               <button
                 type="button"
                 onClick={handleMarkAsSent}
-                disabled={isUpdatingStatus}
+                disabled={isUpdatingStatus || !isExportValid}
+                title={!isExportValid ? 'Please enter admin email and shipping address to export' : undefined}
                 className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5"
               >
                 {isUpdatingStatus ? (
@@ -257,7 +275,8 @@ export default function ManufacturerExportPage() {
             <button
               type="button"
               onClick={handlePrint}
-              disabled={exportBatch.totalQuantity === 0}
+              disabled={exportBatch.totalQuantity === 0 || !isExportValid}
+              title={!isExportValid ? 'Please enter admin email and shipping address to export' : 'Print / Save as PDF'}
               className="bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] disabled:opacity-50 text-white text-xs font-extrabold px-4 py-2 rounded-xl shadow flex items-center gap-2 transition"
             >
               <Printer size={16} />
@@ -409,7 +428,13 @@ export default function ManufacturerExportPage() {
             {/* Club Contact, Shipping Address & Production Notes */}
             <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Box 1: Club Contact & Email */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 print:bg-white print:border-slate-300 flex flex-col justify-between">
+              <div
+                className={`border rounded-2xl p-4 print:bg-white print:border-slate-300 flex flex-col justify-between ${
+                  !isEmailValid
+                    ? 'border-red-300 bg-red-50/20'
+                    : 'border-slate-200 bg-slate-50/50'
+                }`}
+              >
                 <div>
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-2">
                     Club Contact &amp; Email
@@ -429,14 +454,25 @@ export default function ManufacturerExportPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 font-semibold block print:hidden">Club Admin Email</label>
+                      <label className="text-[10px] text-slate-400 font-semibold block print:hidden">
+                        Club Admin Email <span className="text-red-500 font-bold">*</span>
+                      </label>
                       <input
                         type="email"
                         value={adminEmail}
                         onChange={(e) => setAdminEmail(e.target.value)}
-                        className="w-full text-xs font-medium text-slate-700 bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-[rgb(155,165,130)] focus:outline-none py-0.5 print:hidden"
+                        className={`w-full text-xs font-medium text-slate-700 bg-transparent border-b ${
+                          !isEmailValid
+                            ? 'border-red-400 focus:border-red-500'
+                            : 'border-slate-200 hover:border-slate-300 focus:border-[rgb(155,165,130)]'
+                        } focus:outline-none py-0.5 print:hidden`}
                         placeholder="e.g. admin@peasantsrc.co.uk"
                       />
+                      {!isEmailValid && (
+                        <p data-testid="admin-email-error" className="text-[10px] text-red-500 font-semibold mt-1 print:hidden">
+                          Club admin email is required
+                        </p>
+                      )}
                       <p className="text-xs text-slate-700 hidden print:block">
                         {adminEmail}
                       </p>
@@ -449,19 +485,36 @@ export default function ManufacturerExportPage() {
               </div>
 
               {/* Box 2: Shipping & Delivery Address */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 print:bg-white print:border-slate-300 flex flex-col justify-between">
+              <div
+                className={`border rounded-2xl p-4 print:bg-white print:border-slate-300 flex flex-col justify-between ${
+                  !isAddressValid
+                    ? 'border-red-300 bg-red-50/20'
+                    : 'border-slate-200 bg-slate-50/50'
+                }`}
+              >
                 <div>
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-2">
                     Shipping &amp; Delivery Address
                   </span>
-                  <label className="text-[10px] text-slate-400 font-semibold block print:hidden">Delivery / Dispatch Address</label>
+                  <label className="text-[10px] text-slate-400 font-semibold block print:hidden">
+                    Delivery / Dispatch Address <span className="text-red-500 font-bold">*</span>
+                  </label>
                   <textarea
                     value={shippingAddress}
                     onChange={(e) => setShippingAddress(e.target.value)}
                     rows={3}
-                    className="w-full text-xs text-slate-900 font-medium bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-[rgb(155,165,130)] focus:outline-none resize-none py-0.5 print:hidden"
+                    className={`w-full text-xs text-slate-900 font-medium bg-transparent border-b ${
+                      !isAddressValid
+                        ? 'border-red-400 focus:border-red-500'
+                        : 'border-slate-200 hover:border-slate-300 focus:border-[rgb(155,165,130)]'
+                    } focus:outline-none resize-none py-0.5 print:hidden`}
                     placeholder="Enter shipping address..."
                   />
+                  {!isAddressValid && (
+                    <p data-testid="shipping-address-error" className="text-[10px] text-red-500 font-semibold mt-1 print:hidden">
+                      Shipping address is required
+                    </p>
+                  )}
                   <p className="text-xs text-slate-900 font-medium hidden print:block whitespace-pre-wrap leading-relaxed">
                     {shippingAddress || 'No shipping address provided.'}
                   </p>
