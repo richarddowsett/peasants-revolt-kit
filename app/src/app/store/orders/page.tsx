@@ -21,6 +21,7 @@ import {
   UserCheck,
   AlertCircle,
   ArrowLeft,
+  XCircle,
 } from 'lucide-react';
 
 const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
@@ -165,18 +166,24 @@ function UserOrdersContent() {
         );
       case 'cancelled':
         return (
-          <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full">
-            Cancelled
+          <span className="inline-flex items-center gap-1 bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1 rounded-full">
+            <XCircle size={14} /> Cancelled
           </span>
         );
     }
   };
 
-  const renderOrderCard = (order: Order) => (
-    <div
-      key={order.id}
-      className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition"
-    >
+  const renderOrderCard = (order: Order) => {
+    const isCancelled = order.status === 'cancelled';
+    return (
+      <div
+        key={order.id}
+        className={`rounded-3xl border p-6 shadow-sm hover:shadow-md transition ${
+          isCancelled
+            ? 'bg-slate-100/80 border-slate-300 opacity-60'
+            : 'bg-white border-slate-200'
+        }`}
+      >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2 mb-4">
         <div>
           <span className="text-[10px] uppercase font-bold text-slate-400 block">Order Ref</span>
@@ -226,8 +233,16 @@ function UserOrdersContent() {
           </a>
         </div>
       )}
+
+      {order.status === 'cancelled' && (
+        <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500 font-medium flex items-center gap-1.5">
+          <XCircle size={14} className="text-slate-400 shrink-0" />
+          <span>This order has been cancelled.</span>
+        </div>
+      )}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

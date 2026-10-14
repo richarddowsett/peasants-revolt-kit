@@ -154,6 +154,15 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     ]);
     await expect(orderCard.locator('text=Order Fulfilled')).toBeVisible();
 
+    // Cancel the order and verify it is greyed out but still visible
+    page.once('dialog', (dialog) => dialog.accept());
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/status')),
+      orderCard.locator('button:has-text("Cancel Order")').click(),
+    ]);
+    const cancelledCard = page.locator('.opacity-60', { hasText: orderRef });
+    await expect(cancelledCard).toBeVisible();
+    await expect(cancelledCard.locator('text=Cancelled')).toBeVisible();
   });
 
   test('Guest Checkout Flow: Direct product browsing without login -> Add to basket -> Checkout as guest', async ({ page }) => {

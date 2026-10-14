@@ -147,6 +147,36 @@ describe('UserOrdersPage', () => {
       expect(screen.getByText('USER-ORD-2')).toBeInTheDocument();
       expect(screen.getByText('USER-ORD-3')).toBeInTheDocument();
     });
+
+    it('renders cancelled orders with greyed-out styling and cancellation message', async () => {
+      vi.mocked(fetchOrders).mockResolvedValueOnce([
+        {
+          id: 'USER-ORD-CANCELLED',
+          userEmail: 'runner@peasants.store',
+          userName: 'Runner One',
+          status: 'cancelled' as const,
+          items: [{ productId: 'p1', productName: 'Race Vest', price: 25, size: 'M', quantity: 1, subtotal: 25 }],
+          totalAmount: 25,
+          paymentLinkUrl: 'https://monzo.me/pay/USER-ORD-CANCELLED?amount=25',
+          monzoReference: 'USER-ORD-CANCELLED',
+          createdAt: '2026-10-10T10:00:00.000Z',
+          updatedAt: '2026-10-10T10:00:00.000Z',
+        },
+      ]);
+
+      render(<UserOrdersPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('USER-ORD-CANCELLED')).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByText('Cancelled').length).toBeGreaterThan(0);
+      expect(screen.getByText('This order has been cancelled.')).toBeInTheDocument();
+      expect(screen.queryByText(/Pay via Monzo/i)).not.toBeInTheDocument();
+
+      const card = screen.getByText('USER-ORD-CANCELLED').closest('.opacity-60');
+      expect(card).toBeInTheDocument();
+    });
   });
 
   describe('When user is NOT authenticated (Guest view)', () => {

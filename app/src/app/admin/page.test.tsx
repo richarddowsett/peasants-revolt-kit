@@ -201,6 +201,77 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
     expect(screen.getByText('ORD-SENT')).toBeInTheDocument();
     expect(screen.getByText('ORD-COMPLETED')).toBeInTheDocument();
   });
+
+  it('allows organiser to cancel an order after confirmation', async () => {
+    const { updateOrderStatus } = await import('@/lib/api');
+    window.confirm = vi.fn().mockReturnValue(true);
+
+    render(<AdminCMSPage />);
+
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
+    fireEvent.click(ordersTabButton);
+
+    const pendingFilterButton = screen.getByRole('button', { name: /Pending Payment 1/i });
+    fireEvent.click(pendingFilterButton);
+
+    const cancelBtn = screen.getByRole('button', { name: /Cancel Order/i });
+    fireEvent.click(cancelBtn);
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('ORD-PENDING'));
+    await waitFor(() => {
+      expect(updateOrderStatus).toHaveBeenCalledWith('ORD-PENDING', 'cancelled');
+    });
+  });
+
+  it('does not cancel order if confirmation is rejected', async () => {
+    const { updateOrderStatus } = await import('@/lib/api');
+    window.confirm = vi.fn().mockReturnValue(false);
+
+    render(<AdminCMSPage />);
+
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
+    fireEvent.click(ordersTabButton);
+
+    const pendingFilterButton = screen.getByRole('button', { name: /Pending Payment 1/i });
+    fireEvent.click(pendingFilterButton);
+
+    const cancelBtn = screen.getByRole('button', { name: /Cancel Order/i });
+    fireEvent.click(cancelBtn);
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('ORD-PENDING'));
+    expect(updateOrderStatus).not.toHaveBeenCalled();
+  });
+
+  it('displays cancelled order with greyed-out styling and without cancellation button', async () => {
+    const { fetchOrders } = await import('@/lib/api');
+    vi.mocked(fetchOrders).mockResolvedValueOnce([
+      {
+        id: 'ORD-CANCELLED',
+        userName: 'Evan Stone',
+        userEmail: 'evan@example.com',
+        status: 'cancelled',
+        items: [{ productId: 'p1', productName: 'Race Vest', price: 25, size: 'M', quantity: 1, subtotal: 25 }],
+        totalAmount: 25,
+        paymentLinkUrl: 'https://monzo.me/test',
+        monzoReference: 'ORD-CANCELLED',
+        createdAt: '2026-10-10T14:00:00.000Z',
+        updatedAt: '2026-10-10T14:00:00.000Z',
+      },
+    ]);
+
+    render(<AdminCMSPage />);
+
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(1\)/i });
+    fireEvent.click(ordersTabButton);
+
+    expect(screen.getByText('ORD-CANCELLED')).toBeInTheDocument();
+    expect(screen.getByText('Order cancelled')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cancel Order/i })).not.toBeInTheDocument();
+
+    // Verify greyed out card styling
+    const orderCard = screen.getByText('ORD-CANCELLED').closest('.opacity-60');
+    expect(orderCard).toBeInTheDocument();
+  });
 });
 
 describe('AdminCMSPage - Product Sizing Direct Input (No CMS Defaults or Presets)', () => {

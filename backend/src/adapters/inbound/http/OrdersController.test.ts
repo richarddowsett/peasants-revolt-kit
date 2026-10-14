@@ -190,6 +190,20 @@ describe('OrdersController', () => {
       expect(res.json).toHaveBeenCalledWith({ ...mockOrder, status: 'order_sent' });
     });
 
+    it('should update order status to cancelled and return order JSON', async () => {
+      req.params = { id: 'ord-1' };
+      req.body = { status: 'cancelled' };
+      vi.mocked(updateOrderStatusUseCase.execute).mockResolvedValueOnce({
+        ...mockOrder,
+        status: 'cancelled',
+      });
+
+      await controller.updateStatus(req as Request, res as Response);
+
+      expect(updateOrderStatusUseCase.execute).toHaveBeenCalledWith('ord-1', 'cancelled');
+      expect(res.json).toHaveBeenCalledWith({ ...mockOrder, status: 'cancelled' });
+    });
+
     it('should respond with status 400 when updateOrderStatusUseCase throws an error', async () => {
       req.params = { id: 'ord-1' };
       req.body = { status: 'invalid_status' };
