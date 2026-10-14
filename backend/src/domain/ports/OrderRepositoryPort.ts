@@ -5,5 +5,5 @@ export interface OrderRepositoryPort {
   getOrderById(id: string): Promise<Order | null>;
   getOrdersByUserEmail(email: string): Promise<Order[]>;
   getAllOrders(): Promise<Order[]>;
-  updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order>;
+  updateOrderStatus(orderId: string, status: OrderStatus, batchRef?: string): Promise<Order>;
 }

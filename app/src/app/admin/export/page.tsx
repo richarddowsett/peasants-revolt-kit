@@ -39,6 +39,7 @@ export default function ManufacturerExportPage() {
   const [contactName, setContactName] = useState<string>('Kit Coordinator');
   const [adminEmail, setAdminEmail] = useState<string>('');
   const [shippingAddress, setShippingAddress] = useState<string>('');
+  const [batchRef, setBatchRef] = useState<string>('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -116,8 +117,11 @@ export default function ManufacturerExportPage() {
 
     if (pendingSentOrderIds.length === 0) return;
 
+    const trimmedBatchRef = batchRef.trim();
     const confirmed = window.confirm(
-      `Mark ${pendingSentOrderIds.length} order(s) as "Order Sent"?\nThis updates customer orders in the system.`
+      trimmedBatchRef
+        ? `Mark ${pendingSentOrderIds.length} order(s) as "Order Sent" with batch "${trimmedBatchRef}"?\nThis updates customer orders in the system.`
+        : `Mark ${pendingSentOrderIds.length} order(s) as "Order Sent"?\nThis updates customer orders in the system.`
     );
     if (!confirmed) return;
 
@@ -125,21 +129,31 @@ export default function ManufacturerExportPage() {
     setStatusMessage(null);
     try {
       await Promise.all(
-        pendingSentOrderIds.map((id) => updateOrderStatus(id, 'order_sent'))
+        pendingSentOrderIds.map((id) =>
+          trimmedBatchRef
+            ? updateOrderStatus(id, 'order_sent', trimmedBatchRef)
+            : updateOrderStatus(id, 'order_sent')
+        )
       );
 
       // Update local state
       setOrders((prev) =>
         prev.map((order) =>
           pendingSentOrderIds.includes(order.id)
-            ? { ...order, status: 'order_sent' as const }
+            ? {
+                ...order,
+                status: 'order_sent' as const,
+                ...(trimmedBatchRef ? { batchRef: trimmedBatchRef } : {}),
+              }
             : order
         )
       );
 
       setStatusMessage({
         type: 'success',
-        text: `Successfully marked ${pendingSentOrderIds.length} order(s) as "Order Sent"!`,
+        text: trimmedBatchRef
+          ? `Successfully marked ${pendingSentOrderIds.length} order(s) as "Order Sent" (Batch: ${trimmedBatchRef})!`
+          : `Successfully marked ${pendingSentOrderIds.length} order(s) as "Order Sent"!`,
       });
     } catch (err: any) {
       console.error('Failed to update orders to order_sent:', err);
@@ -286,7 +300,7 @@ export default function ManufacturerExportPage() {
       {/* Screen Options Subheader (hidden during printing) */}
       <div className="bg-white border-b border-slate-200 print:hidden">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer select-none font-semibold text-slate-700">
               <input
                 type="checkbox"
@@ -296,6 +310,21 @@ export default function ManufacturerExportPage() {
               />
               <span>Include previously &ldquo;Order Sent&rdquo; orders in this sheet</span>
             </label>
+
+            <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+              <label htmlFor="batch-ref-input" className="font-semibold text-slate-700 text-xs whitespace-nowrap">
+                Batch Ref:
+              </label>
+              <input
+                id="batch-ref-input"
+                type="text"
+                value={batchRef}
+                onChange={(e) => setBatchRef(e.target.value)}
+                placeholder="e.g. BATCH-2026-OCT (optional)"
+                aria-label="Batch Reference"
+                className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[rgb(155,165,130)] font-mono w-56"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-3 text-slate-500">
@@ -406,7 +435,7 @@ export default function ManufacturerExportPage() {
                   <div>
                     <span className="text-slate-500">Batch Ref: </span>
                     <span className="font-mono font-bold text-slate-800">
-                      PRRC-BATCH-{new Date().toISOString().slice(0, 10).replace(/-/g, '')}
+                      {batchRef.trim() || `PRRC-BATCH-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`}
                     </span>
                   </div>
                   <div>

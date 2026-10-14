@@ -120,7 +120,7 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     return FirestoreAdminOrderRepositoryAdapter.localMemoryStore;
   }
 
-  async updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
+  async updateOrderStatus(orderId: string, status: OrderStatus, batchRef?: string): Promise<Order> {
     const order = await this.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
@@ -129,6 +129,7 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     const updatedOrder: Order = {
       ...order,
       status,
+      ...(batchRef !== undefined && batchRef.trim() !== '' ? { batchRef: batchRef.trim() } : {}),
       updatedAt: new Date().toISOString(),
     };
 

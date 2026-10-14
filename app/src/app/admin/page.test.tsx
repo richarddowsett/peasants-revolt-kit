@@ -272,6 +272,33 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
     const orderCard = screen.getByText('ORD-CANCELLED').closest('.opacity-60');
     expect(orderCard).toBeInTheDocument();
   });
+
+  it('displays batchRef badge when order has batch reference', async () => {
+    const { fetchOrders } = await import('@/lib/api');
+    vi.mocked(fetchOrders).mockResolvedValueOnce([
+      {
+        id: 'ORD-WITH-BATCH',
+        userName: 'Sam Runner',
+        userEmail: 'sam@example.com',
+        status: 'order_sent',
+        batchRef: 'PRRC-BATCH-2026-OCT',
+        items: [{ productId: 'p1', productName: 'Race Vest', price: 25, size: 'M', quantity: 1, subtotal: 25 }],
+        totalAmount: 25,
+        paymentLinkUrl: 'https://monzo.me/test',
+        monzoReference: 'ORD-WITH-BATCH',
+        createdAt: '2026-10-10T14:00:00.000Z',
+        updatedAt: '2026-10-10T14:00:00.000Z',
+      },
+    ]);
+
+    render(<AdminCMSPage />);
+
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(1\)/i });
+    fireEvent.click(ordersTabButton);
+
+    expect(screen.getByText('ORD-WITH-BATCH')).toBeInTheDocument();
+    expect(screen.getByText('Batch: PRRC-BATCH-2026-OCT')).toBeInTheDocument();
+  });
 });
 
 describe('AdminCMSPage - Product Sizing Direct Input (No CMS Defaults or Presets)', () => {

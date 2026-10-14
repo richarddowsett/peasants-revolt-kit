@@ -19,6 +19,7 @@ export interface Order {
   status: OrderStatus;
   paymentLinkUrl: string;
   monzoReference: string;
+  batchRef?: string;
   createdAt: string;
   updatedAt: string;
 }

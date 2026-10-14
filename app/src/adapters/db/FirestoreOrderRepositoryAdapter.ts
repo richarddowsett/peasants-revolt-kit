@@ -100,7 +100,7 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
     return FirestoreOrderRepositoryAdapter.localMemoryStore;
   }
 
-  async updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
+  async updateOrderStatus(orderId: string, status: OrderStatus, batchRef?: string): Promise<Order> {
     const order = await this.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
@@ -109,6 +109,7 @@ export class FirestoreOrderRepositoryAdapter implements OrderRepositoryPort {
     const updatedOrder: Order = {
       ...order,
       status,
+      ...(batchRef !== undefined ? { batchRef } : {}),
       updatedAt: new Date().toISOString(),
     };
 

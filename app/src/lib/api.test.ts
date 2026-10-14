@@ -252,4 +252,52 @@ describe('Frontend API Client (lib/api)', () => {
     }));
     expect(result).toEqual(updatedFlag);
   });
+
+  it('updateOrderStatus sends PATCH to /api/orders/:id/status without batchRef', async () => {
+    const updatedOrder = { id: 'ORD-1', status: 'cancelled' };
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => updatedOrder,
+    });
+
+    const result = await updateOrderStatus('ORD-1', 'cancelled');
+    expect(global.fetch).toHaveBeenCalledWith('/api/orders/ORD-1/status', expect.objectContaining({
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' }),
+    }));
+    expect(result).toEqual(updatedOrder);
+  });
+
+  it('updateOrderStatus sends PATCH to /api/orders/:id/status with trimmed batchRef when provided', async () => {
+    const updatedOrder = { id: 'ORD-1', status: 'order_sent', batchRef: 'BATCH-2026-OCT' };
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => updatedOrder,
+    });
+
+    const result = await updateOrderStatus('ORD-1', 'order_sent', '  BATCH-2026-OCT  ');
+    expect(global.fetch).toHaveBeenCalledWith('/api/orders/ORD-1/status', expect.objectContaining({
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'order_sent', batchRef: 'BATCH-2026-OCT' }),
+    }));
+    expect(result).toEqual(updatedOrder);
+  });
+
+  it('updateOrderStatus omits batchRef when it is empty string or whitespace', async () => {
+    const updatedOrder = { id: 'ORD-1', status: 'order_sent' };
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => updatedOrder,
+    });
+
+    const result = await updateOrderStatus('ORD-1', 'order_sent', '   ');
+    expect(global.fetch).toHaveBeenCalledWith('/api/orders/ORD-1/status', expect.objectContaining({
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'order_sent' }),
+    }));
+    expect(result).toEqual(updatedOrder);
+  });
 });

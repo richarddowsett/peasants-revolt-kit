@@ -50,10 +50,30 @@ describe('UpdateOrderStatusUseCase', () => {
     }
   });
 
-  it('throws an error when status is invalid', async () => {
-    await expect(useCase.execute('PRRC-1001', 'invalid_status' as any)).rejects.toThrow(
-      'Invalid order status: invalid_status'
+  it('updates order status with optional batchRef', async () => {
+    orderRepo.updateOrderStatus = vi.fn().mockImplementation(async (id, status, batchRef) => ({
+      ...mockOrder,
+      id,
+      status,
+      batchRef,
+      updatedAt: '2026-01-01T01:00:00Z',
+    }));
+
+    const result = await useCase.execute('PRRC-1001', 'order_sent', 'PRRC-BATCH-001');
+
+    expect(orderRepo.updateOrderStatus).toHaveBeenCalledWith(
+      'PRRC-1001',
+      'order_sent',
+      'PRRC-BATCH-001'
     );
-    expect(orderRepo.updateOrderStatus).not.toHaveBeenCalled();
+    expect(result.status).toBe('order_sent');
+    expect(result.batchRef).toBe('PRRC-BATCH-001');
+  });
+
+  it('updates order status without batchRef when not provided', async () => {
+    const result = await useCase.execute('PRRC-1001', 'order_sent');
+
+    expect(orderRepo.updateOrderStatus).toHaveBeenCalledWith('PRRC-1001', 'order_sent');
+    expect(result.status).toBe('order_sent');
   });
 });

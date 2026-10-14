@@ -235,6 +235,41 @@ describe('ManufacturerExportPage', () => {
     });
   });
 
+  it('marks paid orders as Order Sent with batch reference when batchRef is provided', async () => {
+    sessionStorage.setItem('admin_authenticated', 'true');
+    render(<ManufacturerExportPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Running Vest')).toBeInTheDocument();
+    });
+
+    const emailInput = screen.getByPlaceholderText('e.g. admin@peasantsrc.co.uk');
+    fireEvent.change(emailInput, { target: { value: 'admin@peasantsrc.co.uk' } });
+
+    const addressInput = screen.getByPlaceholderText('Enter shipping address...');
+    fireEvent.change(addressInput, { target: { value: '123 Club Street, London' } });
+
+    const batchRefInput = screen.getByLabelText('Batch Reference');
+    fireEvent.change(batchRefInput, { target: { value: 'PRRC-SHIP-2026' } });
+
+    // Verify printable batch ref updates to user input
+    expect(screen.getByText('PRRC-SHIP-2026')).toBeInTheDocument();
+
+    const markSentButton = screen.getByRole('button', { name: /Mark 2 as Sent/i });
+    expect(markSentButton).not.toBeDisabled();
+    fireEvent.click(markSentButton);
+
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('PRRC-SHIP-2026')
+      );
+      expect(updateOrderStatus).toHaveBeenCalledWith('ORD-PAID-1', 'order_sent', 'PRRC-SHIP-2026');
+      expect(updateOrderStatus).toHaveBeenCalledWith('ORD-PAID-2', 'order_sent', 'PRRC-SHIP-2026');
+      expect(
+        screen.getByText(/Successfully marked 2 order\(s\) as "Order Sent" \(Batch: PRRC-SHIP-2026\)!/i)
+      ).toBeInTheDocument();
+    });
+  });
+
   it('includes previously sent orders when the toggle is checked', async () => {
     sessionStorage.setItem('admin_authenticated', 'true');
     render(<ManufacturerExportPage />);

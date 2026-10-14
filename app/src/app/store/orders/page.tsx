@@ -189,7 +189,14 @@ function UserOrdersContent() {
           <span className="text-[10px] uppercase font-bold text-slate-400 block">Order Ref</span>
           <span className="font-mono font-bold text-base text-slate-900">{order.id}</span>
         </div>
-        <div>{getStatusBadge(order.status)}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          {order.batchRef && (
+            <span className="font-mono text-xs text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+              Batch: {order.batchRef}
+            </span>
+          )}
+          {getStatusBadge(order.status)}
+        </div>
       </div>
 
       {/* Customer Info */}

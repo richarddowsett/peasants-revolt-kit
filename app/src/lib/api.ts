@@ -122,11 +122,15 @@ export async function lookupOrder(orderRef: string, email: string) {
 }
 
 
-export async function updateOrderStatus(orderId: string, status: string) {
+export async function updateOrderStatus(orderId: string, status: string, batchRef?: string) {
+  const payload: { status: string; batchRef?: string } = { status };
+  if (batchRef !== undefined && batchRef.trim() !== '') {
+    payload.batchRef = batchRef.trim();
+  }
   const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(payload),
   });
   return handleResponse(res, 'Failed to update order status');
 }

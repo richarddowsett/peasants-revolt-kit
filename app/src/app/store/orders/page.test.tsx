@@ -177,6 +177,32 @@ describe('UserOrdersPage', () => {
       const card = screen.getByText('USER-ORD-CANCELLED').closest('.opacity-60');
       expect(card).toBeInTheDocument();
     });
+
+    it('renders batch reference badge on order card when order has batchRef', async () => {
+      vi.mocked(fetchOrders).mockResolvedValueOnce([
+        {
+          id: 'USER-ORD-BATCH',
+          userEmail: 'runner@peasants.store',
+          userName: 'Runner One',
+          status: 'order_sent' as const,
+          batchRef: 'PRRC-OCT-2026',
+          items: [{ productId: 'p1', productName: 'Race Vest', price: 25, size: 'M', quantity: 1, subtotal: 25 }],
+          totalAmount: 25,
+          paymentLinkUrl: '',
+          monzoReference: 'USER-ORD-BATCH',
+          createdAt: '2026-10-10T10:00:00.000Z',
+          updatedAt: '2026-10-10T10:00:00.000Z',
+        },
+      ]);
+
+      render(<UserOrdersPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('USER-ORD-BATCH')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Batch: PRRC-OCT-2026')).toBeInTheDocument();
+    });
   });
 
   describe('When user is NOT authenticated (Guest view)', () => {

@@ -70,9 +70,13 @@ export class OrdersController {
 
   async updateStatus(req: Request, res: Response): Promise<void> {
     try {
-      const { status } = req.body;
-      console.log(`[Order API] Updating order ${req.params.id} status to '${status}'`);
-      const order = await this.updateOrderStatusUseCase.execute(req.params.id, status);
+      const { status, batchRef } = req.body;
+      console.log(
+        `[Order API] Updating order ${req.params.id} status to '${status}'${batchRef ? ` (batchRef: ${batchRef})` : ''}`
+      );
+      const order = batchRef !== undefined
+        ? await this.updateOrderStatusUseCase.execute(req.params.id, status, batchRef)
+        : await this.updateOrderStatusUseCase.execute(req.params.id, status);
       console.log(`[Order API] Order ${req.params.id} status successfully updated to '${status}'`);
       res.json(order);
     } catch (err: any) {
