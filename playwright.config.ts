@@ -41,10 +41,24 @@ export default defineConfig({
   ],
   webServer: isLiveEnvironment
     ? undefined
-    : {
-        command: 'npm run dev:emulator',
-        url: 'http://localhost:3000',
-        reuseExistingServer: !process.env.CI,
-        timeout: 120 * 1000,
-      },
+    : [
+        {
+          command: 'npm run emulator',
+          url: 'http://127.0.0.1:8085',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120 * 1000,
+        },
+        {
+          command: 'npm run backend:dev',
+          url: 'http://127.0.0.1:8080/api/products',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120 * 1000,
+        },
+        {
+          command: 'npm run frontend:dev',
+          url: 'http://localhost:3000',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120 * 1000,
+        },
+      ],
 });

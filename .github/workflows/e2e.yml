@@ -42,6 +42,13 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      - name: Setup Java (for Firebase Emulators)
+        if: github.event_name != 'workflow_dispatch' || inputs.target == 'local-emulator'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: Install Root Dependencies
         run: npm ci || npm install
 

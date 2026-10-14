@@ -657,10 +657,10 @@ export default function StoreCatalogPage() {
 
       {/* Cart Slide-Over Drawer */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end">
-          <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col justify-between p-6">
-            <div>
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end overflow-hidden max-w-[100vw] h-full max-h-[100dvh]">
+          <div className="bg-white w-full max-w-full sm:max-w-md h-full max-h-[100dvh] shadow-2xl flex flex-col justify-between p-6 overflow-hidden">
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4 shrink-0">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <ShoppingBag size={20} className="text-[rgb(82,94,62)]" /> Your Basket
                 </h3>
@@ -675,7 +675,7 @@ export default function StoreCatalogPage() {
               {cart.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-12">Your basket is empty.</p>
               ) : (
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                <div className="space-y-4 flex-1 overflow-y-auto pr-1">
                   {cart.map((item) => (
                     <div
                       key={`${item.productId}-${item.size}`}
@@ -721,7 +721,7 @@ export default function StoreCatalogPage() {
             </div>
 
             {cart.length > 0 && (
-              <div className="pt-4 border-t border-slate-200">
+              <div className="pt-4 border-t border-slate-200 shrink-0 mt-auto">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-sm text-slate-500 font-medium">Subtotal</span>
                   <span className="text-xl font-extrabold text-slate-900">£{cartTotal.toFixed(2)}</span>
