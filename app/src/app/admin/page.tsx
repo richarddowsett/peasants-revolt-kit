@@ -13,7 +13,7 @@ import {
 import { Product, SizeGuideRow, GenderFit } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles, Send } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles, Send, Printer } from 'lucide-react';
 import Link from 'next/link';
 
 const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
@@ -538,8 +538,20 @@ export default function AdminCMSPage() {
                 </p>
               </div>
 
-              {orders.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="/admin/export"
+                  className="bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow flex items-center gap-2 transition"
+                >
+                  <Printer size={15} />
+                  <span>Export for Manufacturer</span>
+                  <span className="bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                    {orderCounts['payment_successful']}
+                  </span>
+                </Link>
+
+                {orders.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
                   {ORDER_STATUS_FILTERS.map((filter) => {
                     const count = orderCounts[filter.id];
                     const isActive = orderStatusFilter === filter.id;
@@ -569,6 +581,7 @@ export default function AdminCMSPage() {
                   })}
                 </div>
               )}
+              </div>
             </div>
 
             {orders.length === 0 ? (
