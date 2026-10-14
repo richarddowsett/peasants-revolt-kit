@@ -333,4 +333,16 @@ describe('ManufacturerExportPage', () => {
     expect(screen.queryByText(/Manufacturer Production Acknowledgment/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Signature$/i)).not.toBeInTheDocument();
   });
+
+  it('does not display production and packaging notes box', async () => {
+    sessionStorage.setItem('admin_authenticated', 'true');
+    render(<ManufacturerExportPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Running Vest')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Production & Packaging Notes/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Add specific instructions for the manufacturer/i)).not.toBeInTheDocument();
+  });
 });
