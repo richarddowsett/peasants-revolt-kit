@@ -229,4 +229,57 @@ describe('ManufacturerExportPage', () => {
       expect(screen.getByRole('link', { name: /Go to Customer Orders/i })).toBeInTheDocument();
     });
   });
+
+  it('allows customizing the club admin email and renders it in print text', async () => {
+    sessionStorage.setItem('admin_authenticated', 'true');
+    render(<ManufacturerExportPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Running Vest')).toBeInTheDocument();
+    });
+
+    const emailInput = screen.getByPlaceholderText('e.g. admin@peasantsrc.co.uk');
+    expect(emailInput).toHaveValue('peasantsrunningclub@gmail.com');
+
+    fireEvent.change(emailInput, { target: { value: 'kit-officer@peasantsrc.org' } });
+    expect(emailInput).toHaveValue('kit-officer@peasantsrc.org');
+    expect(screen.getByText('kit-officer@peasantsrc.org')).toBeInTheDocument();
+  });
+
+  it('allows customizing the shipping address and renders it in print text', async () => {
+    sessionStorage.setItem('admin_authenticated', 'true');
+    render(<ManufacturerExportPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Running Vest')).toBeInTheDocument();
+    });
+
+    const addressInput = screen.getByPlaceholderText('Enter shipping address...');
+    expect(addressInput).toHaveValue(
+      'Peasants Revolt Running Club\nAttn: Kit Coordinator\nUnited Kingdom'
+    );
+
+    fireEvent.change(addressInput, {
+      target: { value: 'Peasants RC Depot\nUnit 4, Industrial Park\nLondon EC1A 1BB' },
+    });
+    expect(addressInput).toHaveValue(
+      'Peasants RC Depot\nUnit 4, Industrial Park\nLondon EC1A 1BB'
+    );
+    expect(
+      screen.getAllByText(/Unit 4, Industrial Park/).length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it('does not display any signature boxes or lines at the bottom of the sheet', async () => {
+    sessionStorage.setItem('admin_authenticated', 'true');
+    render(<ManufacturerExportPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Running Vest')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Authorized Club Representative/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Manufacturer Production Acknowledgment/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Signature$/i)).not.toBeInTheDocument();
+  });
 });

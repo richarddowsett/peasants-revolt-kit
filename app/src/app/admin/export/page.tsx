@@ -39,7 +39,11 @@ export default function ManufacturerExportPage() {
   const [notes, setNotes] = useState<string>(
     'Standard Peasants Revolt Running Club kit specifications. Items to be individually bagged and labelled with size.'
   );
-  const [contactName, setContactName] = useState<string>('Kit Coordinator, Peasants Revolt Running Club');
+  const [contactName, setContactName] = useState<string>('Kit Coordinator');
+  const [adminEmail, setAdminEmail] = useState<string>('peasantsrunningclub@gmail.com');
+  const [shippingAddress, setShippingAddress] = useState<string>(
+    'Peasants Revolt Running Club\nAttn: Kit Coordinator\nUnited Kingdom'
+  );
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -402,42 +406,91 @@ export default function ManufacturerExportPage() {
               </div>
             </div>
 
-            {/* Club Contact & Production Notes Box */}
-            <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 print:bg-white print:border-slate-300">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-1">
-                  Club Contact &amp; Dispatch Destination
-                </span>
-                {/* On screen: editable input. In print: clean text */}
-                <input
-                  type="text"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  className="w-full text-xs font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-[rgb(155,165,130)] focus:outline-none print:hidden"
-                  placeholder="Club Contact / Coordinator"
-                />
-                <p className="text-xs font-bold text-slate-900 hidden print:block">
-                  {contactName}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Peasants Revolt Running Club &bull; peasantsrunningclub@gmail.com
+            {/* Club Contact, Shipping Address & Production Notes */}
+            <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Box 1: Club Contact & Email */}
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 print:bg-white print:border-slate-300 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-2">
+                    Club Contact &amp; Email
+                  </span>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-[10px] text-slate-400 font-semibold block print:hidden">Contact Person / Role</label>
+                      <input
+                        type="text"
+                        value={contactName}
+                        onChange={(e) => setContactName(e.target.value)}
+                        className="w-full text-xs font-bold text-slate-900 bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-[rgb(155,165,130)] focus:outline-none py-0.5 print:hidden"
+                        placeholder="e.g. Kit Coordinator"
+                      />
+                      <p className="text-xs font-bold text-slate-900 hidden print:block">
+                        {contactName}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 font-semibold block print:hidden">Club Admin Email</label>
+                      <input
+                        type="email"
+                        value={adminEmail}
+                        onChange={(e) => setAdminEmail(e.target.value)}
+                        className="w-full text-xs font-medium text-slate-700 bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-[rgb(155,165,130)] focus:outline-none py-0.5 print:hidden"
+                        placeholder="e.g. admin@peasantsrc.co.uk"
+                      />
+                      <p className="text-xs text-slate-700 hidden print:block">
+                        {adminEmail}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                  Peasants Revolt Running Club
                 </p>
               </div>
 
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 print:bg-white print:border-slate-300">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-1">
-                  Production &amp; Packaging Instructions
-                </span>
-                {/* On screen: editable textarea. In print: clean text block */}
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="w-full text-xs text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-[rgb(155,165,130)] focus:outline-none resize-none print:hidden"
-                  placeholder="Add specific instructions for the manufacturer..."
-                />
-                <p className="text-xs text-slate-700 hidden print:block whitespace-pre-wrap">
-                  {notes}
+              {/* Box 2: Shipping & Delivery Address */}
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 print:bg-white print:border-slate-300 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-2">
+                    Shipping &amp; Delivery Address
+                  </span>
+                  <label className="text-[10px] text-slate-400 font-semibold block print:hidden">Delivery / Dispatch Address</label>
+                  <textarea
+                    value={shippingAddress}
+                    onChange={(e) => setShippingAddress(e.target.value)}
+                    rows={3}
+                    className="w-full text-xs text-slate-900 font-medium bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-[rgb(155,165,130)] focus:outline-none resize-none py-0.5 print:hidden"
+                    placeholder="Enter shipping address..."
+                  />
+                  <p className="text-xs text-slate-900 font-medium hidden print:block whitespace-pre-wrap leading-relaxed">
+                    {shippingAddress || 'No shipping address provided.'}
+                  </p>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                  Direct Manufacturer Dispatch
+                </p>
+              </div>
+
+              {/* Box 3: Production & Packaging Instructions */}
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 print:bg-white print:border-slate-300 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-2">
+                    Production &amp; Packaging Notes
+                  </span>
+                  <label className="text-[10px] text-slate-400 font-semibold block print:hidden">Instructions for Manufacturer</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                    className="w-full text-xs text-slate-700 bg-transparent border-b border-slate-200 hover:border-slate-300 focus:border-[rgb(155,165,130)] focus:outline-none resize-none py-0.5 print:hidden"
+                    placeholder="Add specific instructions for the manufacturer..."
+                  />
+                  <p className="text-xs text-slate-700 hidden print:block whitespace-pre-wrap leading-relaxed">
+                    {notes || 'Standard manufacturing specifications.'}
+                  </p>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                  Quality &amp; Packaging Spec
                 </p>
               </div>
             </div>
@@ -567,31 +620,7 @@ export default function ManufacturerExportPage() {
                 </div>
               </div>
 
-              {/* Manufacturer Sign-off / Verification Line */}
-              <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs text-slate-500">
-                <div>
-                  <span className="block font-bold text-slate-700 mb-1">
-                    Authorized Club Representative
-                  </span>
-                  <p className="border-b border-slate-400 pt-6"></p>
-                  <div className="flex justify-between mt-1 text-[10px]">
-                    <span>Signature</span>
-                    <span>Date</span>
-                  </div>
-                </div>
-                <div>
-                  <span className="block font-bold text-slate-700 mb-1">
-                    Manufacturer Production Acknowledgment
-                  </span>
-                  <p className="border-b border-slate-400 pt-6"></p>
-                  <div className="flex justify-between mt-1 text-[10px]">
-                    <span>Signature</span>
-                    <span>Target Dispatch Date</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 text-center text-[10px] text-slate-400 print:block">
+              <div className="mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 print:block">
                 Peasants Revolt Running Club &bull; Official Manufacturer Production Sheet &bull; Generated on {todayFormatted}
               </div>
             </div>
