@@ -202,11 +202,9 @@ test.describe('Manufacturer Order Export E2E Tests', () => {
     await expect(addressError).not.toBeVisible();
     await expect(printBtn).toBeEnabled();
 
-    // 3. Customizable Production Notes
-    const notesInput = page.locator('textarea[placeholder="Add specific instructions for the manufacturer..."]');
-    await expect(notesInput).toBeVisible();
-    await notesInput.fill('Custom sublimated team logo on front; individually compostable polybags.');
-    await expect(notesInput).toHaveValue('Custom sublimated team logo on front; individually compostable polybags.');
+    // 3. Verify Production & Packaging Notes are NOT Present
+    await expect(page.locator('text=Production & Packaging Notes')).not.toBeVisible();
+    await expect(page.locator('textarea[placeholder="Add specific instructions for the manufacturer..."]')).not.toBeVisible();
 
     // 4. Verify Signature Boxes are NOT Present
     await expect(page.locator('text=Authorized Club Representative')).not.toBeVisible();
