@@ -5,7 +5,7 @@ import {
 import { ChristmasPartySettingsRepositoryOutboundPort } from '../ports/outbound/ChristmasPartySettingsRepositoryOutboundPort';
 import {
   ChristmasPartySettings,
-  DEFAULT_CHRISTMAS_FROM_EMAIL,
+  getDefaultChristmasFromEmail,
 } from '../entities/ChristmasPartySettings';
 
 export class UpdateChristmasPartySettingsUseCase
@@ -34,7 +34,7 @@ export class UpdateChristmasPartySettingsUseCase
         fromEmail:
           input.fromEmail !== undefined && input.fromEmail.trim()
             ? input.fromEmail.trim()
-            : existing.fromEmail || DEFAULT_CHRISTMAS_FROM_EMAIL,
+            : existing.fromEmail || getDefaultChristmasFromEmail(),
       });
     }
 
@@ -72,7 +72,7 @@ export class UpdateChristmasPartySettingsUseCase
     const fromEmail =
       input.fromEmail !== undefined && input.fromEmail.trim()
         ? input.fromEmail.trim()
-        : existing.fromEmail || DEFAULT_CHRISTMAS_FROM_EMAIL;
+        : existing.fromEmail || getDefaultChristmasFromEmail();
 
     return this.settingsRepo.saveSettings({
       eventYear,

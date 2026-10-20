@@ -199,6 +199,11 @@ resource "google_cloud_run_v2_service" "api" {
         value = coalesce(var.storage_bucket, google_storage_bucket.product_images.name)
       }
 
+      env {
+        name  = "CHRISTMAS_EMAIL_FROM"
+        value = var.environment == "qa" ? "Peasants Running Club <chrismaspartyqa@peasants-running-kit.store>" : "Peasants Running Club <christmas@peasants-running-kit.store>"
+      }
+
       ports {
         container_port = 8080
       }

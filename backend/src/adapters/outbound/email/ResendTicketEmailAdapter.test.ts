@@ -91,4 +91,40 @@ describe('ResendTicketEmailAdapter', () => {
 
     delete process.env.FORCE_GCP_SECRET_MANAGER;
   });
+
+  it('uses chrismaspartyqa@peasants-running-kit.store as the sender when running in QA', async () => {
+    process.env.ENVIRONMENT = 'qa';
+    process.env.FORCE_GCP_SECRET_MANAGER = 'true';
+
+    const mockAccessSecretVersion = vi.fn().mockResolvedValue([
+      {
+        payload: {
+          data: Buffer.from('re_qa_key_456'),
+        },
+      },
+    ]);
+
+    const mockSend = vi.fn().mockResolvedValue({
+      data: { id: 'resend_qa_email_1' },
+      error: null,
+    });
+
+    const adapter = new ResendTicketEmailAdapter(
+      { accessSecretVersion: mockAccessSecretVersion } as any,
+      () => ({
+        emails: { send: mockSend },
+      })
+    );
+
+    const result = await adapter.sendChristmasPartyTicketEmail(sampleOrder, sampleSettings);
+
+    expect(result.sent).toBe(true);
+    const sentPayload = mockSend.mock.calls[0][0];
+    expect(sentPayload.from).toBe(
+      'Peasants Running Club <chrismaspartyqa@peasants-running-kit.store>'
+    );
+
+    delete process.env.ENVIRONMENT;
+    delete process.env.FORCE_GCP_SECRET_MANAGER;
+  });
 });

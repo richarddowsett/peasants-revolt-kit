@@ -8,6 +8,8 @@ import { Order } from '../../../domain/entities/Order';
 import {
   ChristmasPartySettings,
   DEFAULT_CHRISTMAS_FROM_EMAIL,
+  getDefaultChristmasFromEmail,
+  isQaEnvironment,
 } from '../../../domain/entities/ChristmasPartySettings';
 
 export class ResendTicketEmailAdapter implements EmailOutboundPort {
@@ -235,10 +237,12 @@ export class ResendTicketEmailAdapter implements EmailOutboundPort {
     const logoBuffer = this.loadClubLogoBuffer();
     const html = this.buildTicketEmailHtml(order, settings, qrDataUrl, Boolean(logoBuffer));
     const year = order.eventYear || settings.eventYear || new Date().getFullYear();
+    const defaultFrom = getDefaultChristmasFromEmail();
+    const configuredFrom = settings.fromEmail?.trim();
     const fromAddress =
-      settings.fromEmail?.trim() ||
-      process.env.CHRISTMAS_EMAIL_FROM ||
-      DEFAULT_CHRISTMAS_FROM_EMAIL;
+      isQaEnvironment() && (!configuredFrom || configuredFrom === DEFAULT_CHRISTMAS_FROM_EMAIL)
+        ? defaultFrom
+        : configuredFrom || defaultFrom;
     const subject = `Your Peasants Running Club Christmas Party ${year} Ticket (${order.id})`;
 
     const apiKey = await this.resolveResendApiKey();

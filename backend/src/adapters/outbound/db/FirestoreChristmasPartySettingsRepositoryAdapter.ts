@@ -2,6 +2,8 @@ import { ChristmasPartySettingsRepositoryOutboundPort } from '../../../domain/po
 import {
   ChristmasPartySettings,
   DEFAULT_CHRISTMAS_FROM_EMAIL,
+  getDefaultChristmasFromEmail,
+  isQaEnvironment,
 } from '../../../domain/entities/ChristmasPartySettings';
 import { adminDb } from './FirebaseAdminConfig';
 
@@ -20,7 +22,7 @@ export class FirestoreChristmasPartySettingsRepositoryAdapter
       ticketPrice: 25,
       partyDateTime: '',
       partyLocation: '',
-      fromEmail: DEFAULT_CHRISTMAS_FROM_EMAIL,
+      fromEmail: getDefaultChristmasFromEmail(),
       updatedAt: new Date().toISOString(),
     };
   }
@@ -34,6 +36,9 @@ export class FirestoreChristmasPartySettingsRepositoryAdapter
           ...this.getDefaultSettings(),
           ...data,
         };
+        if (isQaEnvironment() && settings.fromEmail === DEFAULT_CHRISTMAS_FROM_EMAIL) {
+          settings.fromEmail = getDefaultChristmasFromEmail();
+        }
         FirestoreChristmasPartySettingsRepositoryAdapter.localMemorySettings = settings;
         return settings;
       }
