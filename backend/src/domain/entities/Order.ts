@@ -1,5 +1,7 @@
 export type OrderStatus = 'pending_payment' | 'payment_successful' | 'order_sent' | 'completed' | 'cancelled';
 
+export type OrderType = 'kit' | `christmas_${number}_ticket`;
+
 export interface OrderItem {
   productId: string;
   productName: string;
@@ -20,6 +22,13 @@ export interface Order {
   paymentLinkUrl: string;
   monzoReference: string;
   batchRef?: string;
+  orderType?: OrderType;
+  ticketUuid?: string;
+  eventYear?: number;
+  ticketEmailSentAt?: string;
+  checkedIn?: boolean;
+  checkedInAt?: string;
   createdAt: string;
   updatedAt: string;
 }
+

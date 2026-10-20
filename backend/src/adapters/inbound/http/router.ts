@@ -6,6 +6,7 @@ import {
   adminController,
   uploadController,
   featureFlagsController,
+  christmasPartyController,
 } from '../../../config/container';
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -39,4 +40,25 @@ apiRouter.post('/upload/signed-url', (req, res) => uploadController.getSignedUpl
 apiRouter.post('/orders', (req, res) => ordersController.createOrder(req, res));
 apiRouter.get('/orders', (req, res) => ordersController.getOrders(req, res));
 apiRouter.patch('/orders/:id/status', (req, res) => ordersController.updateStatus(req, res));
+
+// Christmas Party Tickets & Door QR Verification
+apiRouter.get('/christmas-party/status', (req, res) =>
+  christmasPartyController.getStatus(req, res)
+);
+apiRouter.put('/christmas-party/settings', (req, res) =>
+  christmasPartyController.updateSettings(req, res)
+);
+apiRouter.post('/christmas-party/settings', (req, res) =>
+  christmasPartyController.updateSettings(req, res)
+);
+apiRouter.post('/christmas-party/tickets', (req, res) =>
+  christmasPartyController.purchaseTicket(req, res)
+);
+apiRouter.post('/christmas-party/tickets/:id/resend-email', (req, res) =>
+  christmasPartyController.resendTicketEmail(req, res)
+);
+apiRouter.post('/christmas-party/verify-qr', (req, res) =>
+  christmasPartyController.verifyQrAndCheckIn(req, res)
+);
+
 

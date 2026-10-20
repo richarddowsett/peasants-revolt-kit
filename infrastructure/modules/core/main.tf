@@ -139,6 +139,33 @@ resource "google_storage_bucket_iam_member" "compute_sa_storage_admin" {
   member = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
+# Enable Google Cloud Secret Manager API
+resource "google_project_service" "secretmanager_api" {
+  project            = var.project_id
+  service            = "secretmanager.googleapis.com"
+  disable_on_destroy = false
+}
+
+# Secret Manager Secret for Resend API Key (used for Christmas party ticket emails)
+resource "google_secret_manager_secret" "resend_api_key" {
+  project   = var.project_id
+  secret_id = "resend-api-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager_api]
+}
+
+# Grant Cloud Run Compute Service Account access to read the Resend API Key secret
+resource "google_secret_manager_secret_iam_member" "compute_sa_resend_secret_accessor" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.resend_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
 # Cloud Run Service for Hexagonal Backend API
 resource "google_cloud_run_v2_service" "api" {
   project  = var.project_id

@@ -121,9 +121,10 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     await page.goto('/admin');
 
     // If login prompt appears (session empty across new tab), log in again
-    const pwdInput = page.locator('input[type="password"]');
-    await pwdInput.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
-    if (await pwdInput.isVisible()) {
+    const cmsHeader = page.locator('text=Organiser CMS');
+    await cmsHeader.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    if (!(await cmsHeader.isVisible())) {
+      const pwdInput = page.locator('input[type="password"]');
       await pwdInput.fill(adminPassword);
       await Promise.all([
         page.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
@@ -162,7 +163,7 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     ]);
     const cancelledCard = page.locator('.opacity-60', { hasText: orderRef });
     await expect(cancelledCard).toBeVisible();
-    await expect(cancelledCard.locator('text=Cancelled')).toBeVisible();
+    await expect(cancelledCard.locator('text=Cancelled').first()).toBeVisible();
   });
 
   test('Guest Checkout Flow: Direct product browsing without login -> Add to basket -> Checkout as guest', async ({ page }) => {

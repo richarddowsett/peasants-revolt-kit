@@ -166,3 +166,50 @@ export async function updateFeatureFlag(id: string, enabled: boolean) {
   return handleResponse(res, `Failed to update feature flag ${id}`);
 }
 
+export async function fetchChristmasPartyStatus() {
+  const res = await fetch(`${API_BASE}/christmas-party/status`, { cache: 'no-store' });
+  return handleResponse(res, 'Failed to fetch Christmas party status');
+}
+
+export async function updateChristmasPartySettings(settings: any) {
+  const res = await fetch(`${API_BASE}/christmas-party/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+  return handleResponse(res, 'Failed to update Christmas party settings');
+}
+
+export async function purchaseChristmasPartyTicket(payload: {
+  userName: string;
+  userEmail: string;
+  userId?: string;
+}) {
+  const res = await fetch(`${API_BASE}/christmas-party/tickets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res, 'Failed to purchase Christmas party ticket');
+}
+
+export async function verifyChristmasTicketQr(ticketUuid: string) {
+  const res = await fetch(`${API_BASE}/christmas-party/verify-qr`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ticketUuid }),
+  });
+  return handleResponse(res, 'Failed to verify ticket QR code');
+}
+
+export async function resendChristmasTicketEmail(orderId: string) {
+  const res = await fetch(
+    `${API_BASE}/christmas-party/tickets/${encodeURIComponent(orderId)}/resend-email`,
+    {
+      method: 'POST',
+    }
+  );
+  return handleResponse(res, 'Failed to resend ticket email');
+}
+
+

@@ -76,4 +76,49 @@ describe('UpdateOrderStatusUseCase', () => {
     expect(orderRepo.updateOrderStatus).toHaveBeenCalledWith('PRRC-1001', 'order_sent');
     expect(result.status).toBe('order_sent');
   });
+
+  it('sends a Christmas party QR ticket email when a christmas_yyyy_ticket order is marked payment_successful', async () => {
+    const christmasOrder: Order = {
+      ...mockOrder,
+      id: 'PRRC-XMAS-2026-0001',
+      monzoReference: 'PRRC-XMAS-2026-0001',
+      orderType: 'christmas_2026_ticket',
+      ticketUuid: '550e8400-e29b-41d4-a716-446655440000',
+      eventYear: 2026,
+    };
+
+    orderRepo.updateOrderStatus = vi.fn().mockResolvedValue({
+      ...christmasOrder,
+      status: 'payment_successful',
+    });
+    orderRepo.updateOrderFields = vi.fn().mockImplementation(async (id, fields) => ({
+      ...christmasOrder,
+      status: 'payment_successful',
+      ...fields,
+    }));
+
+    const emailPort = {
+      sendChristmasPartyTicketEmail: vi.fn().mockResolvedValue({ sent: true, messageId: 'msg_1' }),
+    };
+    const settingsRepo = {
+      getSettings: vi.fn().mockResolvedValue({
+        eventYear: 2026,
+        saleStartAt: '2026-11-01T09:00:00Z',
+        maxTickets: 50,
+        ticketPrice: 25,
+        partyDateTime: '2026-12-18T19:30:00Z',
+        partyLocation: 'The Brentwood Tap',
+        fromEmail: 'Peasants Running Club <christmas@peasants-running-kit.store>',
+        updatedAt: '2026-10-01T00:00:00Z',
+      }),
+      saveSettings: vi.fn(),
+    };
+
+    const christmasUseCase = new UpdateOrderStatusUseCase(orderRepo, emailPort, settingsRepo);
+    const updated = await christmasUseCase.execute('PRRC-XMAS-2026-0001', 'payment_successful');
+
+    expect(emailPort.sendChristmasPartyTicketEmail).toHaveBeenCalledTimes(1);
+    expect(updated.ticketEmailSentAt).toBeDefined();
+  });
 });
+

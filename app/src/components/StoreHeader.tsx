@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, LogOut, PackageCheck, Lock, LogIn } from 'lucide-react';
+import { ShoppingBag, LogOut, PackageCheck, Lock, LogIn, Ticket } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut, onAuthStateChanged, User } from 'firebase/auth';
 
@@ -47,6 +47,15 @@ export default function StoreHeader({ cartItemCount, onOpenCart, onOpenLogin }: 
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Christmas Party Link */}
+          <Link
+            href="/christmas-party"
+            className="flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-[rgb(82,94,62)] bg-slate-100 hover:bg-[rgb(242,245,236)] p-2 sm:px-3 sm:py-2 rounded-xl transition"
+          >
+            <Ticket size={16} />
+            <span className="hidden sm:inline">Christmas Party</span>
+          </Link>
+
           {/* My Orders Link */}
           <Link
             href="/store/orders"

@@ -249,8 +249,8 @@ export default function ManufacturerExportPage() {
               <ArrowLeft size={16} />
               <span>Back to Admin</span>
             </Link>
-            <div className="hidden sm:block border-l border-slate-700 pl-3">
-              <span className="font-extrabold text-sm block leading-tight">Manufacturer Order Export</span>
+            <div className="block border-l border-slate-700 pl-3">
+              <span className="font-extrabold text-xs sm:text-sm block leading-tight">Manufacturer Order Export</span>
               <span className="text-[10px] uppercase font-bold text-[rgb(155,165,130)] block">
                 Peasants Revolt Running Club
               </span>

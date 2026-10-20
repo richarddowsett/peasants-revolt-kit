@@ -80,6 +80,30 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     );
   }
 
+  async getOrderByTicketUuid(ticketUuid: string): Promise<Order | null> {
+    const trimmed = (ticketUuid || '').trim();
+    if (!trimmed) return null;
+
+    try {
+      const snapshot = await adminDb
+        .collection(this.collectionName)
+        .where('ticketUuid', '==', trimmed)
+        .limit(1)
+        .get();
+      if (!snapshot.empty) {
+        return snapshot.docs[0].data() as Order;
+      }
+    } catch (err) {
+      console.warn('Firestore admin order getOrderByTicketUuid notice:', err);
+    }
+
+    return (
+      FirestoreAdminOrderRepositoryAdapter.localMemoryStore.find(
+        (o) => o.ticketUuid && o.ticketUuid.toLowerCase() === trimmed.toLowerCase()
+      ) || null
+    );
+  }
+
   async getOrdersByUserEmail(email: string): Promise<Order[]> {
     const normalized = email.trim().toLowerCase();
     try {
@@ -121,6 +145,13 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
   }
 
   async updateOrderStatus(orderId: string, status: OrderStatus, batchRef?: string): Promise<Order> {
+    return this.updateOrderFields(orderId, {
+      status,
+      ...(batchRef !== undefined && batchRef.trim() !== '' ? { batchRef: batchRef.trim() } : {}),
+    });
+  }
+
+  async updateOrderFields(orderId: string, fields: Partial<Order>): Promise<Order> {
     const order = await this.getOrderById(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
@@ -128,19 +159,19 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
 
     const updatedOrder: Order = {
       ...order,
-      status,
-      ...(batchRef !== undefined && batchRef.trim() !== '' ? { batchRef: batchRef.trim() } : {}),
+      ...fields,
       updatedAt: new Date().toISOString(),
     };
 
     try {
-      await adminDb.collection(this.collectionName).doc(orderId).set(updatedOrder, { merge: true });
-      console.log(`[Firestore DB] Order ${orderId} status successfully updated to '${status}'`);
+      const docData: Record<string, any> = { ...updatedOrder };
+      if (docData.userId === undefined) {
+        delete docData.userId;
+      }
+      await adminDb.collection(this.collectionName).doc(orderId).set(docData, { merge: true });
+      console.log(`[Firestore DB] Order ${orderId} updated successfully`);
     } catch (err) {
-      console.error(
-        `[Firestore DB ERROR] Failed to update order ${orderId} status to '${status}':`,
-        err
-      );
+      console.error(`[Firestore DB ERROR] Failed to update order ${orderId}:`, err);
       throw new Error(`Failed to update order status in database: ${(err as Error).message}`);
     }
 
@@ -154,3 +185,4 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     return updatedOrder;
   }
 }
+

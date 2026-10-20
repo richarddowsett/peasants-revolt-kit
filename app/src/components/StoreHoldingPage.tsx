@@ -28,6 +28,12 @@ export default function StoreHoldingPage() {
 
           <div className="flex items-center gap-3 text-xs">
             <Link
+              href="/christmas-party"
+              className="text-slate-300 hover:text-white transition flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-xl hover:bg-slate-800"
+            >
+              <span>Christmas Party</span>
+            </Link>
+            <Link
               href="/store/orders"
               className="text-slate-300 hover:text-white transition flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-xl hover:bg-slate-800"
             >

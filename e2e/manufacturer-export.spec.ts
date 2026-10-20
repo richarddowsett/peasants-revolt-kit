@@ -129,13 +129,21 @@ test.describe('Manufacturer Order Export E2E Tests', () => {
     // STEP 3: Admin Marks Order as Payment Received
     // ----------------------------------------------------
     await page.goto('/admin');
-    const adminPwd = page.locator('input[type="password"]');
-    if (await adminPwd.isVisible()) {
-      await adminPwd.fill(adminPassword);
-      await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
-        page.click('button[type="submit"]'),
-      ]);
+    // Since Step 1 authenticated in this browser context, wait for sessionStorage auth effect or login if needed
+    const cmsHeader = page.locator('header', { hasText: 'Organiser CMS' });
+    const isAlreadyLoggedIn = await cmsHeader
+      .waitFor({ state: 'visible', timeout: 3000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!isAlreadyLoggedIn) {
+      const adminPwd = page.locator('input[type="password"]');
+      if (await adminPwd.isVisible()) {
+        await adminPwd.fill(adminPassword);
+        await Promise.all([
+          page.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
+          page.click('button[type="submit"]'),
+        ]);
+      }
     }
 
     await page.click('button:has-text("Customer Orders")');

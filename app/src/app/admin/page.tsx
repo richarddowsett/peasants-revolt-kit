@@ -17,6 +17,7 @@ import { Order, OrderStatus } from '@/domain/models/Order';
 import { formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
 import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles, Send, Store, AlertTriangle, Printer, XCircle } from 'lucide-react';
 import Link from 'next/link';
+import ChristmasPartyAdminPanel from '@/components/ChristmasPartyAdminPanel';
 
 const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
   { id: 'all', label: 'All' },
@@ -33,7 +34,7 @@ export default function AdminCMSPage() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'christmas_party'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | OrderStatus>('all');
@@ -79,8 +80,10 @@ export default function AdminCMSPage() {
     }
   };
 
-  const loadAdminData = async () => {
-    setLoading(true);
+  const loadAdminData = async (showSpinner: boolean = false) => {
+    if (showSpinner) {
+      setLoading(true);
+    }
     try {
       const [allProds, allOrds, storeFlag] = await Promise.all([
         fetchProducts(true), // fetch all products including drafts from backend API
@@ -452,7 +455,7 @@ export default function AdminCMSPage() {
             </div>
 
             <button
-              onClick={loadAdminData}
+              onClick={() => loadAdminData(false)}
               title="Refresh Data"
               className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
             >
@@ -516,6 +519,16 @@ export default function AdminCMSPage() {
             }`}
           >
             Customer Orders ({orders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('christmas_party')}
+            className={`py-4 text-xs font-extrabold border-b-2 transition ${
+              activeTab === 'christmas_party'
+                ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            Christmas Party &amp; Door Scanner
           </button>
         </div>
       </div>
@@ -616,7 +629,7 @@ export default function AdminCMSPage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'orders' ? (
           /* Orders Tab */
           <div>
             <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -800,6 +813,14 @@ export default function AdminCMSPage() {
               </div>
             )}
           </div>
+        ) : (
+          <ChristmasPartyAdminPanel
+            orders={orders}
+            updatingOrderId={null}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onCancelOrder={handleCancelOrder}
+            onRefreshOrders={loadAdminData}
+          />
         )}
       </main>
 

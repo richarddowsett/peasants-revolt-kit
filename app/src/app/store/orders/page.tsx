@@ -175,6 +175,9 @@ function UserOrdersContent() {
 
   const renderOrderCard = (order: Order) => {
     const isCancelled = order.status === 'cancelled';
+    const isChristmasTicket =
+      typeof order.orderType === 'string' && /^christmas_\d{4}_ticket$/.test(order.orderType);
+
     return (
       <div
         key={order.id}
@@ -190,6 +193,11 @@ function UserOrdersContent() {
           <span className="font-mono font-bold text-base text-slate-900">{order.id}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {isChristmasTicket && (
+            <span className="text-xs font-bold text-[rgb(82,94,62)] bg-[rgb(242,245,236)] px-2.5 py-1 rounded-full border border-[rgb(155,165,130)]">
+              Christmas Party Ticket
+            </span>
+          )}
           {order.batchRef && (
             <span className="font-mono text-xs text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
               Batch: {order.batchRef}
@@ -217,6 +225,19 @@ function UserOrdersContent() {
           </div>
         ))}
       </div>
+
+      {isChristmasTicket && order.ticketEmailSentAt && (
+        <div className="mb-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <span>
+            <strong>Ticket Emailed:</strong> Sent to {order.userEmail} with your door QR code.
+          </span>
+          {order.checkedIn && (
+            <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full shrink-0">
+              <CheckCheck size={13} /> Checked In at Door
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs">
         <span className="text-slate-500 font-medium">

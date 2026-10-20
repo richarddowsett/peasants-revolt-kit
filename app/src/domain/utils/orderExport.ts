@@ -70,9 +70,12 @@ export function aggregateOrdersForManufacturer(
   orders: Order[],
   filterStatus?: string
 ): ManufacturerExportBatch {
+  const kitOnlyOrders = orders.filter(
+    (o) => !(typeof o.orderType === 'string' && /^christmas_\d{4}_ticket$/.test(o.orderType))
+  );
   const eligibleOrders = filterStatus
-    ? orders.filter((o) => o.status === filterStatus)
-    : orders;
+    ? kitOnlyOrders.filter((o) => o.status === filterStatus)
+    : kitOnlyOrders;
 
   const orderIds: string[] = eligibleOrders.map((o) => o.id);
   const productsMap = new Map<string, {
