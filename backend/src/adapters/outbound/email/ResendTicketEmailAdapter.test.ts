@@ -1,8 +1,21 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ResendTicketEmailAdapter } from './ResendTicketEmailAdapter';
 import { ClubEvent, EventTicket } from '../../../domain/entities/ClubEvent';
 
 describe('ResendTicketEmailAdapter', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    delete process.env.EVENTS_EMAIL_FROM;
+    delete process.env.ENVIRONMENT;
+    delete process.env.PROJECT_ID;
+    delete process.env.GCP_PROJECT;
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
   const sampleTicket: EventTicket = {
     id: 'PRRC-EVT-2026-0001',
     eventId: 'evt_xmas_2026',

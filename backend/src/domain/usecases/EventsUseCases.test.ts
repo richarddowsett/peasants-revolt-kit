@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   CreateEventUseCase,
   DeleteEventUseCase,
@@ -16,6 +16,7 @@ import { EmailOutboundPort } from '../ports/outbound/EmailOutboundPort';
 import { ClubEvent, EventTicket } from '../entities/ClubEvent';
 
 describe('Club Events & Ticketing Use Cases', () => {
+  const originalEnv = { ...process.env };
   let eventsStore: ClubEvent[];
   let ticketsStore: EventTicket[];
   let eventRepo: EventRepositoryOutboundPort;
@@ -38,7 +39,16 @@ describe('Club Events & Ticketing Use Cases', () => {
     updatedAt: '2026-10-01T00:00:00.000Z',
   };
 
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
   beforeEach(() => {
+    delete process.env.EVENTS_EMAIL_FROM;
+    delete process.env.ENVIRONMENT;
+    delete process.env.PROJECT_ID;
+    delete process.env.GCP_PROJECT;
+
     eventsStore = [{ ...sampleEvent }];
     ticketsStore = [];
 
