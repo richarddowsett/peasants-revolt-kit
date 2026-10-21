@@ -139,4 +139,55 @@ describe('EventsAdminPanel', () => {
       'evt_1'
     );
   });
+
+  it('attaches the camera MediaStream to the video element and starts playback when Launch Camera QR Scanner is clicked', async () => {
+    const stopTrackMock = vi.fn();
+    const mockStream =
+      typeof MediaStream !== 'undefined'
+        ? Object.assign(new MediaStream(), {
+            getTracks: () => [{ stop: stopTrackMock }],
+          })
+        : ({
+            getTracks: () => [{ stop: stopTrackMock }],
+          } as unknown as MediaStream);
+
+    const getUserMediaMock = vi.fn().mockResolvedValue(mockStream);
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: getUserMediaMock },
+      configurable: true,
+      writable: true,
+    });
+
+    const playSpy = vi
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockImplementation(() => Promise.resolve());
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Launch Camera QR Scanner/i }));
+
+    const videoEl = (await screen.findByTestId('qr-scanner-video')) as HTMLVideoElement;
+
+    await waitFor(() => {
+      expect(getUserMediaMock).toHaveBeenCalledWith({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      expect(videoEl.srcObject).toBe(mockStream);
+      expect(playSpy).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Stop Camera Scanner/i }));
+
+    await waitFor(() => {
+      expect(stopTrackMock).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('qr-scanner-video')).not.toBeInTheDocument();
+    });
+
+    playSpy.mockRestore();
+  });
 });

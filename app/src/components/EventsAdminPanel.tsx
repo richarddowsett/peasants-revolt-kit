@@ -93,6 +93,12 @@ export default function EventsAdminPanel() {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastScannedUuidRef = useRef<string>('');
+  const selectedEventIdRef = useRef<string | null>(null);
+  const verifyingQrRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    selectedEventIdRef.current = selectedEventId;
+  }, [selectedEventId]);
 
   const loadEvents = async (preferredEventId?: string | null, showSpinner = false) => {
     if (showSpinner) setLoadingEvents(true);
@@ -289,16 +295,18 @@ export default function EventsAdminPanel() {
 
   const handleVerifyUuid = async (uuidToVerify: string) => {
     const clean = uuidToVerify.trim();
-    if (!clean || verifyingQr) return;
+    if (!clean || verifyingQrRef.current) return;
 
+    verifyingQrRef.current = true;
     setVerifyingQr(true);
     try {
+      const targetEventId = selectedEventIdRef.current || selectedEventId || undefined;
       const result: EventTicketVerificationResult = await verifyEventTicketQr(
         clean,
-        selectedEventId || undefined
+        targetEventId
       );
       setScanResult(result);
-      await loadEvents(selectedEventId, false);
+      await loadEvents(targetEventId ?? null, false);
     } catch (err: any) {
       setScanResult({
         valid: false,
@@ -306,6 +314,7 @@ export default function EventsAdminPanel() {
         message: err.message || 'Failed to verify QR ticket UUID.',
       });
     } finally {
+      verifyingQrRef.current = false;
       setVerifyingQr(false);
     }
   };
@@ -319,8 +328,108 @@ export default function EventsAdminPanel() {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setScannerActive(false);
   };
+
+  useEffect(() => {
+    if (!scannerActive || !streamRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    const stream = streamRef.current;
+    const video = videoRef.current;
+
+    if (video) {
+      video.srcObject = stream;
+      video.setAttribute('playsinline', 'true');
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((err) => {
+          console.warn('Video autoplay warning:', err);
+        });
+      }
+    }
+
+    let detector: any = null;
+    if (typeof window !== 'undefined' && (window as any).BarcodeDetector) {
+      try {
+        const BarcodeDetectorCtor = (window as any).BarcodeDetector;
+        detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
+      } catch {
+        detector = null;
+      }
+    }
+
+    const scanFrame = async () => {
+      if (cancelled || !streamRef.current) return;
+
+      const currentVideo = videoRef.current;
+      const canvas = canvasRef.current;
+
+      if (
+        currentVideo &&
+        currentVideo.readyState >= 2 &&
+        currentVideo.videoWidth > 0 &&
+        currentVideo.videoHeight > 0
+      ) {
+        let detectedValue: string | null = null;
+
+        if (detector) {
+          try {
+            const barcodes = await detector.detect(currentVideo);
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+              detectedValue = String(barcodes[0].rawValue).trim();
+            }
+          } catch {
+            // Fallback to jsQR
+          }
+        }
+
+        if (!detectedValue && canvas) {
+          const rawWidth = currentVideo.videoWidth || 320;
+          const rawHeight = currentVideo.videoHeight || 240;
+          const scale = rawWidth > 640 ? 640 / rawWidth : 1;
+          const width = Math.round(rawWidth * scale);
+          const height = Math.round(rawHeight * scale);
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(currentVideo, 0, 0, width, height);
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code && code.data) {
+              detectedValue = code.data.trim();
+            }
+          }
+        }
+
+        if (detectedValue && detectedValue !== lastScannedUuidRef.current) {
+          lastScannedUuidRef.current = detectedValue;
+          setManualUuidInput(detectedValue);
+          await handleVerifyUuid(detectedValue);
+        }
+      }
+
+      if (!cancelled && streamRef.current) {
+        rafRef.current = requestAnimationFrame(scanFrame);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(scanFrame);
+
+    return () => {
+      cancelled = true;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [scannerActive]);
 
   const startCameraScanner = async () => {
     setCameraError(null);
@@ -335,72 +444,23 @@ export default function EventsAdminPanel() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: false,
-      });
-      streamRef.current = stream;
-      setScannerActive(true);
+      stopCameraScanner();
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
       }
 
-      const BarcodeDetectorCtor =
-        typeof window !== 'undefined' ? (window as any).BarcodeDetector : undefined;
-      const detector = BarcodeDetectorCtor
-        ? new BarcodeDetectorCtor({ formats: ['qr_code'] })
-        : null;
-
-      const scanFrame = async () => {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        if (!video || !streamRef.current) return;
-
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-          let detectedValue: string | null = null;
-
-          if (detector) {
-            try {
-              const barcodes = await detector.detect(video);
-              if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
-                detectedValue = String(barcodes[0].rawValue).trim();
-              }
-            } catch {
-              // Fallback to jsQR
-            }
-          }
-
-          if (!detectedValue && canvas) {
-            const width = video.videoWidth || 320;
-            const height = video.videoHeight || 240;
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(video, 0, 0, width, height);
-              const imageData = ctx.getImageData(0, 0, width, height);
-              const code = jsQR(imageData.data, imageData.width, imageData.height);
-              if (code && code.data) {
-                detectedValue = code.data.trim();
-              }
-            }
-          }
-
-          if (detectedValue && detectedValue !== lastScannedUuidRef.current) {
-            lastScannedUuidRef.current = detectedValue;
-            setManualUuidInput(detectedValue);
-            await handleVerifyUuid(detectedValue);
-          }
-        }
-
-        if (streamRef.current) {
-          rafRef.current = requestAnimationFrame(scanFrame);
-        }
-      };
-
-      rafRef.current = requestAnimationFrame(scanFrame);
+      streamRef.current = stream;
+      setScannerActive(true);
     } catch (err: any) {
       setCameraError(
         err.message || 'Could not access camera. Please check camera permissions.'
@@ -856,7 +916,9 @@ export default function EventsAdminPanel() {
               <div className="mb-6 bg-slate-950 rounded-2xl p-4 text-center">
                 <video
                   ref={videoRef}
+                  data-testid="qr-scanner-video"
                   className="w-full max-w-md mx-auto rounded-xl border-2 border-[#9ba582]"
+                  autoPlay
                   playsInline
                   muted
                 />
