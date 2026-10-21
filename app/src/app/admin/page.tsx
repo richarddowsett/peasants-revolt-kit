@@ -17,7 +17,7 @@ import { Order, OrderStatus } from '@/domain/models/Order';
 import { formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
 import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles, Send, Store, AlertTriangle, Printer, XCircle } from 'lucide-react';
 import Link from 'next/link';
-import ChristmasPartyAdminPanel from '@/components/ChristmasPartyAdminPanel';
+import EventsAdminPanel from '@/components/EventsAdminPanel';
 
 const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
   { id: 'all', label: 'All' },
@@ -34,7 +34,7 @@ export default function AdminCMSPage() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'christmas_party'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'events'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | OrderStatus>('all');
@@ -521,14 +521,14 @@ export default function AdminCMSPage() {
             Customer Orders ({orders.length})
           </button>
           <button
-            onClick={() => setActiveTab('christmas_party')}
+            onClick={() => setActiveTab('events')}
             className={`py-4 text-xs font-extrabold border-b-2 transition ${
-              activeTab === 'christmas_party'
+              activeTab === 'events'
                 ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Christmas Party &amp; Door Scanner
+            Events &amp; Tickets
           </button>
         </div>
       </div>
@@ -814,13 +814,7 @@ export default function AdminCMSPage() {
             )}
           </div>
         ) : (
-          <ChristmasPartyAdminPanel
-            orders={orders}
-            updatingOrderId={null}
-            onUpdateOrderStatus={handleUpdateOrderStatus}
-            onCancelOrder={handleCancelOrder}
-            onRefreshOrders={loadAdminData}
-          />
+          <EventsAdminPanel />
         )}
       </main>
 

@@ -1,6 +1,6 @@
 export type OrderStatus = 'pending_payment' | 'payment_successful' | 'order_sent' | 'completed' | 'cancelled';
 
-export type OrderType = 'kit' | `christmas_${number}_ticket`;
+export type OrderType = 'kit' | 'event_ticket' | `christmas_${number}_ticket`;
 
 export interface OrderItem {
   productId: string;
@@ -12,7 +12,7 @@ export interface OrderItem {
 }
 
 export interface Order {
-  id: string; // Unique Order Reference e.g. "PRRC-8492" or "PRRC-XMAS-2026-0001"
+  id: string; // Unique Order Reference e.g. "PRRC-8492" or "PRRC-EVT-2026-0001"
   userEmail: string;
   userName: string;
   userId?: string;
@@ -23,6 +23,10 @@ export interface Order {
   monzoReference: string;
   batchRef?: string;
   orderType?: OrderType;
+  eventId?: string;
+  eventTitle?: string;
+  eventStartDate?: string;
+  eventAddress?: string;
   ticketUuid?: string;
   eventYear?: number;
   ticketEmailSentAt?: string;
@@ -31,4 +35,3 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
 }
-

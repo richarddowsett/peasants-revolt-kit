@@ -1,9 +1,8 @@
-import { Order } from '../../entities/Order';
-import { ChristmasPartySettings } from '../../entities/ChristmasPartySettings';
+import { ClubEvent, EventTicket } from '../../entities/ClubEvent';
 
 export interface EmailOutboundPort {
-  sendChristmasPartyTicketEmail(
-    order: Order,
-    settings: ChristmasPartySettings
+  sendEventTicketEmail(
+    ticket: EventTicket,
+    event: ClubEvent
   ): Promise<{ sent: boolean; messageId?: string }>;
 }

@@ -175,8 +175,9 @@ function UserOrdersContent() {
 
   const renderOrderCard = (order: Order) => {
     const isCancelled = order.status === 'cancelled';
-    const isChristmasTicket =
-      typeof order.orderType === 'string' && /^christmas_\d{4}_ticket$/.test(order.orderType);
+    const isEventTicket =
+      order.orderType === 'event_ticket' ||
+      (typeof order.orderType === 'string' && /^christmas_\d{4}_ticket$/.test(order.orderType));
 
     return (
       <div
@@ -193,9 +194,9 @@ function UserOrdersContent() {
           <span className="font-mono font-bold text-base text-slate-900">{order.id}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isChristmasTicket && (
+          {isEventTicket && (
             <span className="text-xs font-bold text-[rgb(82,94,62)] bg-[rgb(242,245,236)] px-2.5 py-1 rounded-full border border-[rgb(155,165,130)]">
-              Christmas Party Ticket
+              Club Event Ticket
             </span>
           )}
           {order.batchRef && (
@@ -214,6 +215,30 @@ function UserOrdersContent() {
         </div>
       )}
 
+      {/* Event Details if Event Ticket */}
+      {isEventTicket && (order.eventStartDate || order.eventAddress) && (
+        <div className="mb-3 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
+          {order.eventStartDate && (
+            <div>
+              <strong>Event Date:</strong>{' '}
+              {new Date(order.eventStartDate).toLocaleString('en-GB', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </div>
+          )}
+          {order.eventAddress && (
+            <div>
+              <strong>Location:</strong> {order.eventAddress}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Items */}
       <div className="space-y-2 mb-4">
         {order.items.map((item, idx) => (
@@ -226,7 +251,7 @@ function UserOrdersContent() {
         ))}
       </div>
 
-      {isChristmasTicket && order.ticketEmailSentAt && (
+      {isEventTicket && order.ticketEmailSentAt && (
         <div className="mb-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <span>
             <strong>Ticket Emailed:</strong> Sent to {order.userEmail} with your door QR code.

@@ -1,46 +1,42 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ResendTicketEmailAdapter } from './ResendTicketEmailAdapter';
-import { Order } from '../../../domain/entities/Order';
-import { ChristmasPartySettings } from '../../../domain/entities/ChristmasPartySettings';
+import { ClubEvent, EventTicket } from '../../../domain/entities/ClubEvent';
 
 describe('ResendTicketEmailAdapter', () => {
-  const sampleOrder: Order = {
-    id: 'PRRC-XMAS-2026-0001',
+  const sampleTicket: EventTicket = {
+    id: 'PRRC-EVT-2026-0001',
+    eventId: 'evt_xmas_2026',
+    eventTitle: 'PRRC Christmas Party 2026',
+    eventStartDate: '2026-12-19T19:30:00.000Z',
+    eventAddress: 'The Brentwood Tap, CM14',
     userEmail: 'runner@example.com',
     userName: 'Jane Runner',
-    items: [
-      {
-        productId: 'christmas_party_2026_ticket',
-        productName: 'PRRC Christmas Party 2026 Ticket',
-        price: 25,
-        size: '1 Ticket',
-        quantity: 1,
-        subtotal: 25,
-      },
-    ],
-    totalAmount: 25,
+    unitPrice: 25,
     status: 'payment_successful',
-    paymentLinkUrl: 'https://monzo.me/test/25.00?d=PRRC-XMAS-2026-0001',
-    monzoReference: 'PRRC-XMAS-2026-0001',
-    orderType: 'christmas_2026_ticket',
+    paymentLinkUrl: 'https://monzo.me/test/25.00?d=PRRC-EVT-2026-0001',
+    monzoReference: 'PRRC-EVT-2026-0001',
     ticketUuid: '123e4567-e89b-12d3-a456-426614174000',
-    eventYear: 2026,
+    checkedIn: false,
     createdAt: '2026-11-01T10:00:00.000Z',
     updatedAt: '2026-11-01T10:05:00.000Z',
   };
 
-  const sampleSettings: ChristmasPartySettings = {
-    eventYear: 2026,
+  const sampleEvent: ClubEvent = {
+    id: 'evt_xmas_2026',
+    title: 'PRRC Christmas Party 2026',
+    description: 'Annual festive celebration!',
+    startDate: '2026-12-19T19:30:00.000Z',
     saleStartAt: '2026-11-01T09:00:00.000Z',
     maxTickets: 50,
     ticketPrice: 25,
-    partyDateTime: '2026-12-19T19:30:00.000Z',
-    partyLocation: 'The Brentwood Tap, CM14',
-    fromEmail: 'Peasants Running Club <christmas@peasants-running-kit.store>',
+    address: 'The Brentwood Tap, CM14',
+    logoUrl: '',
+    fromEmail: 'Peasants Running Club <events@peasants-running-kit.store>',
+    createdAt: '2026-10-15T00:00:00.000Z',
     updatedAt: '2026-10-15T00:00:00.000Z',
   };
 
-  it('fetches the Resend API key from Google Cloud Secret Manager and sends a branded QR email from christmas@peasants-running-kit.store', async () => {
+  it('fetches the Resend API key from Google Cloud Secret Manager and sends a branded QR email from events@peasants-running-kit.store', async () => {
     process.env.FORCE_GCP_SECRET_MANAGER = 'true';
     const mockAccessSecretVersion = vi.fn().mockResolvedValue([
       {
@@ -65,7 +61,7 @@ describe('ResendTicketEmailAdapter', () => {
       }
     );
 
-    const result = await adapter.sendChristmasPartyTicketEmail(sampleOrder, sampleSettings);
+    const result = await adapter.sendEventTicketEmail(sampleTicket, sampleEvent);
 
     expect(result.sent).toBe(true);
     expect(result.messageId).toBe('resend_email_999');
@@ -75,15 +71,15 @@ describe('ResendTicketEmailAdapter', () => {
     expect(mockSend).toHaveBeenCalledTimes(1);
 
     const sentPayload = mockSend.mock.calls[0][0];
-    expect(sentPayload.from).toBe('Peasants Running Club <christmas@peasants-running-kit.store>');
+    expect(sentPayload.from).toBe('Peasants Running Club <events@peasants-running-kit.store>');
     expect(sentPayload.to).toEqual(['runner@example.com']);
-    expect(sentPayload.subject).toContain('PRRC-XMAS-2026-0001');
+    expect(sentPayload.subject).toContain('PRRC-EVT-2026-0001');
     expect(sentPayload.html).toContain('123e4567-e89b-12d3-a456-426614174000');
     expect(sentPayload.html).toContain('The Brentwood Tap, CM14');
     expect(sentPayload.attachments).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          filename: 'ticket-PRRC-XMAS-2026-0001.png',
+          filename: 'ticket-PRRC-EVT-2026-0001.png',
           contentId: 'ticket-qr',
         }),
       ])
@@ -92,7 +88,7 @@ describe('ResendTicketEmailAdapter', () => {
     delete process.env.FORCE_GCP_SECRET_MANAGER;
   });
 
-  it('uses chrismaspartyqa@peasants-running-kit.store as the sender when running in QA', async () => {
+  it('uses eventsqa@peasants-running-kit.store as the sender when running in QA and embeds custom logoUrl when provided', async () => {
     process.env.ENVIRONMENT = 'qa';
     process.env.FORCE_GCP_SECRET_MANAGER = 'true';
 
@@ -116,12 +112,20 @@ describe('ResendTicketEmailAdapter', () => {
       })
     );
 
-    const result = await adapter.sendChristmasPartyTicketEmail(sampleOrder, sampleSettings);
+    const customLogoEvent: ClubEvent = {
+      ...sampleEvent,
+      logoUrl: 'https://storage.googleapis.com/peasants-running-kit/custom-event-logo.png',
+    };
+
+    const result = await adapter.sendEventTicketEmail(sampleTicket, customLogoEvent);
 
     expect(result.sent).toBe(true);
     const sentPayload = mockSend.mock.calls[0][0];
     expect(sentPayload.from).toBe(
-      'Peasants Running Club <chrismaspartyqa@peasants-running-kit.store>'
+      'Peasants Running Club <eventsqa@peasants-running-kit.store>'
+    );
+    expect(sentPayload.html).toContain(
+      'https://storage.googleapis.com/peasants-running-kit/custom-event-logo.png'
     );
 
     delete process.env.ENVIRONMENT;

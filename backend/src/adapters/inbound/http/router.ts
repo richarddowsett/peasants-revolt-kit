@@ -6,7 +6,7 @@ import {
   adminController,
   uploadController,
   featureFlagsController,
-  christmasPartyController,
+  eventsController,
 } from '../../../config/container';
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -41,24 +41,18 @@ apiRouter.post('/orders', (req, res) => ordersController.createOrder(req, res));
 apiRouter.get('/orders', (req, res) => ordersController.getOrders(req, res));
 apiRouter.patch('/orders/:id/status', (req, res) => ordersController.updateStatus(req, res));
 
-// Christmas Party Tickets & Door QR Verification
-apiRouter.get('/christmas-party/status', (req, res) =>
-  christmasPartyController.getStatus(req, res)
+// Club Events & Tickets
+apiRouter.post('/events/verify-qr', (req, res) => eventsController.verifyAndCheckInQr(req, res));
+apiRouter.get('/events', (req, res) => eventsController.listEvents(req, res));
+apiRouter.get('/events/:id', (req, res) => eventsController.getEventById(req, res));
+apiRouter.post('/events', (req, res) => eventsController.createEvent(req, res));
+apiRouter.put('/events/:id', (req, res) => eventsController.updateEvent(req, res));
+apiRouter.delete('/events/:id', (req, res) => eventsController.deleteEvent(req, res));
+apiRouter.post('/events/:id/tickets', (req, res) => eventsController.purchaseTicket(req, res));
+apiRouter.get('/events/:id/tickets', (req, res) => eventsController.listEventTickets(req, res));
+apiRouter.patch('/event-tickets/:ticketId/status', (req, res) =>
+  eventsController.updateTicketStatus(req, res)
 );
-apiRouter.put('/christmas-party/settings', (req, res) =>
-  christmasPartyController.updateSettings(req, res)
+apiRouter.post('/event-tickets/:ticketId/resend-email', (req, res) =>
+  eventsController.resendTicketEmail(req, res)
 );
-apiRouter.post('/christmas-party/settings', (req, res) =>
-  christmasPartyController.updateSettings(req, res)
-);
-apiRouter.post('/christmas-party/tickets', (req, res) =>
-  christmasPartyController.purchaseTicket(req, res)
-);
-apiRouter.post('/christmas-party/tickets/:id/resend-email', (req, res) =>
-  christmasPartyController.resendTicketEmail(req, res)
-);
-apiRouter.post('/christmas-party/verify-qr', (req, res) =>
-  christmasPartyController.verifyQrAndCheckIn(req, res)
-);
-
-

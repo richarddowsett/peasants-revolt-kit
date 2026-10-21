@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateNextMonzoReference,
-  generateNextChristmasTicketReference,
+  generateNextEventTicketReference,
 } from './orderRef';
 
 describe('generateNextMonzoReference', () => {
@@ -25,18 +25,17 @@ describe('generateNextMonzoReference', () => {
   });
 });
 
-describe('generateNextChristmasTicketReference', () => {
-  it('starts at PRRC-XMAS-yyyy-0001 for the specified year', () => {
-    expect(generateNextChristmasTicketReference([], 2026)).toBe('PRRC-XMAS-2026-0001');
+describe('generateNextEventTicketReference', () => {
+  it('starts at PRRC-EVT-yyyy-0001 for the specified year', () => {
+    expect(generateNextEventTicketReference([], 2026)).toBe('PRRC-EVT-2026-0001');
   });
 
   it('increments sequentially within the same year and resets for a new year', () => {
-    const orders = [
-      { id: 'PRRC-XMAS-2026-0001', monzoReference: 'PRRC-XMAS-2026-0001' },
-      { id: 'PRRC-XMAS-2026-0002', monzoReference: 'PRRC-XMAS-2026-0002' },
+    const tickets = [
+      { id: 'PRRC-EVT-2026-0001', monzoReference: 'PRRC-EVT-2026-0001' },
+      { id: 'PRRC-EVT-2026-0002', monzoReference: 'PRRC-EVT-2026-0002' },
     ];
-    expect(generateNextChristmasTicketReference(orders, 2026)).toBe('PRRC-XMAS-2026-0003');
-    expect(generateNextChristmasTicketReference(orders, 2027)).toBe('PRRC-XMAS-2027-0001');
+    expect(generateNextEventTicketReference(tickets, 2026)).toBe('PRRC-EVT-2026-0003');
+    expect(generateNextEventTicketReference(tickets, 2027)).toBe('PRRC-EVT-2027-0001');
   });
 });
-

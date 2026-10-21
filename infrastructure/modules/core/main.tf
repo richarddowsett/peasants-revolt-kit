@@ -200,8 +200,8 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
-        name  = "CHRISTMAS_EMAIL_FROM"
-        value = var.environment == "qa" ? "Peasants Running Club <chrismaspartyqa@peasants-running-kit.store>" : "Peasants Running Club <christmas@peasants-running-kit.store>"
+        name  = "EVENTS_EMAIL_FROM"
+        value = var.environment == "qa" ? "Peasants Running Club <eventsqa@peasants-running-kit.store>" : "Peasants Running Club <events@peasants-running-kit.store>"
       }
 
       ports {

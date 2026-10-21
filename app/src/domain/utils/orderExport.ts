@@ -71,7 +71,9 @@ export function aggregateOrdersForManufacturer(
   filterStatus?: string
 ): ManufacturerExportBatch {
   const kitOnlyOrders = orders.filter(
-    (o) => !(typeof o.orderType === 'string' && /^christmas_\d{4}_ticket$/.test(o.orderType))
+    (o) =>
+      o.orderType !== 'event_ticket' &&
+      !(typeof o.orderType === 'string' && /^christmas_\d{4}_ticket$/.test(o.orderType))
   );
   const eligibleOrders = filterStatus
     ? kitOnlyOrders.filter((o) => o.status === filterStatus)
