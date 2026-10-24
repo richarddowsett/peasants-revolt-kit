@@ -113,10 +113,11 @@ export class EventsController {
 
   async updateTicketStatus(req: Request, res: Response): Promise<void> {
     try {
-      const { status } = req.body;
+      const { status, reason } = req.body || {};
       const updated = await this.updateEventTicketStatusUseCase.execute(
         req.params.ticketId,
-        status
+        status,
+        reason
       );
       res.json(updated);
     } catch (err: unknown) {

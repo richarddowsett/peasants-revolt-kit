@@ -1,4 +1,13 @@
-import { EventTicket } from '../../entities/ClubEvent';
+import { ClubEvent, EventTicket } from '../../entities/ClubEvent';
+
+export interface ReserveTicketInput {
+  event: ClubEvent;
+  userName: string;
+  userEmail: string;
+  userId?: string;
+  paymentLinkGenerator: (ticketId: string, price: number) => string;
+  now?: Date;
+}
 
 export interface EventTicketRepositoryOutboundPort {
   createTicket(ticket: EventTicket): Promise<EventTicket>;
@@ -8,4 +17,6 @@ export interface EventTicketRepositoryOutboundPort {
   listTicketsByEmail(email: string): Promise<EventTicket[]>;
   listAllTickets(): Promise<EventTicket[]>;
   updateTicket(id: string, partial: Partial<EventTicket>): Promise<EventTicket>;
+  reserveAndCreateTicket(input: ReserveTicketInput): Promise<EventTicket>;
+  cancelTicketAndReleaseCapacity(ticketId: string, reason?: string): Promise<EventTicket>;
 }

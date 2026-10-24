@@ -11,6 +11,8 @@ export interface ClubEvent {
   address: string;
   logoUrl: string;
   fromEmail: string;
+  ticketsSold?: number;
+  nextTicketSequence?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +49,8 @@ export interface EventTicket {
   ticketEmailSentAt?: string;
   checkedIn: boolean;
   checkedInAt?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -24,7 +24,6 @@ import {
   EventTicketVerificationResult,
   getDefaultEventsFromEmail,
 } from '../entities/ClubEvent';
-import { generateNextEventTicketReference } from '../utils/orderRef';
 
 export function buildClubEventStats(
   event: ClubEvent,
@@ -269,45 +268,15 @@ export class PurchaseEventTicketUseCase implements PurchaseEventTicketInboundPor
       throw new Error('This event has already started.');
     }
 
-    const allTickets = await this.ticketRepo.listAllTickets();
-    const activeEventTickets = allTickets.filter(
-      (t) => t.eventId === event.id && t.status !== 'cancelled'
-    );
-
-    if (activeEventTickets.length >= event.maxTickets) {
-      throw new Error('Sorry, this event is sold out!');
-    }
-
-    const eventYear = new Date(event.startDate).getFullYear() || now.getFullYear();
-    const ticketId = generateNextEventTicketReference(allTickets, eventYear);
-    const ticketUuid = crypto.randomUUID();
-    const paymentLinkUrl = this.paymentGateway.generatePaymentLink(
-      ticketId,
-      Number(event.ticketPrice)
-    );
-    const nowIso = now.toISOString();
-
-    const ticket: EventTicket = {
-      id: ticketId,
-      eventId: event.id,
-      eventTitle: event.title,
-      eventStartDate: event.startDate,
-      eventAddress: event.address,
-      eventLogoUrl: event.logoUrl || undefined,
+    return this.ticketRepo.reserveAndCreateTicket({
+      event,
       userName: trimmedName,
       userEmail: trimmedEmail,
       userId: input.userId,
-      unitPrice: event.ticketPrice,
-      status: 'pending_payment',
-      paymentLinkUrl,
-      monzoReference: ticketId,
-      ticketUuid,
-      checkedIn: false,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    };
-
-    return this.ticketRepo.createTicket(ticket);
+      paymentLinkGenerator: (ticketId, price) =>
+        this.paymentGateway.generatePaymentLink(ticketId, price),
+      now,
+    });
   }
 }
 
@@ -325,9 +294,17 @@ export class UpdateEventTicketStatusUseCase implements UpdateEventTicketStatusIn
     private emailPort?: EmailOutboundPort
   ) {}
 
-  async execute(ticketId: string, status: EventTicketStatus): Promise<EventTicket> {
+  async execute(
+    ticketId: string,
+    status: EventTicketStatus,
+    reason?: string
+  ): Promise<EventTicket> {
     if (!VALID_EVENT_TICKET_STATUSES.includes(status)) {
       throw new Error(`Invalid ticket status: ${status}`);
+    }
+
+    if (status === 'cancelled') {
+      return this.ticketRepo.cancelTicketAndReleaseCapacity(ticketId, reason);
     }
 
     let updated = await this.ticketRepo.updateTicket(ticketId, {

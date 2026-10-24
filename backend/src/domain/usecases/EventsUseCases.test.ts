@@ -92,6 +92,67 @@ describe('Club Events & Ticketing Use Cases', () => {
         ticketsStore[idx] = { ...ticketsStore[idx], ...partial };
         return ticketsStore[idx];
       }),
+      reserveAndCreateTicket: vi.fn(async (input) => {
+        const now = input.now || new Date();
+        const nowIso = now.toISOString();
+        const eventYear =
+          new Date(input.event.startDate).getFullYear() || now.getFullYear();
+
+        const activeTickets = ticketsStore.filter(
+          (t) => t.eventId === input.event.id && t.status !== 'cancelled'
+        );
+        if (activeTickets.length >= input.event.maxTickets) {
+          throw new Error('Sorry, this event is sold out!');
+        }
+
+        const seq = (input.event.nextTicketSequence || activeTickets.length) + 1;
+        input.event.nextTicketSequence = seq;
+        input.event.ticketsSold = (input.event.ticketsSold || 0) + 1;
+
+        const ticketId = `PRRC-EVT-${eventYear}-${String(seq).padStart(4, '0')}`;
+        const paymentLinkUrl = input.paymentLinkGenerator(
+          ticketId,
+          Number(input.event.ticketPrice)
+        );
+        const ticket: EventTicket = {
+          id: ticketId,
+          eventId: input.event.id,
+          eventTitle: input.event.title,
+          eventStartDate: input.event.startDate,
+          eventAddress: input.event.address,
+          eventLogoUrl: input.event.logoUrl || undefined,
+          userName: input.userName,
+          userEmail: input.userEmail,
+          userId: input.userId,
+          unitPrice: input.event.ticketPrice,
+          status: 'pending_payment',
+          paymentLinkUrl,
+          monzoReference: ticketId,
+          ticketUuid: crypto.randomUUID(),
+          checkedIn: false,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+        ticketsStore.push(ticket);
+        return ticket;
+      }),
+      cancelTicketAndReleaseCapacity: vi.fn(async (ticketId, reason) => {
+        const idx = ticketsStore.findIndex((t) => t.id === ticketId);
+        if (idx === -1) throw new Error('Ticket not found');
+        const nowIso = new Date().toISOString();
+        ticketsStore[idx] = {
+          ...ticketsStore[idx],
+          status: 'cancelled',
+          cancelledAt: nowIso,
+          cancellationReason: reason || 'Payment not received in good time',
+          updatedAt: nowIso,
+        };
+        const evt = eventsStore.find((e) => e.id === ticketsStore[idx].eventId);
+        if (evt && typeof evt.ticketsSold === 'number') {
+          evt.ticketsSold = Math.max(0, evt.ticketsSold - 1);
+        }
+        return ticketsStore[idx];
+      }),
     };
 
     paymentGateway = {
@@ -211,6 +272,124 @@ describe('Club Events & Ticketing Use Cases', () => {
           saleOpenTime
         )
       ).rejects.toThrow('Sorry, this event is sold out!');
+    });
+
+    it('prevents overselling when two users order simultaneously for the last remaining ticket', async () => {
+      const purchaseUseCase = new PurchaseEventTicketUseCase(
+        eventRepo,
+        ticketRepo,
+        paymentGateway
+      );
+      const saleOpenTime = new Date('2026-11-02T10:00:00.000Z');
+
+      // Buy 1 ticket first. With maxTickets = 2, exactly 1 ticket is left.
+      await purchaseUseCase.execute(
+        {
+          eventId: 'evt_xmas_2026',
+          userName: 'Alice Runner',
+          userEmail: 'alice@example.com',
+        },
+        saleOpenTime
+      );
+
+      // Now 2 users submit simultaneously for the 1 remaining spot
+      const [orderA, orderB] = await Promise.allSettled([
+        purchaseUseCase.execute(
+          {
+            eventId: 'evt_xmas_2026',
+            userName: 'Bob Runner',
+            userEmail: 'bob@example.com',
+          },
+          saleOpenTime
+        ),
+        purchaseUseCase.execute(
+          {
+            eventId: 'evt_xmas_2026',
+            userName: 'Charlie Runner',
+            userEmail: 'charlie@example.com',
+          },
+          saleOpenTime
+        ),
+      ]);
+
+      const fulfilled = [orderA, orderB].filter((r) => r.status === 'fulfilled');
+      const rejected = [orderA, orderB].filter((r) => r.status === 'rejected');
+
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      if (rejected[0].status === 'rejected') {
+        expect(rejected[0].reason.message).toBe('Sorry, this event is sold out!');
+      }
+
+      // Total tickets created should strictly not exceed maxTickets (2)
+      expect(ticketsStore).toHaveLength(2);
+    });
+
+    it('allows an admin to cancel an unpaid ticket order and releases the capacity for subsequent purchases', async () => {
+      const purchaseUseCase = new PurchaseEventTicketUseCase(
+        eventRepo,
+        ticketRepo,
+        paymentGateway
+      );
+      const statusUseCase = new UpdateEventTicketStatusUseCase(
+        ticketRepo,
+        eventRepo,
+        emailPort
+      );
+      const saleOpenTime = new Date('2026-11-02T10:00:00.000Z');
+
+      // Fill both spots (maxTickets = 2)
+      const ticket1 = await purchaseUseCase.execute(
+        {
+          eventId: 'evt_xmas_2026',
+          userName: 'User 1',
+          userEmail: 'user1@example.com',
+        },
+        saleOpenTime
+      );
+      await purchaseUseCase.execute(
+        {
+          eventId: 'evt_xmas_2026',
+          userName: 'User 2',
+          userEmail: 'user2@example.com',
+        },
+        saleOpenTime
+      );
+
+      // 3rd purchase fails as sold out
+      await expect(
+        purchaseUseCase.execute(
+          {
+            eventId: 'evt_xmas_2026',
+            userName: 'User 3',
+            userEmail: 'user3@example.com',
+          },
+          saleOpenTime
+        )
+      ).rejects.toThrow('Sorry, this event is sold out!');
+
+      // Admin cancels User 1's unpaid ticket because payment was not received in good time
+      const cancelledTicket = await statusUseCase.execute(
+        ticket1.id,
+        'cancelled',
+        'Payment not received in good time'
+      );
+      expect(cancelledTicket.status).toBe('cancelled');
+      expect(cancelledTicket.cancellationReason).toBe(
+        'Payment not received in good time'
+      );
+
+      // Now User 3 attempts to buy again -> succeeds!
+      const ticket3 = await purchaseUseCase.execute(
+        {
+          eventId: 'evt_xmas_2026',
+          userName: 'User 3',
+          userEmail: 'user3@example.com',
+        },
+        saleOpenTime
+      );
+      expect(ticket3.id).toBe('PRRC-EVT-2026-0003');
+      expect(ticket3.userName).toBe('User 3');
     });
   });
 

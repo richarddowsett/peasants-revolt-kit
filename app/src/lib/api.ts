@@ -235,13 +235,17 @@ export async function fetchEventTickets(eventId: string) {
   return handleResponse(res, 'Failed to fetch event tickets');
 }
 
-export async function updateEventTicketStatus(ticketId: string, status: string) {
+export async function updateEventTicketStatus(
+  ticketId: string,
+  status: string,
+  reason?: string
+) {
   const res = await fetch(
     `${API_BASE}/event-tickets/${encodeURIComponent(ticketId)}/status`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, reason }),
     }
   );
   return handleResponse(res, 'Failed to update ticket status');

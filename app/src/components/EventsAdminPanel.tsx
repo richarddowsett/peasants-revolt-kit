@@ -259,6 +259,29 @@ export default function EventsAdminPanel() {
     }
   };
 
+  const handleCancelTicket = async (ticket: EventTicket) => {
+    const isPending = ticket.status === 'pending_payment';
+    const confirmMsg = isPending
+      ? `Are you sure you want to cancel ticket order ${ticket.id} for ${ticket.userName}? This will release the ticket back to available event stock.`
+      : `Are you sure you want to cancel ticket ${ticket.id} for ${ticket.userName}? This will release the spot back to available stock.`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setUpdatingTicketId(ticket.id);
+    try {
+      await updateEventTicketStatus(
+        ticket.id,
+        'cancelled',
+        isPending ? 'Payment not received in good time' : 'Cancelled by administrator'
+      );
+      await loadEvents(selectedEventId, false);
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to cancel ticket');
+    } finally {
+      setUpdatingTicketId(null);
+    }
+  };
+
   const handleResendTicketEmail = async (ticketId: string) => {
     setResendingTicketId(ticketId);
     try {
@@ -793,6 +816,11 @@ export default function EventsAdminPanel() {
                                 <span>QR Email Sent</span>
                               </span>
                             )}
+                            {ticket.status === 'pending_payment' && ticket.createdAt && (
+                              <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                <span>Ordered {new Date(ticket.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                              </span>
+                            )}
                           </div>
 
                           <div className="text-sm font-bold text-slate-900">
@@ -805,6 +833,12 @@ export default function EventsAdminPanel() {
                           {ticket.ticketUuid && (
                             <div className="text-xs text-slate-500 font-mono">
                               Ticket UUID: <span className="select-all">{ticket.ticketUuid}</span>
+                            </div>
+                          )}
+
+                          {isCancelled && ticket.cancellationReason && (
+                            <div className="text-xs text-red-600 italic">
+                              Cancellation: {ticket.cancellationReason}
                             </div>
                           )}
                         </div>
@@ -859,11 +893,24 @@ export default function EventsAdminPanel() {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => handleUpdateTicketStatus(ticket.id, 'cancelled')}
-                              className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold flex items-center space-x-1"
+                              onClick={() => handleCancelTicket(ticket)}
+                              className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1 ${
+                                ticket.status === 'pending_payment'
+                                  ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                              }`}
+                              title={
+                                ticket.status === 'pending_payment'
+                                  ? 'Cancel unpaid ticket and release stock'
+                                  : 'Cancel ticket'
+                              }
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                              <span>Cancel</span>
+                              <span>
+                                {ticket.status === 'pending_payment'
+                                  ? 'Cancel Order (Unpaid)'
+                                  : 'Cancel'}
+                              </span>
                             </button>
                           </div>
                         )}

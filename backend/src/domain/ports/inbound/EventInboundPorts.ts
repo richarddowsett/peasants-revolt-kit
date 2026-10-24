@@ -62,7 +62,11 @@ export interface PurchaseEventTicketInboundPort {
 }
 
 export interface UpdateEventTicketStatusInboundPort {
-  execute(ticketId: string, status: EventTicketStatus): Promise<EventTicket>;
+  execute(
+    ticketId: string,
+    status: EventTicketStatus,
+    reason?: string
+  ): Promise<EventTicket>;
   resendTicketEmail(ticketId: string): Promise<{ sent: boolean; messageId?: string }>;
 }
 

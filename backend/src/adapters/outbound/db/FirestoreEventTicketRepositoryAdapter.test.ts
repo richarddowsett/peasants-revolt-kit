@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockSet, mockGet, mockDoc, mockCollection } = vi.hoisted(() => {
+const { mockSet, mockGet, mockDoc, mockCollection, mockRunTransaction } = vi.hoisted(() => {
   const mockSet = vi.fn();
   const mockGet = vi.fn();
   const mockDoc = vi.fn(() => ({
@@ -12,13 +12,15 @@ const { mockSet, mockGet, mockDoc, mockCollection } = vi.hoisted(() => {
     get: mockGet,
     where: vi.fn().mockReturnThis(),
   }));
+  const mockRunTransaction = vi.fn();
 
-  return { mockSet, mockGet, mockDoc, mockCollection };
+  return { mockSet, mockGet, mockDoc, mockCollection, mockRunTransaction };
 });
 
 vi.mock('./FirebaseAdminConfig', () => ({
   adminDb: {
     collection: mockCollection,
+    runTransaction: mockRunTransaction,
   },
 }));
 
@@ -152,6 +154,143 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
 
       expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ checkedIn: true }), { merge: true });
       expect(updated.checkedIn).toBe(true);
+    });
+  });
+
+  describe('reserveAndCreateTicket', () => {
+    const sampleEvent = {
+      id: 'evt_xmas',
+      title: 'Xmas Party',
+      description: 'Party',
+      startDate: '2026-12-19T19:30:00.000Z',
+      saleStartAt: '2026-11-01T09:00:00.000Z',
+      maxTickets: 50,
+      ticketPrice: 25,
+      address: 'Brentwood',
+      logoUrl: '',
+      fromEmail: 'events@test.com',
+      createdAt: '2026-10-01T00:00:00.000Z',
+      updatedAt: '2026-10-01T00:00:00.000Z',
+      ticketsSold: 0,
+      nextTicketSequence: 1,
+    };
+
+    it('reserves and creates ticket inside a transaction when capacity is available', async () => {
+      const mockTx = {
+        get: vi
+          .fn()
+          .mockResolvedValueOnce({
+            exists: true,
+            data: () => sampleEvent,
+          })
+          .mockResolvedValueOnce({
+            exists: false,
+          }),
+        create: vi.fn(),
+        set: vi.fn(),
+      };
+      mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
+
+      const ticket = await adapter.reserveAndCreateTicket({
+        event: sampleEvent,
+        userName: 'John Runner',
+        userEmail: 'john@example.com',
+        paymentLinkGenerator: (ref, price) => `https://monzo.me/${price}?d=${ref}`,
+      });
+
+      expect(ticket.id).toBe('PRRC-EVT-2026-0001');
+      expect(mockTx.create).toHaveBeenCalled();
+      expect(mockTx.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ ticketsSold: 1, nextTicketSequence: 2 }),
+        { merge: true }
+      );
+    });
+
+    it('throws sold out error when ticketsSold reaches maxTickets', async () => {
+      const soldOutEvent = { ...sampleEvent, ticketsSold: 50, maxTickets: 50 };
+      const mockTx = {
+        get: vi.fn().mockResolvedValueOnce({
+          exists: true,
+          data: () => soldOutEvent,
+        }),
+        create: vi.fn(),
+        set: vi.fn(),
+      };
+      mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
+
+      await expect(
+        adapter.reserveAndCreateTicket({
+          event: soldOutEvent,
+          userName: 'John Runner',
+          userEmail: 'john@example.com',
+          paymentLinkGenerator: () => 'link',
+        })
+      ).rejects.toThrow('Sorry, this event is sold out!');
+    });
+
+    it('falls back to local memory store when transaction throws network error', async () => {
+      mockRunTransaction.mockRejectedValueOnce(new Error('Network error'));
+
+      const fallbackTicket = await adapter.reserveAndCreateTicket({
+        event: { ...sampleEvent, id: 'evt_fallback', maxTickets: 10 },
+        userName: 'Fallback User',
+        userEmail: 'fallback@example.com',
+        paymentLinkGenerator: (ref) => `https://monzo.me/${ref}`,
+      });
+
+      expect(fallbackTicket.userName).toBe('Fallback User');
+    });
+  });
+
+  describe('cancelTicketAndReleaseCapacity', () => {
+    it('cancels ticket and decrements event ticketsSold in transaction', async () => {
+      const pendingTicket = {
+        ...sampleTicket,
+        id: 'PRRC-EVT-2026-0099',
+        status: 'pending_payment',
+        eventId: 'evt_1',
+      };
+      const mockTx = {
+        get: vi
+          .fn()
+          .mockResolvedValueOnce({
+            exists: true,
+            data: () => pendingTicket,
+          })
+          .mockResolvedValueOnce({
+            exists: true,
+            data: () => ({ id: 'evt_1', ticketsSold: 5 }),
+          }),
+        set: vi.fn(),
+      };
+      mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
+
+      const cancelled = await adapter.cancelTicketAndReleaseCapacity(
+        'PRRC-EVT-2026-0099',
+        'Payment not received in good time'
+      );
+
+      expect(cancelled.status).toBe('cancelled');
+      expect(cancelled.cancellationReason).toBe(
+        'Payment not received in good time'
+      );
+      expect(mockTx.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ ticketsSold: 4 }),
+        { merge: true }
+      );
+    });
+
+    it('falls back to memory store if firestore transaction fails', async () => {
+      mockRunTransaction.mockRejectedValueOnce(new Error('Firestore error'));
+
+      const cancelled = await adapter.cancelTicketAndReleaseCapacity(
+        'PRRC-EVT-2026-0001',
+        'Payment not received in good time'
+      );
+
+      expect(cancelled.status).toBe('cancelled');
     });
   });
 });

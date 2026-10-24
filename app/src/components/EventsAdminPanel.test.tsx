@@ -359,11 +359,43 @@ describe('EventsAdminPanel & DoorQrScanner', () => {
     });
 
     // Cancel ticket
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
     await waitFor(() => {
       expect(api.updateEventTicketStatus).toHaveBeenCalledWith(
         'PRRC-EVT-2026-0001',
-        'cancelled'
+        'cancelled',
+        expect.anything()
+      );
+    });
+  });
+
+  it('displays Cancel Order (Unpaid) for pending tickets and passes payment not received reason', async () => {
+    const pendingTicket = {
+      ...sampleTicket,
+      id: 'PRRC-EVT-2026-0002',
+      userName: 'Unpaid Bob',
+      status: 'pending_payment' as const,
+    };
+    vi.mocked(api.fetchEventTickets).mockResolvedValueOnce([pendingTicket]);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(<EventsAdminPanel />);
+    await waitFor(() => {
+      expect(screen.getByText('Unpaid Bob')).toBeInTheDocument();
+    });
+
+    const cancelUnpaidBtn = screen.getByRole('button', {
+      name: /Cancel Order \(Unpaid\)/i,
+    });
+    expect(cancelUnpaidBtn).toBeInTheDocument();
+
+    fireEvent.click(cancelUnpaidBtn);
+    await waitFor(() => {
+      expect(api.updateEventTicketStatus).toHaveBeenCalledWith(
+        'PRRC-EVT-2026-0002',
+        'cancelled',
+        'Payment not received in good time'
       );
     });
   });
