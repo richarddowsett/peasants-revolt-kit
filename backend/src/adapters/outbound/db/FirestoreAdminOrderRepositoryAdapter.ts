@@ -29,7 +29,7 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     };
 
     try {
-      const docData: Record<string, any> = { ...order };
+      const docData: Record<string, unknown> = { ...order };
       if (docData.userId === undefined) {
         delete docData.userId;
       }
@@ -164,7 +164,7 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryOutb
     };
 
     try {
-      const docData: Record<string, any> = { ...updatedOrder };
+      const docData: Record<string, unknown> = { ...updatedOrder };
       if (docData.userId === undefined) {
         delete docData.userId;
       }

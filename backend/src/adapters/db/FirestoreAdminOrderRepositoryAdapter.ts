@@ -24,7 +24,7 @@ export class FirestoreAdminOrderRepositoryAdapter implements OrderRepositoryPort
     };
 
     try {
-      const docData: Record<string, any> = { ...order };
+      const docData: Record<string, unknown> = { ...order };
       if (docData.userId === undefined) {
         delete docData.userId;
       }

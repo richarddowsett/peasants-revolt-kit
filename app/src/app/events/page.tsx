@@ -115,8 +115,8 @@ export default function ClubEventsPage() {
         setEvents(Array.isArray(list) ? list : []);
       }
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Unable to load club events.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Unable to load club events.');
     } finally {
       setLoading(false);
     }
@@ -188,8 +188,8 @@ export default function ClubEventsPage() {
       setCompletedTicket(ticket);
       const updatedDetail = await fetchEventById(selectedEventStatus.event.id);
       setSelectedEventStatus(updatedDetail);
-    } catch (err: any) {
-      setFormError(err.message || 'Failed to purchase ticket. Please try again.');
+    } catch (err: unknown) {
+      setFormError((err as Error).message || 'Failed to purchase ticket. Please try again.');
     } finally {
       setSubmitting(false);
     }

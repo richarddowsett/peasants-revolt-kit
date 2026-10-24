@@ -73,9 +73,9 @@ function UserOrdersContent() {
     try {
       const order = await lookupOrder(ref, email);
       setGuestOrder(order);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setGuestOrder(null);
-      setSearchError(err.message || 'No order found matching that reference and email.');
+      setSearchError((err as Error).message || 'No order found matching that reference and email.');
     } finally {
       setSearching(false);
     }
@@ -100,7 +100,9 @@ function UserOrdersContent() {
             runLookup(parsed.orderRef, parsed.email);
           }
         }
-      } catch (_) {}
+      } catch {
+        // Ignore storage error
+      }
     }
   }, [searchParams]);
 
@@ -373,7 +375,9 @@ function UserOrdersContent() {
                       setSearchError('');
                       try {
                         localStorage.removeItem('prrc_last_guest_order');
-                      } catch (_) {}
+                      } catch {
+                        // Ignore storage error
+                      }
                     }}
                     className="text-xs text-[rgb(82,94,62)] font-bold hover:underline flex items-center gap-1"
                   >

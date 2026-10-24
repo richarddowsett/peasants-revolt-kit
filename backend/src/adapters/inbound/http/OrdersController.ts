@@ -21,14 +21,15 @@ export class OrdersController {
         `[Order API] Order created successfully: [${order.id}] for ${order.userName} (${order.userEmail}) - Total: £${order.totalAmount} - Monzo Ref: ${order.monzoReference}`
       );
       res.status(201).json(order);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = (err as Error).message;
       console.error(
         `[Order API ERROR] Order creation failed for ${req.body?.userName || 'Anonymous'} (${req.body?.userEmail || 'No Email'}):`,
-        err.message,
+        message,
         'Payload:',
         JSON.stringify(req.body)
       );
-      res.status(400).json({ error: err.message });
+      res.status(400).json({ error: message });
     }
   }
 
@@ -62,9 +63,10 @@ export class OrdersController {
       }
       const orders = await this.getUserOrdersUseCase.getAllOrders();
       res.json(orders);
-    } catch (err: any) {
-      console.error('[Order API ERROR] getOrders failed:', err.message);
-      res.status(500).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Order API ERROR] getOrders failed:', message);
+      res.status(500).json({ error: message });
     }
   }
 
@@ -79,12 +81,13 @@ export class OrdersController {
         : await this.updateOrderStatusUseCase.execute(req.params.id, status);
       console.log(`[Order API] Order ${req.params.id} status successfully updated to '${status}'`);
       res.json(order);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = (err as Error).message;
       console.error(
         `[Order API ERROR] Failed to update order ${req.params.id} status:`,
-        err.message
+        message
       );
-      res.status(400).json({ error: err.message });
+      res.status(400).json({ error: message });
     }
   }
 }

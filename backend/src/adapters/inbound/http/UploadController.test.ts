@@ -19,7 +19,7 @@ describe('UploadController', () => {
     destination: '',
     filename: name,
     path: '',
-    stream: null as any,
+    stream: null as unknown as Express.Multer.File['stream'],
   });
 
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe('UploadController', () => {
         ),
       getSignedUploadUrl: vi
         .fn()
-        .mockImplementation((filename, contentType) =>
+        .mockImplementation((filename, _contentType) =>
           Promise.resolve({
             uploadUrl: `https://storage.googleapis.com/signed/${filename}`,
             publicUrl: `https://storage.googleapis.com/bucket/product-images/${filename}`,
@@ -85,7 +85,7 @@ describe('UploadController', () => {
   it('should handle multiple file upload via req.files array', async () => {
     const file1 = mockFile('front.png');
     const file2 = mockFile('back.png');
-    req.files = [file1, file2] as any;
+    req.files = [file1, file2];
 
     await controller.uploadImage(req as Request, res as Response);
 
@@ -117,7 +117,7 @@ describe('UploadController', () => {
     req.files = {
       heroImage: [file1],
       thumbnails: [file2],
-    } as any;
+    };
 
     await controller.uploadImage(req as Request, res as Response);
 

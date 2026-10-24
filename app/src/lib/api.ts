@@ -8,11 +8,13 @@ async function handleResponse(res: Response, defaultMessage: string) {
       if (errorData && errorData.error) {
         errorMsg = errorData.error;
       }
-    } catch (_) {
+    } catch {
       try {
         const text = await res.text();
         if (text) errorMsg = text;
-      } catch (_) {}
+      } catch {
+        // Ignore text parse error
+      }
     }
     throw new Error(errorMsg);
   }
@@ -25,7 +27,7 @@ export async function fetchProducts(all: boolean = false) {
 }
 
 
-export async function saveProduct(productData: any) {
+export async function saveProduct(productData: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/products`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -100,7 +102,7 @@ export async function uploadImages(files: File[]): Promise<string[]> {
   }
 }
 
-export async function createOrder(orderCommand: any) {
+export async function createOrder(orderCommand: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -181,7 +183,7 @@ export async function fetchEventById(eventId: string) {
   return handleResponse(res, 'Failed to fetch event');
 }
 
-export async function createEvent(payload: any) {
+export async function createEvent(payload: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -190,7 +192,7 @@ export async function createEvent(payload: any) {
   return handleResponse(res, 'Failed to create event');
 }
 
-export async function updateEvent(eventId: string, payload: any) {
+export async function updateEvent(eventId: string, payload: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/events/${encodeURIComponent(eventId)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

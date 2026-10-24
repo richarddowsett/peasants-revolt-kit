@@ -106,6 +106,14 @@ export function playScanFeedbackCue(
   }
 }
 
+interface BarcodeDetectorLike {
+  detect(video: HTMLVideoElement): Promise<Array<{ rawValue?: string }>>;
+}
+
+type WindowWithBarcodeDetector = Window & {
+  BarcodeDetector?: new (opts: { formats: string[] }) => BarcodeDetectorLike;
+};
+
 interface DoorQrScannerProps {
   initialEventId?: string | null;
   autoStartCamera?: boolean;
@@ -227,11 +235,11 @@ export default function DoorQrScanner({
         setScanResult(result);
         triggerVisualAndAudioFeedback(result);
         await loadEvents(targetEventId ?? null, false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         const fallbackResult: EventTicketVerificationResult = {
           valid: false,
           status: 'not_found',
-          message: err.message || 'Failed to verify QR ticket UUID.',
+          message: (err as Error).message || 'Failed to verify QR ticket UUID.',
         };
         setScanResult(fallbackResult);
         triggerVisualAndAudioFeedback(fallbackResult);
@@ -277,9 +285,9 @@ export default function DoorQrScanner({
 
       streamRef.current = stream;
       setScannerActive(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setCameraError(
-        err.message || 'Could not access camera. Please check camera permissions.'
+        (err as Error).message || 'Could not access camera. Please check camera permissions.'
       );
       setScannerActive(false);
     }
@@ -318,11 +326,11 @@ export default function DoorQrScanner({
       }
     }
 
-    let detector: any = null;
-    if (typeof window !== 'undefined' && (window as any).BarcodeDetector) {
+    let detector: BarcodeDetectorLike | null = null;
+    const win = typeof window !== 'undefined' ? (window as WindowWithBarcodeDetector) : undefined;
+    if (win?.BarcodeDetector) {
       try {
-        const BarcodeDetectorCtor = (window as any).BarcodeDetector;
-        detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
+        detector = new win.BarcodeDetector({ formats: ['qr_code'] });
       } catch {
         detector = null;
       }

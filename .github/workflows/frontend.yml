@@ -63,6 +63,11 @@ jobs:
           cd app
           npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
+      - name: Lint Frontend Code
+        run: |
+          cd app
+          npm run lint
+
       - name: Run Frontend Unit Tests
         run: |
           cd app

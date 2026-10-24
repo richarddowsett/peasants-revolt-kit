@@ -27,7 +27,7 @@ describe('FeatureFlagsController', () => {
 
   it('getFlags responds with all feature flags', async () => {
     const flags = [{ id: 'store_closed', name: 'Store Closed', enabled: false, updatedAt: '2026-01-01' }];
-    (getUseCase.getAllFlags as any).mockResolvedValue(flags);
+    vi.mocked(getUseCase.getAllFlags).mockResolvedValue(flags);
 
     const req = {} as Request;
     await controller.getFlags(req, mockRes as Response);
@@ -37,7 +37,7 @@ describe('FeatureFlagsController', () => {
 
   it('getFlag responds with specific feature flag', async () => {
     const flag = { id: 'store_closed', name: 'Store Closed', enabled: true, updatedAt: '2026-01-01' };
-    (getUseCase.getFlag as any).mockResolvedValue(flag);
+    vi.mocked(getUseCase.getFlag).mockResolvedValue(flag);
 
     const req = { params: { id: 'store_closed' } } as unknown as Request;
     await controller.getFlag(req, mockRes as Response);
@@ -46,7 +46,7 @@ describe('FeatureFlagsController', () => {
   });
 
   it('getFlag responds with 404 if flag not found', async () => {
-    (getUseCase.getFlag as any).mockResolvedValue(null);
+    vi.mocked(getUseCase.getFlag).mockResolvedValue(null);
 
     const req = { params: { id: 'nonexistent' } } as unknown as Request;
     await controller.getFlag(req, mockRes as Response);
@@ -69,7 +69,7 @@ describe('FeatureFlagsController', () => {
 
   it('setFlag updates and responds with updated flag', async () => {
     const updatedFlag = { id: 'store_closed', name: 'Store Closed', enabled: true, updatedAt: '2026-01-01' };
-    (setUseCase.execute as any).mockResolvedValue(updatedFlag);
+    vi.mocked(setUseCase.execute).mockResolvedValue(updatedFlag);
 
     const req = {
       params: { id: 'store_closed' },

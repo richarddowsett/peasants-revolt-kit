@@ -22,9 +22,9 @@ describe('FirestoreAdminFeatureFlagRepositoryAdapter', () => {
     const mockDoc = {
       get: vi.fn().mockResolvedValue({ exists: false }),
     };
-    (adminDb.collection as any).mockReturnValue({
+    vi.mocked(adminDb.collection).mockReturnValue({
       doc: vi.fn().mockReturnValue(mockDoc),
-    });
+    } as unknown as ReturnType<typeof adminDb.collection>);
 
     const flag = await adapter.getFeatureFlag('store_closed');
     expect(flag).toBeDefined();
@@ -44,9 +44,9 @@ describe('FirestoreAdminFeatureFlagRepositoryAdapter', () => {
         }),
       }),
     };
-    (adminDb.collection as any).mockReturnValue({
+    vi.mocked(adminDb.collection).mockReturnValue({
       doc: vi.fn().mockReturnValue(mockDoc),
-    });
+    } as unknown as ReturnType<typeof adminDb.collection>);
 
     const flag = await adapter.getFeatureFlag('store_closed');
     expect(flag?.id).toBe('store_closed');
@@ -59,9 +59,9 @@ describe('FirestoreAdminFeatureFlagRepositoryAdapter', () => {
       get: vi.fn().mockResolvedValue({ exists: false }),
       set: mockSet,
     };
-    (adminDb.collection as any).mockReturnValue({
+    vi.mocked(adminDb.collection).mockReturnValue({
       doc: vi.fn().mockReturnValue(mockDoc),
-    });
+    } as unknown as ReturnType<typeof adminDb.collection>);
 
     const flag = await adapter.setFeatureFlag('store_closed', true);
     expect(flag.id).toBe('store_closed');

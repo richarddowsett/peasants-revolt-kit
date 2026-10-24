@@ -13,9 +13,21 @@
     "test:e2e": "playwright test",
     "test:smoke": "playwright test --config=playwright.smoke.config.ts",
     "test:smoke:qa": "PLAYWRIGHT_BASE_URL=https://peasants-running-kit-qa.web.app playwright test --config=playwright.smoke.config.ts",
-    "test": "npm run test:unit && npm run test:e2e"
+    "test": "npm run test:unit && npm run test:e2e",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd app && npm run lint",
+    "lint:e2e": "eslint \"e2e/**/*.ts\" \"playwright*.ts\" && tsc --noEmit",
+    "lint:terraform": "terraform fmt -check -recursive infrastructure",
+    "lint": "npm run lint:backend && npm run lint:frontend && npm run lint:e2e && npm run lint:terraform",
+    "lint:fix": "cd backend && npm run lint:fix && cd ../app && npm run lint:fix && cd .. && eslint --fix \"e2e/**/*.ts\" \"playwright*.ts\" && terraform fmt -recursive infrastructure"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.0"
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^22.20.5",
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0"
   }
 }

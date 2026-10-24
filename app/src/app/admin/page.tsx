@@ -15,7 +15,7 @@ import {
 import { Product, SizeGuideRow, GenderFit } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
-import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Image as ImageIcon, Eye, EyeOff, Ruler, Sparkles, Send, Store, AlertTriangle, Printer, XCircle } from 'lucide-react';
+import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Eye, EyeOff, Ruler, Send, Store, AlertTriangle, Printer, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import EventsAdminPanel from '@/components/EventsAdminPanel';
 
@@ -75,7 +75,7 @@ export default function AdminCMSPage() {
       } else {
         setAuthError('Incorrect admin password.');
       }
-    } catch (err) {
+    } catch {
       setAuthError('Failed to verify admin password.');
     }
   };
@@ -114,8 +114,8 @@ export default function AdminCMSPage() {
     try {
       await updateFeatureFlag('store_closed', nextClosedState);
       setIsStoreClosed(nextClosedState);
-    } catch (err: any) {
-      alert(err.message || 'Failed to update store status');
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to update store status');
     } finally {
       setTogglingStore(false);
     }
@@ -131,8 +131,8 @@ export default function AdminCMSPage() {
     try {
       const uploadedUrls = await uploadImages(imageFiles);
       setProductImages((prev) => [...prev, ...uploadedUrls]);
-    } catch (err: any) {
-      alert(`Failed to upload images: ${err.message || 'Storage upload error'}`);
+    } catch (err: unknown) {
+      alert(`Failed to upload images: ${(err as Error).message || 'Storage upload error'}`);
     } finally {
       setUploadingImage(false);
     }
@@ -185,7 +185,11 @@ export default function AdminCMSPage() {
     ]);
   };
 
-  const handleUpdateSizeRow = (index: number, field: keyof SizeGuideRow, value: any) => {
+  const handleUpdateSizeRow = <K extends keyof SizeGuideRow>(
+    index: number,
+    field: K,
+    value: SizeGuideRow[K]
+  ) => {
     setSizeGuideRows((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };
@@ -233,8 +237,8 @@ export default function AdminCMSPage() {
       setIsProductModalOpen(false);
       resetProductForm();
       loadAdminData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to save product');
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to save product');
     }
   };
 
@@ -246,8 +250,8 @@ export default function AdminCMSPage() {
         setIsProductModalOpen(false);
         resetProductForm();
         loadAdminData();
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete product');
+      } catch (err: unknown) {
+        alert((err as Error).message || 'Failed to delete product');
       }
     }
   };
@@ -257,8 +261,8 @@ export default function AdminCMSPage() {
     try {
       await updateOrderStatus(orderId, status);
       loadAdminData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to update order status');
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to update order status');
     }
   };
 

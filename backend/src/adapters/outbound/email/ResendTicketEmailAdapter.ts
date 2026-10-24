@@ -12,6 +12,23 @@ import {
   isQaEnvironment,
 } from '../../../domain/entities/ClubEvent';
 
+export interface ResendEmailPayload {
+  from: string;
+  to: string[];
+  subject: string;
+  html: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentId?: string;
+  }>;
+}
+
+export interface ResendSendResponse {
+  data?: { id?: string } | null;
+  error?: { message?: string } | null;
+}
+
 export class ResendTicketEmailAdapter implements EmailOutboundPort {
   private cachedApiKey: string | null = null;
   private secretManagerClient: SecretManagerServiceClient | null = null;
@@ -19,8 +36,11 @@ export class ResendTicketEmailAdapter implements EmailOutboundPort {
   constructor(
     secretManagerClient?: SecretManagerServiceClient,
     private resendFactory: (apiKey: string) => {
-      emails: { send: (payload: any) => Promise<any> };
-    } = (apiKey: string) => new Resend(apiKey)
+      emails: { send: (payload: ResendEmailPayload) => Promise<ResendSendResponse> };
+    } = (apiKey: string) =>
+      new Resend(apiKey) as unknown as {
+        emails: { send: (payload: ResendEmailPayload) => Promise<ResendSendResponse> };
+      }
   ) {
     if (secretManagerClient) {
       this.secretManagerClient = secretManagerClient;

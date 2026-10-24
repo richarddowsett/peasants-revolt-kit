@@ -2,8 +2,8 @@ import { EventTicketRepositoryOutboundPort } from '../../../domain/ports/outboun
 import { EventTicket } from '../../../domain/entities/ClubEvent';
 import { adminDb } from './FirebaseAdminConfig';
 
-function stripUndefined<T extends Record<string, any>>(obj: T): T {
-  const cleaned: Record<string, any> = {};
+function stripUndefined<T extends object>(obj: T): T {
+  const cleaned: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (v !== undefined) {
       cleaned[k] = v;

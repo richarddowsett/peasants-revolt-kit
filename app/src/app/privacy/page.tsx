@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import StoreHeader from '@/components/StoreHeader';
 import StoreFooter from '@/components/StoreFooter';
-import { ShieldCheck, Cookie, Lock, Database, ArrowLeft, Mail, ExternalLink, Info } from 'lucide-react';
+import { ShieldCheck, Cookie, ArrowLeft, Mail, ExternalLink, Info } from 'lucide-react';
 
 export default function PrivacyPolicyPage() {
   return (

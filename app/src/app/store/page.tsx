@@ -7,8 +7,9 @@ import StoreLoginScreen from '@/components/StoreLoginScreen';
 import StoreHoldingPage from '@/components/StoreHoldingPage';
 import { fetchProducts, createOrder, fetchFeatureFlag } from '@/lib/api';
 import { Product, GenderFit, SizeGuideRow } from '@/domain/models/Product';
+import { Order } from '@/domain/models/Order';
 import { CartItem } from '@/domain/models/Cart';
-import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler, ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, RotateCcw, AlertCircle, LogIn, UserCheck } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, Check, ExternalLink, ShieldCheck, Ruler, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCcw, AlertCircle } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -23,7 +24,7 @@ import {
 export default function StoreCatalogPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [_authChecking, setAuthChecking] = useState<boolean>(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   const [isStoreClosed, setIsStoreClosed] = useState<boolean>(false);
@@ -148,7 +149,7 @@ export default function StoreCatalogPage() {
   const [customerName, setCustomerName] = useState<string>('');
   const [customerEmail, setCustomerEmail] = useState<string>('');
   const [checkoutError, setCheckoutError] = useState<string>('');
-  const [createdOrder, setCreatedOrder] = useState<any | null>(null);
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Load cart from localStorage on mount
@@ -328,13 +329,14 @@ export default function StoreCatalogPage() {
         if (userCredential.user.email) setCustomerEmail(userCredential.user.email);
       }
       setCheckoutMode('guest');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Checkout login error:', err);
-      let msg = err.message || 'Login failed.';
+      const authErr = err as { message?: string; code?: string };
+      let msg = authErr.message || 'Login failed.';
       if (
-        err.code === 'auth/invalid-credential' ||
-        err.code === 'auth/wrong-password' ||
-        err.code === 'auth/user-not-found'
+        authErr.code === 'auth/invalid-credential' ||
+        authErr.code === 'auth/wrong-password' ||
+        authErr.code === 'auth/user-not-found'
       ) {
         msg = 'Invalid email or password.';
       }
@@ -398,9 +400,11 @@ export default function StoreCatalogPage() {
             })
           );
         }
-      } catch (_) {}
-    } catch (err: any) {
-      setCheckoutError(err.message || 'Failed to submit order.');
+      } catch {
+        // Ignore storage error
+      }
+    } catch (err: unknown) {
+      setCheckoutError((err as Error).message || 'Failed to submit order.');
     } finally {
       setIsSubmitting(false);
     }

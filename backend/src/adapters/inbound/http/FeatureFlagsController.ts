@@ -12,8 +12,8 @@ export class FeatureFlagsController {
     try {
       const flags = await this.getFeatureFlagUseCase.getAllFlags();
       res.json(flags);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Failed to retrieve feature flags' });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message || 'Failed to retrieve feature flags' });
     }
   }
 
@@ -26,8 +26,8 @@ export class FeatureFlagsController {
         return;
       }
       res.json(flag);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Failed to retrieve feature flag' });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message || 'Failed to retrieve feature flag' });
     }
   }
 
@@ -49,8 +49,8 @@ export class FeatureFlagsController {
       });
 
       res.json(updated);
-    } catch (err: any) {
-      res.status(400).json({ error: err.message || 'Failed to update feature flag' });
+    } catch (err: unknown) {
+      res.status(400).json({ error: (err as Error).message || 'Failed to update feature flag' });
     }
   }
 }

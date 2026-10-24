@@ -28,7 +28,7 @@ describe('GetFeatureFlagUseCase', () => {
       enabled: true,
       updatedAt: '2026-01-01T00:00:00Z',
     };
-    (mockRepo.getFeatureFlag as any).mockResolvedValue(flag);
+    vi.mocked(mockRepo.getFeatureFlag).mockResolvedValue(flag);
 
     const result = await useCase.getFlag('store_closed');
     expect(result).toEqual(flag);
@@ -44,7 +44,7 @@ describe('GetFeatureFlagUseCase', () => {
         updatedAt: '2026-01-01T00:00:00Z',
       },
     ];
-    (mockRepo.getAllFeatureFlags as any).mockResolvedValue(flags);
+    vi.mocked(mockRepo.getAllFeatureFlags).mockResolvedValue(flags);
 
     const result = await useCase.getAllFlags();
     expect(result).toEqual(flags);

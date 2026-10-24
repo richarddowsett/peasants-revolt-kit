@@ -29,9 +29,10 @@ export class EventsController {
       const includePast = req.query.includePast === 'true';
       const events = await this.listEventsUseCase.execute({ includePast });
       res.json(events);
-    } catch (err: any) {
-      console.error('[Events API ERROR] listEvents failed:', err.message);
-      res.status(500).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] listEvents failed:', message);
+      res.status(500).json({ error: message });
     }
   }
 
@@ -43,9 +44,10 @@ export class EventsController {
         return;
       }
       res.json(eventWithStats);
-    } catch (err: any) {
-      console.error('[Events API ERROR] getEventById failed:', err.message);
-      res.status(500).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] getEventById failed:', message);
+      res.status(500).json({ error: message });
     }
   }
 
@@ -53,9 +55,10 @@ export class EventsController {
     try {
       const created = await this.createEventUseCase.execute(req.body);
       res.status(201).json(created);
-    } catch (err: any) {
-      console.error('[Events API ERROR] createEvent failed:', err.message);
-      res.status(400).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] createEvent failed:', message);
+      res.status(400).json({ error: message });
     }
   }
 
@@ -63,9 +66,10 @@ export class EventsController {
     try {
       const updated = await this.updateEventUseCase.execute(req.params.id, req.body);
       res.json(updated);
-    } catch (err: any) {
-      console.error('[Events API ERROR] updateEvent failed:', err.message);
-      res.status(400).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] updateEvent failed:', message);
+      res.status(400).json({ error: message });
     }
   }
 
@@ -73,9 +77,10 @@ export class EventsController {
     try {
       await this.deleteEventUseCase.execute(req.params.id);
       res.json({ deleted: true });
-    } catch (err: any) {
-      console.error('[Events API ERROR] deleteEvent failed:', err.message);
-      res.status(400).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] deleteEvent failed:', message);
+      res.status(400).json({ error: message });
     }
   }
 
@@ -88,9 +93,10 @@ export class EventsController {
         userId: req.body?.userId,
       });
       res.status(201).json(ticket);
-    } catch (err: any) {
-      console.error('[Events API ERROR] purchaseTicket failed:', err.message);
-      res.status(400).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] purchaseTicket failed:', message);
+      res.status(400).json({ error: message });
     }
   }
 
@@ -98,9 +104,10 @@ export class EventsController {
     try {
       const tickets = await this.ticketRepo.listTicketsByEvent(req.params.id);
       res.json(tickets);
-    } catch (err: any) {
-      console.error('[Events API ERROR] listEventTickets failed:', err.message);
-      res.status(500).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] listEventTickets failed:', message);
+      res.status(500).json({ error: message });
     }
   }
 
@@ -112,9 +119,10 @@ export class EventsController {
         status
       );
       res.json(updated);
-    } catch (err: any) {
-      console.error('[Events API ERROR] updateTicketStatus failed:', err.message);
-      res.status(400).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] updateTicketStatus failed:', message);
+      res.status(400).json({ error: message });
     }
   }
 
@@ -124,9 +132,10 @@ export class EventsController {
         req.params.ticketId
       );
       res.json(result);
-    } catch (err: any) {
-      console.error('[Events API ERROR] resendTicketEmail failed:', err.message);
-      res.status(400).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] resendTicketEmail failed:', message);
+      res.status(400).json({ error: message });
     }
   }
 
@@ -138,9 +147,10 @@ export class EventsController {
         eventId
       );
       res.json(result);
-    } catch (err: any) {
-      console.error('[Events API ERROR] verifyAndCheckInQr failed:', err.message);
-      res.status(400).json({ error: err.message });
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      console.error('[Events API ERROR] verifyAndCheckInQr failed:', message);
+      res.status(400).json({ error: message });
     }
   }
 }

@@ -59,20 +59,21 @@ export default function StoreLoginScreen({
         await signInWithEmailAndPassword(auth, email, password);
       }
       onSuccess?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Firebase Auth error:', err);
-      let msg = err.message || 'Authentication failed.';
+      const authErr = err as { message?: string; code?: string };
+      let msg = authErr.message || 'Authentication failed.';
       if (
-        err.code === 'auth/invalid-credential' ||
-        err.code === 'auth/wrong-password' ||
-        err.code === 'auth/user-not-found'
+        authErr.code === 'auth/invalid-credential' ||
+        authErr.code === 'auth/wrong-password' ||
+        authErr.code === 'auth/user-not-found'
       ) {
         msg = 'Invalid email or password. If you do not have an account yet, click Register below.';
-      } else if (err.code === 'auth/email-already-in-use') {
+      } else if (authErr.code === 'auth/email-already-in-use') {
         msg = 'An account with this email address already exists. Please sign in instead.';
-      } else if (err.code === 'auth/weak-password') {
+      } else if (authErr.code === 'auth/weak-password') {
         msg = 'Password should be at least 6 characters long.';
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (authErr.code === 'auth/invalid-email') {
         msg = 'Please enter a valid email address.';
       }
       setError(msg);

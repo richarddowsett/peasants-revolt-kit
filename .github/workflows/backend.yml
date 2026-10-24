@@ -82,6 +82,11 @@ jobs:
           npm ci --legacy-peer-deps || npm install --legacy-peer-deps
           cd backend && (npm ci --legacy-peer-deps || npm install --legacy-peer-deps)
 
+      - name: Lint Backend Code
+        run: |
+          cd backend
+          npm run lint
+
       - name: Run Backend Unit Tests
         run: |
           cd backend

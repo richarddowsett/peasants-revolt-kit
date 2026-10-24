@@ -4,7 +4,6 @@ import {
   saveProduct,
   deleteProduct,
   createOrder,
-  fetchOrders,
   lookupOrder,
   updateOrderStatus,
   verifyAdminPassword,
@@ -16,7 +15,8 @@ import {
   updateFeatureFlag,
 } from './api';
 
-global.fetch = vi.fn();
+const mockFetch = vi.fn();
+global.fetch = mockFetch as unknown as typeof fetch;
 
 describe('Frontend API Client (lib/api)', () => {
   beforeEach(() => {
@@ -25,7 +25,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('fetchProducts calls /api/products', async () => {
     const mockProducts = [{ id: '1', name: 'Running Top', price: 25 }];
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockProducts,
     });
@@ -36,7 +36,7 @@ describe('Frontend API Client (lib/api)', () => {
   });
 
   it('fetchProducts with all=true calls /api/products?all=true', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => [],
     });
@@ -48,7 +48,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('saveProduct posts data to /api/products', async () => {
     const productPayload = { name: 'Vest', price: 20 };
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ id: 'prod_123', ...productPayload }),
     });
@@ -62,7 +62,7 @@ describe('Frontend API Client (lib/api)', () => {
   });
 
   it('deleteProduct sends DELETE to /api/products/:id', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true }),
     });
@@ -75,7 +75,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('createOrder posts order data to /api/orders', async () => {
     const orderPayload = { userName: 'Runner', userEmail: 'runner@example.com' };
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ id: 'PRRC-1234', ...orderPayload }),
     });
@@ -89,7 +89,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('lookupOrder calls /api/orders with orderRef and email query parameters', async () => {
     const mockOrder = { id: 'PRRC-1234', userEmail: 'runner@example.com', status: 'pending_payment' };
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockOrder,
     });
@@ -103,7 +103,7 @@ describe('Frontend API Client (lib/api)', () => {
   });
 
   it('verifyAdminPassword sends password to /api/admin/login', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true }),
     });
@@ -113,7 +113,7 @@ describe('Frontend API Client (lib/api)', () => {
   });
 
   it('getSignedUploadUrl posts fileName and contentType to /api/upload/signed-url', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         uploadUrl: 'https://storage.googleapis.com/upload-signed',
@@ -132,7 +132,7 @@ describe('Frontend API Client (lib/api)', () => {
   });
 
   it('uploadImageViaSignedUrl fetches signed url and executes PUT directly to storage', async () => {
-    (global.fetch as any)
+    mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -157,9 +157,9 @@ describe('Frontend API Client (lib/api)', () => {
   });
 
   it('uploadImages uploads all files via signed URLs', async () => {
-    (global.fetch as any).mockImplementation(async (url: string, options?: any) => {
+    mockFetch.mockImplementation(async (url: string, options?: RequestInit) => {
       if (url === '/api/upload/signed-url') {
-        const body = JSON.parse(options?.body || '{}');
+        const body = JSON.parse(typeof options?.body === 'string' ? options.body : '{}');
         return {
           ok: true,
           json: async () => ({
@@ -185,7 +185,7 @@ describe('Frontend API Client (lib/api)', () => {
   });
 
   it('uploadImages falls back to /api/upload multipart if signed URL upload fails', async () => {
-    (global.fetch as any)
+    mockFetch
       .mockRejectedValueOnce(new Error('Network error on signed url'))
       .mockResolvedValueOnce({
         ok: true,
@@ -207,7 +207,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('fetchFeatureFlags calls GET /api/feature-flags', async () => {
     const mockFlags = [{ id: 'store_closed', enabled: true }];
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockFlags,
     });
@@ -218,7 +218,7 @@ describe('Frontend API Client (lib/api)', () => {
   });
 
   it('fetchFeatureFlag calls GET /api/feature-flags/:id and returns null on 404', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 404,
     });
@@ -228,7 +228,7 @@ describe('Frontend API Client (lib/api)', () => {
     expect(notFound).toBeNull();
 
     const mockFlag = { id: 'store_closed', enabled: false };
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockFlag,
     });
@@ -239,7 +239,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('updateFeatureFlag sends PATCH to /api/feature-flags/:id', async () => {
     const updatedFlag = { id: 'store_closed', enabled: true };
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => updatedFlag,
     });
@@ -255,7 +255,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('updateOrderStatus sends PATCH to /api/orders/:id/status without batchRef', async () => {
     const updatedOrder = { id: 'ORD-1', status: 'cancelled' };
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => updatedOrder,
     });
@@ -271,7 +271,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('updateOrderStatus sends PATCH to /api/orders/:id/status with trimmed batchRef when provided', async () => {
     const updatedOrder = { id: 'ORD-1', status: 'order_sent', batchRef: 'BATCH-2026-OCT' };
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => updatedOrder,
     });
@@ -287,7 +287,7 @@ describe('Frontend API Client (lib/api)', () => {
 
   it('updateOrderStatus omits batchRef when it is empty string or whitespace', async () => {
     const updatedOrder = { id: 'ORD-1', status: 'order_sent' };
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => updatedOrder,
     });

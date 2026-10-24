@@ -74,9 +74,9 @@ describe('ManufacturerExportPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
-    (fetchOrders as any).mockResolvedValue(mockOrders);
-    (updateOrderStatus as any).mockResolvedValue({ success: true });
-    (verifyAdminPassword as any).mockResolvedValue(true);
+    vi.mocked(fetchOrders).mockResolvedValue(mockOrders);
+    vi.mocked(updateOrderStatus).mockResolvedValue(mockOrders[0]);
+    vi.mocked(verifyAdminPassword).mockResolvedValue(true);
     window.confirm = vi.fn().mockReturnValue(true);
     window.print = vi.fn();
   });
@@ -104,7 +104,7 @@ describe('ManufacturerExportPage', () => {
   });
 
   it('shows error on incorrect admin password', async () => {
-    (verifyAdminPassword as any).mockResolvedValueOnce(false);
+    vi.mocked(verifyAdminPassword).mockResolvedValueOnce(false);
     render(<ManufacturerExportPage />);
     const input = screen.getByPlaceholderText('Enter admin password');
     fireEvent.change(input, { target: { value: 'wrong' } });
@@ -295,7 +295,7 @@ describe('ManufacturerExportPage', () => {
 
   it('displays empty state when there are no paid orders', async () => {
     sessionStorage.setItem('admin_authenticated', 'true');
-    (fetchOrders as any).mockResolvedValueOnce([
+    vi.mocked(fetchOrders).mockResolvedValueOnce([
       {
         id: 'ORD-PENDING-ONLY',
         userName: 'Pending User',

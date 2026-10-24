@@ -1,4 +1,4 @@
-import { Order, OrderItem } from '../models/Order';
+import { Order } from '../models/Order';
 import { GenderFit } from '../models/Product';
 import { parseGenderFromSize } from '../models/SizeGuide';
 

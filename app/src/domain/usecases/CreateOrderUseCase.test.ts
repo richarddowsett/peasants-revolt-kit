@@ -21,12 +21,14 @@ describe('CreateOrderUseCase (frontend domain)', () => {
         } as Order);
       }),
       getAllOrders: vi.fn().mockResolvedValue([]),
+      getOrderById: vi.fn().mockResolvedValue(null),
       getOrdersByUserEmail: vi.fn().mockResolvedValue([]),
       updateOrderStatus: vi.fn(),
     };
 
     paymentGateway = {
       generatePaymentLink: vi.fn().mockReturnValue('https://monzo.me/pay/PRRC-1001?amount=25'),
+      getGatewayName: vi.fn().mockReturnValue('monzo'),
     };
 
     useCase = new CreateOrderUseCase(orderRepo, paymentGateway);

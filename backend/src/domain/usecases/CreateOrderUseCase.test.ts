@@ -47,7 +47,7 @@ describe('CreateOrderUseCase', () => {
     const invalidCommand2 = {
       userEmail: 'test@example.com',
       userName: 'Runner',
-      items: undefined as any,
+      items: undefined as unknown as CreateOrderCommand['items'],
     } as CreateOrderCommand;
 
     await expect(useCase.execute(invalidCommand2)).rejects.toThrow(

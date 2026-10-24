@@ -72,7 +72,10 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
   }
 
   async saveProduct(
-    productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }
+    productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> & {
+      id?: string;
+      createdAt?: string;
+    }
   ): Promise<Product> {
     const id = productData.id || `prod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
     const now = new Date().toISOString();
@@ -80,7 +83,7 @@ export class FirestoreProductRepositoryAdapter implements ProductRepositoryPort 
     const product: Product = {
       ...productData,
       id,
-      createdAt: (productData as any).createdAt || now,
+      createdAt: productData.createdAt || now,
       updatedAt: now,
     };
 

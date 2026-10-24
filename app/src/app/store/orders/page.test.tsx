@@ -30,7 +30,7 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('@/components/StoreHeader', () => ({
-  default: ({ onOpenLogin }: any) => (
+  default: ({ onOpenLogin }: { onOpenLogin?: () => void }) => (
     <div data-testid="store-header">
       <button onClick={onOpenLogin}>Header Sign In</button>
     </div>
@@ -38,7 +38,7 @@ vi.mock('@/components/StoreHeader', () => ({
 }));
 
 vi.mock('@/components/StoreLoginScreen', () => ({
-  default: ({ onClose }: any) => (
+  default: ({ onClose }: { onClose?: () => void }) => (
     <div data-testid="store-login-modal">
       <span>Store Login Modal</span>
       <button onClick={onClose}>Close Login Modal</button>
@@ -103,13 +103,13 @@ describe('UserOrdersPage', () => {
     vi.clearAllMocks();
     vi.mocked(useSearchParams).mockReturnValue({
       get: vi.fn().mockReturnValue(null),
-    } as any);
+    } as unknown as ReturnType<typeof useSearchParams>);
   });
 
   describe('When user is authenticated', () => {
     beforeEach(() => {
-      vi.mocked(onAuthStateChanged).mockImplementation((_auth, callback: any) => {
-        callback({ uid: 'u1', email: 'runner@peasants.store' });
+      vi.mocked(onAuthStateChanged).mockImplementation((_auth, callback) => {
+        (callback as (user: unknown) => void)({ uid: 'u1', email: 'runner@peasants.store' });
         return () => {};
       });
       vi.mocked(fetchOrders).mockResolvedValue(mockMemberOrders);
@@ -207,8 +207,8 @@ describe('UserOrdersPage', () => {
 
   describe('When user is NOT authenticated (Guest view)', () => {
     beforeEach(() => {
-      vi.mocked(onAuthStateChanged).mockImplementation((_auth, callback: any) => {
-        callback(null);
+      vi.mocked(onAuthStateChanged).mockImplementation((_auth, callback) => {
+        (callback as (user: unknown) => void)(null);
         return () => {};
       });
     });
@@ -299,7 +299,7 @@ describe('UserOrdersPage', () => {
           if (param === 'email') return 'guestrunner@example.com';
           return null;
         },
-      } as any);
+      } as unknown as ReturnType<typeof useSearchParams>);
 
       vi.mocked(lookupOrder).mockResolvedValueOnce(mockGuestOrder);
 

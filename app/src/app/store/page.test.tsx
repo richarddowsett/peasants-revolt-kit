@@ -25,7 +25,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 
-let mockCurrentUser: any = null;
+let mockCurrentUser: { uid: string; email: string; displayName: string } | null = null;
 
 vi.mock('@/lib/firebase', () => ({
   auth: {
@@ -40,7 +40,7 @@ vi.mock('firebase/auth', () => ({
     cb(mockCurrentUser);
     return () => {};
   }),
-  signInWithEmailAndPassword: vi.fn().mockImplementation((auth, email, password) => {
+  signInWithEmailAndPassword: vi.fn().mockImplementation((_auth, email, _password) => {
     mockCurrentUser = { uid: 'logged-in-user', email, displayName: 'Logged In User' };
     return Promise.resolve({ user: mockCurrentUser });
   }),
@@ -210,7 +210,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
       paymentLinkUrl: 'https://monzo.me/pay/PRRC-5555?amount=25',
       userEmail: 'guest@example.com',
       userName: 'Guest Runner',
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof createOrder>>);
 
     render(<StoreCatalogPage />);
 
@@ -406,7 +406,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
       paymentLinkUrl: 'https://monzo.me/pay/PRRC-7777?amount=25',
       userEmail: 'guest@example.com',
       userName: 'Guest Runner',
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof createOrder>>);
 
     render(<StoreCatalogPage />);
 

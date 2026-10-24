@@ -20,8 +20,8 @@ export class UploadController {
 
       const result = await this.storageAdapter.getSignedUploadUrl(fileName.trim(), contentType.trim());
       res.json(result);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Failed to generate signed upload URL' });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message || 'Failed to generate signed upload URL' });
     }
   }
 
@@ -54,8 +54,8 @@ export class UploadController {
         imageUrl: imageUrls[0],
         imageUrls,
       });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
+    } catch (err: unknown) {
+      res.status(500).json({ error: (err as Error).message });
     }
   }
 }

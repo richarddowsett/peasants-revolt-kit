@@ -26,9 +26,9 @@ describe('SetFeatureFlagUseCase', () => {
   });
 
   it('should throw an error if enabled is not a boolean', async () => {
-    await expect(useCase.execute({ id: 'store_closed', enabled: 'true' as any })).rejects.toThrow(
-      'Feature flag enabled state must be a boolean.'
-    );
+    await expect(
+      useCase.execute({ id: 'store_closed', enabled: 'true' as unknown as boolean })
+    ).rejects.toThrow('Feature flag enabled state must be a boolean.');
   });
 
   it('should call setFeatureFlag on repository with trimmed id and metadata', async () => {
@@ -39,7 +39,7 @@ describe('SetFeatureFlagUseCase', () => {
       description: 'Closes storefront',
       updatedAt: '2026-01-01T00:00:00Z',
     };
-    (mockRepo.setFeatureFlag as any).mockResolvedValue(updatedFlag);
+    vi.mocked(mockRepo.setFeatureFlag).mockResolvedValue(updatedFlag);
 
     const result = await useCase.execute({
       id: '  store_closed  ',

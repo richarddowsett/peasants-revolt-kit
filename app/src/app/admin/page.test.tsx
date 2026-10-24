@@ -346,7 +346,17 @@ describe('AdminCMSPage - Product Sizing Direct Input (No CMS Defaults or Presets
   });
 
   it('allows adding size rows directly and saves them without default fallbacks', async () => {
-    (saveProduct as any).mockResolvedValueOnce({ id: 'p-new', name: 'Race Vest' });
+    vi.mocked(saveProduct).mockResolvedValueOnce({
+      id: 'p-new',
+      name: 'Race Vest',
+      description: '',
+      price: 25,
+      imageUrl: '/logo.png',
+      sizes: ["Men's S"],
+      isPublished: true,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    });
 
     render(<AdminCMSPage />);
 

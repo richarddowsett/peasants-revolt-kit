@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { ResendTicketEmailAdapter } from './ResendTicketEmailAdapter';
 import { ClubEvent, EventTicket } from '../../../domain/entities/ClubEvent';
 
@@ -65,7 +66,7 @@ describe('ResendTicketEmailAdapter', () => {
     });
 
     const adapter = new ResendTicketEmailAdapter(
-      { accessSecretVersion: mockAccessSecretVersion } as any,
+      { accessSecretVersion: mockAccessSecretVersion } as unknown as SecretManagerServiceClient,
       (apiKey: string) => {
         expect(apiKey).toBe('re_secret_manager_key_123');
         return {
@@ -119,7 +120,7 @@ describe('ResendTicketEmailAdapter', () => {
     });
 
     const adapter = new ResendTicketEmailAdapter(
-      { accessSecretVersion: mockAccessSecretVersion } as any,
+      { accessSecretVersion: mockAccessSecretVersion } as unknown as SecretManagerServiceClient,
       () => ({
         emails: { send: mockSend },
       })

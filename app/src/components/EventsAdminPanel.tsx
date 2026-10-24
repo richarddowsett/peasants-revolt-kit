@@ -21,7 +21,6 @@ import {
   DEFAULT_EVENTS_FROM_EMAIL,
   EventTicket,
   EventTicketStatus,
-  EventTicketVerificationResult,
 } from '@/domain/models/ClubEvent';
 import {
   fetchEvents,
@@ -173,10 +172,10 @@ export default function EventsAdminPanel() {
         type: 'success',
         text: 'Custom event logo uploaded to Cloud Storage.',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFormMessage({
         type: 'error',
-        text: err.message || 'Failed to upload custom logo.',
+        text: (err as Error).message || 'Failed to upload custom logo.',
       });
     } finally {
       setUploadingLogo(false);
@@ -220,10 +219,10 @@ export default function EventsAdminPanel() {
         });
       }
       setIsFormOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFormMessage({
         type: 'error',
-        text: err.message || 'Failed to save event.',
+        text: (err as Error).message || 'Failed to save event.',
       });
     } finally {
       setSavingEvent(false);
@@ -238,8 +237,8 @@ export default function EventsAdminPanel() {
       await deleteEvent(eventId);
       const nextId = selectedEventId === eventId ? undefined : selectedEventId;
       await loadEvents(nextId, false);
-    } catch (err: any) {
-      alert(err.message || 'Failed to delete event');
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to delete event');
     }
   };
 
@@ -253,8 +252,8 @@ export default function EventsAdminPanel() {
     try {
       await updateEventTicketStatus(ticketId, status);
       await loadEvents(selectedEventId, false);
-    } catch (err: any) {
-      alert(err.message || 'Failed to update ticket status');
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to update ticket status');
     } finally {
       setUpdatingTicketId(null);
     }
@@ -265,8 +264,8 @@ export default function EventsAdminPanel() {
     try {
       await resendEventTicketEmail(ticketId);
       await loadEvents(selectedEventId, false);
-    } catch (err: any) {
-      alert(err.message || 'Failed to resend ticket email');
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to resend ticket email');
     } finally {
       setResendingTicketId(null);
     }
@@ -282,8 +281,8 @@ export default function EventsAdminPanel() {
       const targetEventId = selectedEventIdRef.current || selectedEventId || undefined;
       await verifyEventTicketQr(clean, targetEventId);
       await loadEvents(targetEventId ?? null, false);
-    } catch (err: any) {
-      alert(err.message || 'Failed to verify QR ticket UUID.');
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to verify QR ticket UUID.');
     } finally {
       verifyingQrRef.current = false;
       setVerifyingQr(false);

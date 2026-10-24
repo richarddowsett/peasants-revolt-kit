@@ -24,7 +24,6 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  FileText,
 } from 'lucide-react';
 
 export default function ManufacturerExportPage() {
@@ -155,11 +154,11 @@ export default function ManufacturerExportPage() {
           ? `Successfully marked ${pendingSentOrderIds.length} order(s) as "Order Sent" (Batch: ${trimmedBatchRef})!`
           : `Successfully marked ${pendingSentOrderIds.length} order(s) as "Order Sent"!`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to update orders to order_sent:', err);
       setStatusMessage({
         type: 'error',
-        text: `Failed to update some orders: ${err.message || 'Server error'}`,
+        text: `Failed to update some orders: ${(err as Error).message || 'Server error'}`,
       });
     } finally {
       setIsUpdatingStatus(false);
