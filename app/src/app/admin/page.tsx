@@ -19,6 +19,28 @@ import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, 
 import Link from 'next/link';
 import EventsAdminPanel from '@/components/EventsAdminPanel';
 
+type AdminTab = 'products' | 'orders' | 'events';
+
+const ADMIN_TAB_PATHS: Record<AdminTab, string> = {
+  products: '/admin/catalog',
+  orders: '/admin/orders',
+  events: '/admin/events',
+};
+
+function getTabFromPathname(pathname: string, fallback: AdminTab = 'orders'): AdminTab {
+  const normalized = pathname.replace(/\/+$/, '');
+  if (normalized.endsWith('/admin/catalog') || normalized.endsWith('/admin/products')) {
+    return 'products';
+  }
+  if (normalized.endsWith('/admin/events')) {
+    return 'events';
+  }
+  if (normalized.endsWith('/admin/orders')) {
+    return 'orders';
+  }
+  return fallback;
+}
+
 const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'pending_payment', label: 'Pending Payment' },
@@ -34,7 +56,12 @@ export default function AdminCMSPage() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'events'>('products');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    if (typeof window !== 'undefined') {
+      return getTabFromPathname(window.location.pathname, 'orders');
+    }
+    return 'orders';
+  });
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | OrderStatus>('all');
@@ -62,6 +89,38 @@ export default function AdminCMSPage() {
       loadAdminData();
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const currentPath = window.location.pathname.replace(/\/+$/, '');
+    const resolvedTab = getTabFromPathname(currentPath, 'orders');
+    setActiveTab(resolvedTab);
+
+    const targetPath = ADMIN_TAB_PATHS[resolvedTab];
+    if (currentPath === '/admin' || currentPath === '') {
+      window.history.replaceState({ tab: resolvedTab }, '', targetPath);
+    }
+
+    const handlePopState = () => {
+      const tabFromUrl = getTabFromPathname(window.location.pathname, 'orders');
+      setActiveTab(tabFromUrl);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleTabChange = (tab: AdminTab) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      const targetPath = ADMIN_TAB_PATHS[tab];
+      const currentPath = window.location.pathname.replace(/\/+$/, '');
+      if (currentPath !== targetPath) {
+        window.history.pushState({ tab }, '', targetPath);
+      }
+    }
+  };
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -505,7 +564,7 @@ export default function AdminCMSPage() {
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 flex gap-6">
           <button
-            onClick={() => setActiveTab('products')}
+            onClick={() => handleTabChange('products')}
             className={`py-4 text-xs font-extrabold border-b-2 transition ${
               activeTab === 'products'
                 ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'
@@ -515,7 +574,7 @@ export default function AdminCMSPage() {
             Products Catalog ({products.length})
           </button>
           <button
-            onClick={() => setActiveTab('orders')}
+            onClick={() => handleTabChange('orders')}
             className={`py-4 text-xs font-extrabold border-b-2 transition ${
               activeTab === 'orders'
                 ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'
@@ -525,7 +584,7 @@ export default function AdminCMSPage() {
             Customer Orders ({orders.length})
           </button>
           <button
-            onClick={() => setActiveTab('events')}
+            onClick={() => handleTabChange('events')}
             className={`py-4 text-xs font-extrabold border-b-2 transition ${
               activeTab === 'events'
                 ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'

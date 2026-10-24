@@ -226,7 +226,7 @@ export default function ManufacturerExportPage() {
           </form>
 
           <div className="text-center mt-6">
-            <Link href="/admin" className="text-xs text-slate-400 hover:text-slate-600 font-medium">
+            <Link href="/admin/orders" className="text-xs text-slate-400 hover:text-slate-600 font-medium">
               &larr; Back to Admin CMS
             </Link>
           </div>
@@ -242,7 +242,7 @@ export default function ManufacturerExportPage() {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              href="/admin"
+              href="/admin/orders"
               className="text-slate-400 hover:text-white transition flex items-center gap-1.5 text-xs font-semibold py-1.5 px-2.5 rounded-lg hover:bg-slate-800"
             >
               <ArrowLeft size={16} />
@@ -381,7 +381,7 @@ export default function ManufacturerExportPage() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="/admin"
+                href="/admin/orders"
                 className="bg-[rgb(82,94,62)] text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-[rgb(68,78,50)] transition"
               >
                 Go to Customer Orders

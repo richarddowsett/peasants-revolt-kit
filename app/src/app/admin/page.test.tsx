@@ -1,7 +1,10 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminCMSPage from './page';
+import AdminCatalogPage from './catalog/page';
+import AdminOrdersPage from './orders/page';
+import AdminEventsPage from './events/page';
 import { saveProduct } from '@/lib/api';
 
 vi.mock('@/lib/api', () => ({
@@ -12,6 +15,8 @@ vi.mock('@/lib/api', () => ({
   uploadImages: vi.fn(),
   fetchFeatureFlag: vi.fn().mockResolvedValue({ id: 'store_closed', enabled: false }),
   updateFeatureFlag: vi.fn().mockResolvedValue({ id: 'store_closed', enabled: true }),
+  fetchEvents: vi.fn().mockResolvedValue([]),
+  fetchEventTickets: vi.fn().mockResolvedValue([]),
   fetchOrders: vi.fn().mockResolvedValue([
     {
       id: 'ORD-PENDING',
@@ -75,6 +80,7 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.setItem('admin_authenticated', 'true');
+    window.history.replaceState({}, '', '/admin');
   });
 
   it('renders all orders and status filter buttons with accurate counts', async () => {
@@ -305,6 +311,7 @@ describe('AdminCMSPage - Product Sizing Direct Input (No CMS Defaults or Presets
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.setItem('admin_authenticated', 'true');
+    window.history.replaceState({}, '', '/admin/catalog');
     vi.stubGlobal('alert', vi.fn());
   });
 
@@ -457,6 +464,94 @@ describe('AdminCMSPage - Product Sizing Direct Input (No CMS Defaults or Presets
       expect(updateFeatureFlag).toHaveBeenCalledWith('store_closed', false);
       expect(screen.getByText('Store Open')).toBeInTheDocument();
     });
+  });
+});
+
+describe('AdminCMSPage - Sub-path Navigation, Back Button & Refresh', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.setItem('admin_authenticated', 'true');
+    window.history.replaceState({}, '', '/admin');
+  });
+
+  it('defaults /admin to /admin/orders and displays Customer Orders tab', async () => {
+    render(<AdminCMSPage />);
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/admin/orders');
+      expect(screen.getByRole('heading', { name: 'Manage Customer Orders' })).toBeInTheDocument();
+    });
+  });
+
+  it('updates pathname to /admin/catalog, /admin/events, and /admin/orders when clicking tabs', async () => {
+    render(<AdminCMSPage />);
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/admin/orders');
+    });
+
+    // Click Products Catalog
+    const catalogTabBtn = await screen.findByRole('button', { name: /Products Catalog/i });
+    fireEvent.click(catalogTabBtn);
+    expect(window.location.pathname).toBe('/admin/catalog');
+    expect(screen.getByRole('heading', { name: 'Manage Kit Items' })).toBeInTheDocument();
+
+    // Click Events & Tickets
+    const eventsTabBtn = screen.getByRole('button', { name: /Events & Tickets/i });
+    fireEvent.click(eventsTabBtn);
+    expect(window.location.pathname).toBe('/admin/events');
+    expect(await screen.findByRole('heading', { name: 'Manage Club Events' })).toBeInTheDocument();
+
+    // Click Customer Orders
+    const ordersTabBtn = screen.getByRole('button', { name: /Customer Orders/i });
+    fireEvent.click(ordersTabBtn);
+    expect(window.location.pathname).toBe('/admin/orders');
+    expect(screen.getByRole('heading', { name: 'Manage Customer Orders' })).toBeInTheDocument();
+  });
+
+  it('responds to browser Back and Forward buttons (popstate) by switching tabs', async () => {
+    render(<AdminCMSPage />);
+
+    const catalogTabBtn = await screen.findByRole('button', { name: /Products Catalog/i });
+    fireEvent.click(catalogTabBtn);
+    expect(window.location.pathname).toBe('/admin/catalog');
+    expect(screen.getByRole('heading', { name: 'Manage Kit Items' })).toBeInTheDocument();
+
+    const eventsTabBtn = screen.getByRole('button', { name: /Events & Tickets/i });
+    fireEvent.click(eventsTabBtn);
+    expect(window.location.pathname).toBe('/admin/events');
+    expect(await screen.findByRole('heading', { name: 'Manage Club Events' })).toBeInTheDocument();
+
+    // Simulate browser Back to /admin/catalog
+    act(() => {
+      window.history.replaceState({}, '', '/admin/catalog');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(screen.getByRole('heading', { name: 'Manage Kit Items' })).toBeInTheDocument();
+
+    // Simulate browser Back to /admin/orders
+    act(() => {
+      window.history.replaceState({}, '', '/admin/orders');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(screen.getByRole('heading', { name: 'Manage Customer Orders' })).toBeInTheDocument();
+  });
+
+  it('preserves active tab on page refresh for /admin/catalog, /admin/orders, and /admin/events routes', async () => {
+    window.history.replaceState({}, '', '/admin/catalog');
+    const { unmount: unmountCatalog } = render(<AdminCatalogPage />);
+    expect(await screen.findByRole('heading', { name: 'Manage Kit Items' })).toBeInTheDocument();
+    unmountCatalog();
+
+    window.history.replaceState({}, '', '/admin/orders');
+    const { unmount: unmountOrders } = render(<AdminOrdersPage />);
+    expect(await screen.findByRole('heading', { name: 'Manage Customer Orders' })).toBeInTheDocument();
+    unmountOrders();
+
+    window.history.replaceState({}, '', '/admin/events');
+    const { unmount: unmountEvents } = render(<AdminEventsPage />);
+    expect(await screen.findByRole('heading', { name: 'Manage Club Events' })).toBeInTheDocument();
+    unmountEvents();
   });
 });
 

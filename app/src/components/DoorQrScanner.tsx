@@ -481,7 +481,7 @@ export default function DoorQrScanner({
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-200">
         <div className="flex items-center space-x-2.5">
           <Link
-            href="/admin"
+            href="/admin/events"
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
