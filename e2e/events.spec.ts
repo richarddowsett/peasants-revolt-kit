@@ -39,6 +39,7 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
     }
 
     await page.click('button:has-text("Events & Tickets")');
+    await expect(page).toHaveURL(/\/admin\/events/);
     await page.click('button:has-text("Add New Event")');
     await expect(page.getByTestId('event-admin-form')).toBeVisible();
 

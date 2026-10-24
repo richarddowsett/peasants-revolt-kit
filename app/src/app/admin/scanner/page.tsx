@@ -87,7 +87,7 @@ function ScannerPageContent() {
 
           <div className="text-center">
             <Link
-              href="/admin"
+              href="/admin/events"
               className="inline-flex items-center space-x-1 text-xs font-bold text-slate-500 hover:text-slate-800"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
