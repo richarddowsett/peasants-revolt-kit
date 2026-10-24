@@ -101,6 +101,7 @@ test.describe('Peasants Running Kit Live QA Deployment Smoke Tests', () => {
       page.locator('text=Manage Customer Orders')
         .or(page.locator('text=No customer orders yet'))
         .or(page.locator('text=Order Ref'))
+        .first()
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -157,10 +158,16 @@ test.describe('Peasants Running Kit Live QA Deployment Smoke Tests', () => {
     expect(response, 'Failed to navigate to /store/orders page').not.toBeNull();
     expect(response!.status(), `/store/orders page returned error status ${response!.status()}`).toBeLessThan(400);
 
-    // Verify page header and order UI state (either sign-in prompt, empty state, or orders list)
-    await expect(page.locator('h1', { hasText: 'My Orders' })).toBeVisible({ timeout: 10000 });
+    // Verify page header and order UI state (either guest lookup / sign-in prompt, empty state, or orders list)
+    await expect(
+      page.locator('h1', { hasText: 'Order Status' })
+        .or(page.locator('h1', { hasText: 'My Orders' }))
+        .first()
+    ).toBeVisible({ timeout: 10000 });
     const orderStateElement = page
-      .locator('text=Please Sign In')
+      .locator('text=Track Order Status')
+      .or(page.locator('text=Club Member Sign In'))
+      .or(page.locator('text=Please Sign In'))
       .or(page.locator('text=No Orders Found'))
       .or(page.locator('text=Order Ref'));
     await expect(orderStateElement.first()).toBeVisible({ timeout: 10000 });
