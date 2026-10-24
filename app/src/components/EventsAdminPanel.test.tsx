@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import EventsAdminPanel from './EventsAdminPanel';
+import DoorQrScanner from './DoorQrScanner';
 import * as api from '@/lib/api';
 
 vi.mock('@/lib/api', () => ({
@@ -16,7 +17,7 @@ vi.mock('@/lib/api', () => ({
   uploadImage: vi.fn(),
 }));
 
-describe('EventsAdminPanel', () => {
+describe('EventsAdminPanel & DoorQrScanner', () => {
   const sampleEventWithStats = {
     event: {
       id: 'evt_1',
@@ -63,7 +64,7 @@ describe('EventsAdminPanel', () => {
     vi.mocked(api.fetchEventTickets).mockResolvedValue([sampleTicket]);
   });
 
-  it('loads events and tickets and allows creating a new event', async () => {
+  it('loads events and tickets in EventsAdminPanel, links to dedicated /admin/scanner page, and allows creating a new event', async () => {
     vi.mocked(api.createEvent).mockResolvedValue({
       ...sampleEventWithStats.event,
       id: 'evt_2',
@@ -75,6 +76,9 @@ describe('EventsAdminPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
     });
+
+    const scannerLink = screen.getByTestId('open-door-scanner-link');
+    expect(scannerLink).toHaveAttribute('href', '/admin/scanner?eventId=evt_1');
 
     fireEvent.click(screen.getByRole('button', { name: /Add New Event/i }));
     expect(screen.getByTestId('event-admin-form')).toBeInTheDocument();
@@ -102,8 +106,15 @@ describe('EventsAdminPanel', () => {
     });
   });
 
-  it('verifies a ticket UUID via the Door QR Scanner and displays the check-in confirmation banner', async () => {
-    vi.mocked(api.verifyEventTicketQr).mockResolvedValue({
+  it('verifies a ticket UUID on the dedicated DoorQrScanner screen, flashes a green banner on success, and flashes red on failure', async () => {
+    const vibrateMock = vi.fn();
+    Object.defineProperty(navigator, 'vibrate', {
+      value: vibrateMock,
+      configurable: true,
+      writable: true,
+    });
+
+    vi.mocked(api.verifyEventTicketQr).mockResolvedValueOnce({
       valid: true,
       status: 'checked_in_now',
       message: 'Entry confirmed! Alice Runner (PRRC-EVT-2026-0001) is now checked in.',
@@ -114,10 +125,10 @@ describe('EventsAdminPanel', () => {
       },
     });
 
-    render(<EventsAdminPanel />);
+    render(<DoorQrScanner initialEventId="evt_1" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
+      expect(screen.getByTestId('scanner-checkin-stats')).toBeInTheDocument();
     });
 
     const uuidInput = screen.getByLabelText(/Ticket UUID/i);
@@ -129,18 +140,41 @@ describe('EventsAdminPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('qr-scan-result')).toBeInTheDocument();
+      expect(screen.getByTestId('qr-flash-banner')).toHaveTextContent(
+        /VALID TICKET — ENTRY CONFIRMED!/i
+      );
     });
 
     expect(
       screen.getByText(/Entry confirmed! Alice Runner \(PRRC-EVT-2026-0001\) is now checked in\./i)
     ).toBeInTheDocument();
+    expect(vibrateMock).toHaveBeenCalledWith([80, 40, 140]);
     expect(api.verifyEventTicketQr).toHaveBeenCalledWith(
       '550e8400-e29b-41d4-a716-446655440000',
       'evt_1'
     );
+
+    // Now test an invalid ticket scan -> flashes red error banner & error vibration
+    vi.mocked(api.verifyEventTicketQr).mockResolvedValueOnce({
+      valid: false,
+      status: 'not_found',
+      message: 'Invalid ticket QR code. No matching ticket found.',
+    });
+
+    fireEvent.change(uuidInput, {
+      target: { value: '00000000-0000-4000-8000-000000000000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Verify & Check In/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('qr-flash-banner')).toHaveTextContent(
+        /STOP — INVALID OR UNPAID TICKET/i
+      );
+    });
+    expect(vibrateMock).toHaveBeenCalledWith([320]);
   });
 
-  it('attaches the camera MediaStream to the video element and starts playback when Launch Camera QR Scanner is clicked', async () => {
+  it('attaches the camera MediaStream to the compact square video element and starts playback when Launch Camera QR Scanner is clicked', async () => {
     const stopTrackMock = vi.fn();
     const mockStream =
       typeof MediaStream !== 'undefined'
@@ -162,10 +196,10 @@ describe('EventsAdminPanel', () => {
       .spyOn(HTMLMediaElement.prototype, 'play')
       .mockImplementation(() => Promise.resolve());
 
-    render(<EventsAdminPanel />);
+    render(<DoorQrScanner initialEventId="evt_1" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
+      expect(screen.getByTestId('door-qr-scanner-screen')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Launch Camera QR Scanner/i }));
@@ -174,14 +208,18 @@ describe('EventsAdminPanel', () => {
 
     await waitFor(() => {
       expect(getUserMediaMock).toHaveBeenCalledWith({
-        video: { facingMode: { ideal: 'environment' } },
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 640 },
+          height: { ideal: 640 },
+        },
         audio: false,
       });
       expect(videoEl.srcObject).toBe(mockStream);
       expect(playSpy).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Stop Camera Scanner/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Stop Camera/i }));
 
     await waitFor(() => {
       expect(stopTrackMock).toHaveBeenCalledTimes(1);

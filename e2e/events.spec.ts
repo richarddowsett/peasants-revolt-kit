@@ -119,12 +119,15 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
     await expect(ticketRow.locator('text=Payment Received (Ticket Sent)')).toBeVisible();
     await expect(ticketRow.locator('text=QR Email Sent')).toBeVisible();
 
-    // Extract the generated ticket UUID from the admin row and verify it in the Door QR Scanner
+    // Extract the generated ticket UUID from the admin row and verify it on the dedicated Door QR Scanner screen
     const uuidText = await ticketRow.locator('text=Ticket UUID:').innerText();
     const ticketUuid = uuidText.replace('Ticket UUID:', '').trim();
     expect(ticketUuid).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     );
+
+    await page.getByTestId('open-door-scanner-link').click();
+    await expect(page.getByTestId('door-qr-scanner-screen')).toBeVisible();
 
     const uuidInput = page.locator('input[aria-label="Ticket UUID"]');
     await uuidInput.fill(ticketUuid);
@@ -135,6 +138,9 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
 
     const scanResult = page.getByTestId('qr-scan-result');
     await expect(scanResult).toBeVisible();
+    await expect(page.getByTestId('qr-flash-banner')).toContainText(
+      'VALID TICKET — ENTRY CONFIRMED!'
+    );
     await expect(scanResult.locator('text=Entry Confirmed — Checked In')).toBeVisible();
     await expect(scanResult.locator('text=Festive Runner').first()).toBeVisible();
 

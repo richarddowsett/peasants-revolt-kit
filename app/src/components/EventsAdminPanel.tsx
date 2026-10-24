@@ -1,18 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import jsQR from 'jsqr';
+import Link from 'next/link';
 import {
   Ticket,
-  Calendar,
-  MapPin,
-  Clock,
   QrCode,
-  Camera,
-  CameraOff,
   CheckCircle2,
-  AlertTriangle,
-  XCircle,
   Mail,
   Send,
   Trash2,
@@ -21,6 +14,7 @@ import {
   Edit3,
   Upload,
   RotateCcw,
+  ExternalLink,
 } from 'lucide-react';
 import {
   ClubEventWithStats,
@@ -80,19 +74,8 @@ export default function EventsAdminPanel() {
   // Ticket Actions State
   const [updatingTicketId, setUpdatingTicketId] = useState<string | null>(null);
   const [resendingTicketId, setResendingTicketId] = useState<string | null>(null);
-
-  // Door QR Scanner State
-  const [scannerActive, setScannerActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [manualUuidInput, setManualUuidInput] = useState('');
   const [verifyingQr, setVerifyingQr] = useState(false);
-  const [scanResult, setScanResult] = useState<EventTicketVerificationResult | null>(null);
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const lastScannedUuidRef = useRef<string>('');
   const selectedEventIdRef = useRef<string | null>(null);
   const verifyingQrRef = useRef<boolean>(false);
 
@@ -141,9 +124,6 @@ export default function EventsAdminPanel() {
 
   useEffect(() => {
     loadEvents(undefined, true);
-    return () => {
-      stopCameraScanner();
-    };
   }, []);
 
   const resetEventForm = () => {
@@ -265,7 +245,6 @@ export default function EventsAdminPanel() {
 
   const handleSelectEvent = async (eventId: string) => {
     setSelectedEventId(eventId);
-    setScanResult(null);
     await loadTicketsForEvent(eventId);
   };
 
@@ -301,171 +280,13 @@ export default function EventsAdminPanel() {
     setVerifyingQr(true);
     try {
       const targetEventId = selectedEventIdRef.current || selectedEventId || undefined;
-      const result: EventTicketVerificationResult = await verifyEventTicketQr(
-        clean,
-        targetEventId
-      );
-      setScanResult(result);
+      await verifyEventTicketQr(clean, targetEventId);
       await loadEvents(targetEventId ?? null, false);
     } catch (err: any) {
-      setScanResult({
-        valid: false,
-        status: 'not_found',
-        message: err.message || 'Failed to verify QR ticket UUID.',
-      });
+      alert(err.message || 'Failed to verify QR ticket UUID.');
     } finally {
       verifyingQrRef.current = false;
       setVerifyingQr(false);
-    }
-  };
-
-  const stopCameraScanner = () => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setScannerActive(false);
-  };
-
-  useEffect(() => {
-    if (!scannerActive || !streamRef.current) {
-      return;
-    }
-
-    let cancelled = false;
-    const stream = streamRef.current;
-    const video = videoRef.current;
-
-    if (video) {
-      video.srcObject = stream;
-      video.setAttribute('playsinline', 'true');
-      const playPromise = video.play();
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch((err) => {
-          console.warn('Video autoplay warning:', err);
-        });
-      }
-    }
-
-    let detector: any = null;
-    if (typeof window !== 'undefined' && (window as any).BarcodeDetector) {
-      try {
-        const BarcodeDetectorCtor = (window as any).BarcodeDetector;
-        detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
-      } catch {
-        detector = null;
-      }
-    }
-
-    const scanFrame = async () => {
-      if (cancelled || !streamRef.current) return;
-
-      const currentVideo = videoRef.current;
-      const canvas = canvasRef.current;
-
-      if (
-        currentVideo &&
-        currentVideo.readyState >= 2 &&
-        currentVideo.videoWidth > 0 &&
-        currentVideo.videoHeight > 0
-      ) {
-        let detectedValue: string | null = null;
-
-        if (detector) {
-          try {
-            const barcodes = await detector.detect(currentVideo);
-            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
-              detectedValue = String(barcodes[0].rawValue).trim();
-            }
-          } catch {
-            // Fallback to jsQR
-          }
-        }
-
-        if (!detectedValue && canvas) {
-          const rawWidth = currentVideo.videoWidth || 320;
-          const rawHeight = currentVideo.videoHeight || 240;
-          const scale = rawWidth > 640 ? 640 / rawWidth : 1;
-          const width = Math.round(rawWidth * scale);
-          const height = Math.round(rawHeight * scale);
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(currentVideo, 0, 0, width, height);
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height);
-            if (code && code.data) {
-              detectedValue = code.data.trim();
-            }
-          }
-        }
-
-        if (detectedValue && detectedValue !== lastScannedUuidRef.current) {
-          lastScannedUuidRef.current = detectedValue;
-          setManualUuidInput(detectedValue);
-          await handleVerifyUuid(detectedValue);
-        }
-      }
-
-      if (!cancelled && streamRef.current) {
-        rafRef.current = requestAnimationFrame(scanFrame);
-      }
-    };
-
-    rafRef.current = requestAnimationFrame(scanFrame);
-
-    return () => {
-      cancelled = true;
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [scannerActive]);
-
-  const startCameraScanner = async () => {
-    setCameraError(null);
-    setScanResult(null);
-    lastScannedUuidRef.current = '';
-
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      setCameraError(
-        'Camera access is not supported in this browser. Please use manual UUID verification below.'
-      );
-      return;
-    }
-
-    try {
-      stopCameraScanner();
-
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false,
-        });
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        });
-      }
-
-      streamRef.current = stream;
-      setScannerActive(true);
-    } catch (err: any) {
-      setCameraError(
-        err.message || 'Could not access camera. Please check camera permissions.'
-      );
-      setScannerActive(false);
     }
   };
 
@@ -835,6 +656,13 @@ export default function EventsAdminPanel() {
                       className="flex items-center space-x-2"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      <Link
+                        href={`/admin/scanner?eventId=${encodeURIComponent(evt.id)}`}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 font-bold"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>Scan</span>
+                      </Link>
                       <button
                         type="button"
                         onClick={() => handleOpenEditForm(item)}
@@ -861,13 +689,13 @@ export default function EventsAdminPanel() {
       </div>
 
       {/* =========================================================
-         SECTION 2 & 3: SELECTED EVENT DOOR QR SCANNER & ATTENDEES
+         SECTION 2 & 3: SELECTED EVENT DOOR QR SCANNER LAUNCHER & ATTENDEES
          ========================================================= */}
       {selectedEventWithStats && (
         <>
-          {/* DOOR QR SCANNER */}
+          {/* DEDICATED DOOR QR SCANNER LAUNCHER CARD */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="inline-flex items-center space-x-2 text-xs font-extrabold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full mb-2">
                   <QrCode className="w-3.5 h-3.5" />
@@ -877,129 +705,24 @@ export default function EventsAdminPanel() {
                   Door QR Code Scanner
                 </h2>
                 <p className="text-sm text-slate-600">
-                  Scan a customer&apos;s ticket QR code (or paste their Ticket UUID) to verify and
-                  automatically check them in for{' '}
-                  <strong>{selectedEventWithStats.event.title}</strong>.
+                  Open the dedicated single-screen Door QR Scanner for{' '}
+                  <strong>{selectedEventWithStats.event.title}</strong> with a compact square
+                  viewfinder, instant green/red visual flash, and audio check-in cues.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={scannerActive ? stopCameraScanner : startCameraScanner}
-                className={`px-5 py-3 rounded-xl font-extrabold text-sm flex items-center space-x-2 shadow-sm transition-all self-start sm:self-auto ${
-                  scannerActive
-                    ? 'bg-red-600 hover:bg-red-700 text-white'
-                    : 'bg-slate-900 hover:bg-slate-800 text-white'
-                }`}
+              <Link
+                href={`/admin/scanner?eventId=${encodeURIComponent(
+                  selectedEventWithStats.event.id
+                )}`}
+                data-testid="open-door-scanner-link"
+                className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm flex items-center space-x-2 shadow-sm transition-all self-start sm:self-auto whitespace-nowrap"
               >
-                {scannerActive ? (
-                  <>
-                    <CameraOff className="w-4 h-4" />
-                    <span>Stop Camera Scanner</span>
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-4 h-4" />
-                    <span>Launch Camera QR Scanner</span>
-                  </>
-                )}
-              </button>
+                <QrCode className="w-4 h-4" />
+                <span>Open Door QR Scanner</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </Link>
             </div>
-
-            {cameraError && (
-              <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-bold">
-                {cameraError}
-              </div>
-            )}
-
-            {scannerActive && (
-              <div className="mb-6 bg-slate-950 rounded-2xl p-4 text-center">
-                <video
-                  ref={videoRef}
-                  data-testid="qr-scanner-video"
-                  className="w-full max-w-md mx-auto rounded-xl border-2 border-[#9ba582]"
-                  autoPlay
-                  playsInline
-                  muted
-                />
-                <canvas ref={canvasRef} className="hidden" />
-                <p className="text-xs text-slate-300 mt-3 font-medium">
-                  Point the camera at the attendee&apos;s QR code ticket — check-in happens
-                  automatically on scan.
-                </p>
-              </div>
-            )}
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleVerifyUuid(manualUuidInput);
-              }}
-              className="flex flex-col sm:flex-row gap-3"
-            >
-              <input
-                type="text"
-                placeholder="Paste or scan Ticket UUID (e.g. 550e8400-e29b-41d4-a716-446655440000)"
-                value={manualUuidInput}
-                onChange={(e) => setManualUuidInput(e.target.value)}
-                aria-label="Ticket UUID"
-                className="flex-grow px-4 py-3 rounded-xl border border-slate-300 font-mono text-sm"
-              />
-              <button
-                type="submit"
-                disabled={verifyingQr || !manualUuidInput.trim()}
-                className="px-6 py-3 rounded-xl bg-[#525e3e] hover:bg-[#414b31] disabled:opacity-50 text-white font-extrabold text-sm whitespace-nowrap"
-              >
-                {verifyingQr ? 'Verifying...' : 'Verify & Check In'}
-              </button>
-            </form>
-
-            {scanResult && (
-              <div
-                data-testid="qr-scan-result"
-                className={`mt-6 p-5 rounded-2xl border-2 flex items-start space-x-3.5 ${
-                  scanResult.status === 'checked_in_now'
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-                    : scanResult.status === 'already_checked_in'
-                    ? 'bg-amber-50 border-amber-300 text-amber-950'
-                    : 'bg-red-50 border-red-300 text-red-950'
-                }`}
-              >
-                {scanResult.status === 'checked_in_now' ? (
-                  <CheckCircle2 className="w-7 h-7 text-emerald-600 flex-shrink-0 mt-0.5" />
-                ) : scanResult.status === 'already_checked_in' ? (
-                  <AlertTriangle className="w-7 h-7 text-amber-600 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="w-7 h-7 text-red-600 flex-shrink-0 mt-0.5" />
-                )}
-                <div className="space-y-1">
-                  <div className="text-xs font-extrabold uppercase tracking-wider">
-                    {scanResult.status === 'checked_in_now'
-                      ? 'Entry Confirmed — Checked In'
-                      : scanResult.status === 'already_checked_in'
-                      ? 'Already Checked In'
-                      : scanResult.status === 'unpaid'
-                      ? 'Payment Pending — Not Yet Paid'
-                      : scanResult.status === 'cancelled'
-                      ? 'Ticket Cancelled'
-                      : scanResult.status === 'wrong_event'
-                      ? 'Wrong Event Ticket'
-                      : 'Invalid Ticket'}
-                  </div>
-                  <p className="font-bold text-base">{scanResult.message}</p>
-                  {scanResult.ticket && (
-                    <div className="text-xs opacity-85 pt-1 space-x-3">
-                      <span>
-                        Attendee: <strong>{scanResult.ticket.userName}</strong> (
-                        {scanResult.ticket.userEmail})
-                      </span>
-                      <span>&bull;</span>
-                      <span className="font-mono">Ref: {scanResult.ticket.id}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* EVENT ATTENDEE TICKETS LIST */}
