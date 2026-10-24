@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint \"src/**/*.{ts,tsx}\" && tsc --noEmit",
     "lint:fix": "eslint --fix \"src/**/*.{ts,tsx}\"",
-    "test": "vitest run"
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -29,6 +30,7 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^5.2.0",

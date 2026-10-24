@@ -87,7 +87,7 @@ jobs:
           cd backend
           npm run lint
 
-      - name: Run Backend Unit Tests
+      - name: Run Backend Unit Tests with 80% Minimum Coverage
         run: |
           cd backend
           npm test

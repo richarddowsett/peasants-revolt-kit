@@ -92,7 +92,7 @@ test.describe('Peasants Running Kit Live QA Deployment Smoke Tests', () => {
 
     // Verify Admin CMS Dashboard navigation
     await expect(cmsHeader).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('button', { hasText: 'Products Catalog' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Products Catalogue' })).toBeVisible();
     await expect(page.locator('button', { hasText: 'Customer Orders' })).toBeVisible();
 
     // Verify tab switching to Customer Orders without client errors
@@ -134,12 +134,12 @@ test.describe('Peasants Running Kit Live QA Deployment Smoke Tests', () => {
         await page.click('button:has-text("Register & Access Store")');
       }
 
-      // Check for either successful catalog unlock or an auth error banner
-      const catalogBanner = page.locator('text=Official Gear & Kit').first();
+      // Check for either successful catalogue unlock or an auth error banner
+      const catalogueBanner = page.locator('text=Official Gear & Kit').first();
       const authErrorAlert = page.locator('div.bg-red-50');
 
       await Promise.race([
-        catalogBanner.waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
+        catalogueBanner.waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
         authErrorAlert.waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
       ]);
 
@@ -149,7 +149,7 @@ test.describe('Peasants Running Kit Live QA Deployment Smoke Tests', () => {
       }
     }
 
-    // Verify Storefront Catalog is unlocked
+    // Verify Storefront Catalogue is unlocked
     await expect(page.locator('text=Official Gear & Kit').first()).toBeVisible({ timeout: 10000 });
   });
 

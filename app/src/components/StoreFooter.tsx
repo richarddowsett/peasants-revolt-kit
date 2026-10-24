@@ -34,7 +34,7 @@ export default function StoreFooter() {
             <ul className="space-y-1.5">
               <li>
                 <Link href="/store" className="hover:text-[rgb(82,94,62)] transition flex items-center gap-1.5">
-                  <ShoppingBag size={13} /> Store Catalog
+                  <ShoppingBag size={13} /> Store Catalogue
                 </Link>
               </li>
               <li>

@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminCMSPage from './page';
-import AdminCatalogPage from './catalog/page';
+import AdminCataloguePage from './catalogue/page';
 import AdminOrdersPage from './orders/page';
 import AdminEventsPage from './events/page';
 import { saveProduct } from '@/lib/api';
@@ -311,7 +311,7 @@ describe('AdminCMSPage - Product Sizing Direct Input (No CMS Defaults or Presets
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.setItem('admin_authenticated', 'true');
-    window.history.replaceState({}, '', '/admin/catalog');
+    window.history.replaceState({}, '', '/admin/catalogue');
     vi.stubGlobal('alert', vi.fn());
   });
 
@@ -483,17 +483,33 @@ describe('AdminCMSPage - Sub-path Navigation, Back Button & Refresh', () => {
     });
   });
 
-  it('updates pathname to /admin/catalog, /admin/events, and /admin/orders when clicking tabs', async () => {
+  it('renders tabs in the order of Customer Orders, Events & Tickets, and Products Catalogue', async () => {
+    render(<AdminCMSPage />);
+
+    await waitFor(() => {
+      const tabButtons = screen.getAllByRole('button').filter((btn) => {
+        const text = btn.textContent || '';
+        return text.includes('Customer Orders') || text.includes('Events & Tickets') || text.includes('Products Catalogue');
+      });
+
+      expect(tabButtons).toHaveLength(3);
+      expect(tabButtons[0]).toHaveTextContent(/Customer Orders/i);
+      expect(tabButtons[1]).toHaveTextContent(/Events & Tickets/i);
+      expect(tabButtons[2]).toHaveTextContent(/Products Catalogue/i);
+    });
+  });
+
+  it('updates pathname to /admin/catalogue, /admin/events, and /admin/orders when clicking tabs', async () => {
     render(<AdminCMSPage />);
 
     await waitFor(() => {
       expect(window.location.pathname).toBe('/admin/orders');
     });
 
-    // Click Products Catalog
-    const catalogTabBtn = await screen.findByRole('button', { name: /Products Catalog/i });
-    fireEvent.click(catalogTabBtn);
-    expect(window.location.pathname).toBe('/admin/catalog');
+    // Click Products Catalogue
+    const catalogueTabBtn = await screen.findByRole('button', { name: /Products Catalogue/i });
+    fireEvent.click(catalogueTabBtn);
+    expect(window.location.pathname).toBe('/admin/catalogue');
     expect(screen.getByRole('heading', { name: 'Manage Kit Items' })).toBeInTheDocument();
 
     // Click Events & Tickets
@@ -512,9 +528,9 @@ describe('AdminCMSPage - Sub-path Navigation, Back Button & Refresh', () => {
   it('responds to browser Back and Forward buttons (popstate) by switching tabs', async () => {
     render(<AdminCMSPage />);
 
-    const catalogTabBtn = await screen.findByRole('button', { name: /Products Catalog/i });
-    fireEvent.click(catalogTabBtn);
-    expect(window.location.pathname).toBe('/admin/catalog');
+    const catalogueTabBtn = await screen.findByRole('button', { name: /Products Catalogue/i });
+    fireEvent.click(catalogueTabBtn);
+    expect(window.location.pathname).toBe('/admin/catalogue');
     expect(screen.getByRole('heading', { name: 'Manage Kit Items' })).toBeInTheDocument();
 
     const eventsTabBtn = screen.getByRole('button', { name: /Events & Tickets/i });
@@ -522,9 +538,9 @@ describe('AdminCMSPage - Sub-path Navigation, Back Button & Refresh', () => {
     expect(window.location.pathname).toBe('/admin/events');
     expect(await screen.findByRole('heading', { name: 'Manage Club Events' })).toBeInTheDocument();
 
-    // Simulate browser Back to /admin/catalog
+    // Simulate browser Back to /admin/catalogue
     act(() => {
-      window.history.replaceState({}, '', '/admin/catalog');
+      window.history.replaceState({}, '', '/admin/catalogue');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     expect(screen.getByRole('heading', { name: 'Manage Kit Items' })).toBeInTheDocument();
@@ -537,11 +553,11 @@ describe('AdminCMSPage - Sub-path Navigation, Back Button & Refresh', () => {
     expect(screen.getByRole('heading', { name: 'Manage Customer Orders' })).toBeInTheDocument();
   });
 
-  it('preserves active tab on page refresh for /admin/catalog, /admin/orders, and /admin/events routes', async () => {
-    window.history.replaceState({}, '', '/admin/catalog');
-    const { unmount: unmountCatalog } = render(<AdminCatalogPage />);
+  it('preserves active tab on page refresh for /admin/catalogue, /admin/orders, and /admin/events routes', async () => {
+    window.history.replaceState({}, '', '/admin/catalogue');
+    const { unmount: unmountCatalogue } = render(<AdminCataloguePage />);
     expect(await screen.findByRole('heading', { name: 'Manage Kit Items' })).toBeInTheDocument();
-    unmountCatalog();
+    unmountCatalogue();
 
     window.history.replaceState({}, '', '/admin/orders');
     const { unmount: unmountOrders } = render(<AdminOrdersPage />);
@@ -552,6 +568,143 @@ describe('AdminCMSPage - Sub-path Navigation, Back Button & Refresh', () => {
     const { unmount: unmountEvents } = render(<AdminEventsPage />);
     expect(await screen.findByRole('heading', { name: 'Manage Club Events' })).toBeInTheDocument();
     unmountEvents();
+  });
+
+  it('allows editing an existing product and saving changes', async () => {
+    const mockProducts = [
+      {
+        id: 'prod_1',
+        name: 'Official Club Vest',
+        description: 'High performance',
+        price: 30,
+        sizes: ['M'],
+        imageUrl: '/vest.png',
+        imageUrls: ['/vest.png'],
+        sizeGuideRows: [{ gender: 'men' as const, size: 'M', chest: '38', waist: '32', length: '28' }],
+        isPublished: true,
+        createdAt: '2026-10-01',
+        updatedAt: '2026-10-01',
+      },
+    ];
+
+    const { fetchProducts: mockFetchProds } = await import('@/lib/api');
+    vi.mocked(mockFetchProds).mockResolvedValueOnce(mockProducts);
+
+    window.history.replaceState({}, '', '/admin/catalogue');
+    render(<AdminCMSPage />);
+
+    expect(await screen.findByText('Official Club Vest')).toBeInTheDocument();
+
+    const editBtn = screen.getByRole('button', { name: /Edit/i });
+    fireEvent.click(editBtn);
+
+    expect(await screen.findByRole('heading', { name: 'Edit Product' })).toBeInTheDocument();
+
+    const nameInput = screen.getByDisplayValue('Official Club Vest');
+    fireEvent.change(nameInput, { target: { value: 'Updated Club Vest' } });
+
+    // Add Women's size row
+    const addWomensBtn = screen.getByRole('button', { name: /Add Women's/i });
+    fireEvent.click(addWomensBtn);
+
+    const sizeInputs = screen.getAllByPlaceholderText('e.g. S, M, L');
+    const newSizeInput = sizeInputs[sizeInputs.length - 1];
+    fireEvent.change(newSizeInput, { target: { value: 'S' } });
+
+    const waistInputs = screen.getAllByPlaceholderText('e.g. 32 – 34 in');
+    if (waistInputs.length > 0) {
+      fireEvent.change(waistInputs[waistInputs.length - 1], { target: { value: '28' } });
+    }
+
+    const lengthInputs = screen.getAllByPlaceholderText('e.g. 27 in');
+    if (lengthInputs.length > 0) {
+      fireEvent.change(lengthInputs[lengthInputs.length - 1], { target: { value: '25' } });
+    }
+
+    const form = screen.getByRole('button', { name: /Save Changes/i }).closest('form')!;
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(saveProduct).toHaveBeenCalled();
+    });
+  });
+
+  it('allows deleting an existing product with confirmation', async () => {
+    const mockProducts = [
+      {
+        id: 'prod_delete_1',
+        name: 'Old Hoodie',
+        description: 'To be deleted',
+        price: 45,
+        sizes: ['L'],
+        imageUrl: '/hoodie.png',
+        imageUrls: ['/hoodie.png'],
+        isPublished: true,
+        createdAt: '2026-10-01',
+        updatedAt: '2026-10-01',
+      },
+    ];
+
+    const { fetchProducts: mockFetchProds, deleteProduct: mockDeleteProduct } = await import('@/lib/api');
+    vi.mocked(mockFetchProds).mockResolvedValueOnce(mockProducts);
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+
+    window.history.replaceState({}, '', '/admin/catalogue');
+    render(<AdminCMSPage />);
+
+    expect(await screen.findByText('Old Hoodie')).toBeInTheDocument();
+
+    const editBtn = screen.getByRole('button', { name: /Edit/i });
+    fireEvent.click(editBtn);
+
+    const removeBtn = await screen.findByRole('button', { name: /Remove Item/i });
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(mockDeleteProduct).toHaveBeenCalledWith('prod_delete_1');
+    });
+  });
+
+  it('allows updating order status and cancelling an order', async () => {
+    const { updateOrderStatus: mockUpdateOrderStatus } = await import('@/lib/api');
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+
+    window.history.replaceState({}, '', '/admin/orders');
+    render(<AdminCMSPage />);
+
+    expect(await screen.findByRole('button', { name: /Pending Payment 1/i })).toBeInTheDocument();
+    expect(await screen.findByText(/Alice Smith/i)).toBeInTheDocument();
+
+    // Mark payment received
+    const markPaidBtn = screen.getByRole('button', { name: /Mark Payment Received/i });
+    fireEvent.click(markPaidBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateOrderStatus).toHaveBeenCalledWith('ORD-PENDING', 'payment_successful');
+    });
+
+    // Cancel an order
+    const cancelBtns = screen.getAllByRole('button', { name: /Cancel Order/i });
+    fireEvent.click(cancelBtns[0]);
+
+    await waitFor(() => {
+      expect(mockUpdateOrderStatus).toHaveBeenCalledWith('ORD-PENDING', 'cancelled');
+    });
+  });
+
+  it('allows toggling the store closed feature flag', async () => {
+    const { updateFeatureFlag: mockUpdateFeatureFlag } = await import('@/lib/api');
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+
+    render(<AdminCMSPage />);
+
+    // Close store button
+    const closeStoreBtn = await screen.findByRole('button', { name: /Close Store/i });
+    fireEvent.click(closeStoreBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateFeatureFlag).toHaveBeenCalledWith('store_closed', true);
+    });
   });
 });
 

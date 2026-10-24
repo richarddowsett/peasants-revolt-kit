@@ -25,10 +25,10 @@ describe('StoreFooter Component', () => {
     expect(privacyLink).toHaveAttribute('href', '/privacy');
   });
 
-  it('contains links to catalog, orders, and admin', () => {
+  it('contains links to catalogue, orders, and admin', () => {
     render(<StoreFooter />);
 
-    expect(screen.getByRole('link', { name: /store catalog/i })).toHaveAttribute('href', '/store');
+    expect(screen.getByRole('link', { name: /store catalogue/i })).toHaveAttribute('href', '/store');
     expect(screen.getByRole('link', { name: /my orders/i })).toHaveAttribute('href', '/store/orders');
     expect(screen.getByRole('link', { name: /club admin/i })).toHaveAttribute('href', '/admin');
   });

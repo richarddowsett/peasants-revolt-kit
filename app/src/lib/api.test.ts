@@ -4,15 +4,27 @@ import {
   saveProduct,
   deleteProduct,
   createOrder,
+  fetchOrders,
   lookupOrder,
   updateOrderStatus,
   verifyAdminPassword,
+  uploadImage,
   uploadImages,
   getSignedUploadUrl,
   uploadImageViaSignedUrl,
   fetchFeatureFlags,
   fetchFeatureFlag,
   updateFeatureFlag,
+  fetchEvents,
+  fetchEventById,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  purchaseEventTicket,
+  fetchEventTickets,
+  updateEventTicketStatus,
+  resendEventTicketEmail,
+  verifyEventTicketQr,
 } from './api';
 
 const mockFetch = vi.fn();
@@ -299,5 +311,104 @@ describe('Frontend API Client (lib/api)', () => {
       body: JSON.stringify({ status: 'order_sent' }),
     }));
     expect(result).toEqual(updatedOrder);
+  });
+
+  describe('Events API functions', () => {
+    it('fetchEvents calls /api/events with and without includePast', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [{ id: 'evt-1' }] });
+      const events = await fetchEvents(false);
+      expect(global.fetch).toHaveBeenCalledWith('/api/events', { cache: 'no-store' });
+      expect(events).toEqual([{ id: 'evt-1' }]);
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [{ id: 'evt-1' }] });
+      await fetchEvents(true);
+      expect(global.fetch).toHaveBeenCalledWith('/api/events?includePast=true', { cache: 'no-store' });
+    });
+
+    it('fetchEventById calls /api/events/:id', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'evt-1' }) });
+      const event = await fetchEventById('evt-1');
+      expect(global.fetch).toHaveBeenCalledWith('/api/events/evt-1', { cache: 'no-store' });
+      expect(event).toEqual({ id: 'evt-1' });
+    });
+
+    it('createEvent, updateEvent, deleteEvent perform correct requests', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'new-evt' }) });
+      await createEvent({ title: 'Party' });
+      expect(global.fetch).toHaveBeenCalledWith('/api/events', expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ title: 'Party' }),
+      }));
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'evt-1', title: 'Updated' }) });
+      await updateEvent('evt-1', { title: 'Updated' });
+      expect(global.fetch).toHaveBeenCalledWith('/api/events/evt-1', expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ title: 'Updated' }),
+      }));
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ deleted: true }) });
+      await deleteEvent('evt-1');
+      expect(global.fetch).toHaveBeenCalledWith('/api/events/evt-1', expect.objectContaining({
+        method: 'DELETE',
+      }));
+    });
+
+    it('purchaseEventTicket, fetchEventTickets, updateEventTicketStatus, resendEventTicketEmail, verifyEventTicketQr', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'tick-1' }) });
+      await purchaseEventTicket('evt-1', { userName: 'User', userEmail: 'u@test.com' });
+      expect(global.fetch).toHaveBeenCalledWith('/api/events/evt-1/tickets', expect.objectContaining({
+        method: 'POST',
+      }));
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [{ id: 'tick-1' }] });
+      await fetchEventTickets('evt-1');
+      expect(global.fetch).toHaveBeenCalledWith('/api/events/evt-1/tickets', { cache: 'no-store' });
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'tick-1', status: 'completed' }) });
+      await updateEventTicketStatus('tick-1', 'completed');
+      expect(global.fetch).toHaveBeenCalledWith('/api/event-tickets/tick-1/status', expect.objectContaining({
+        method: 'PATCH',
+      }));
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
+      await resendEventTicketEmail('tick-1');
+      expect(global.fetch).toHaveBeenCalledWith('/api/event-tickets/tick-1/resend-email', expect.objectContaining({
+        method: 'POST',
+      }));
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'checked_in_now' }) });
+      await verifyEventTicketQr('uuid-123', 'evt-1');
+      expect(global.fetch).toHaveBeenCalledWith('/api/events/verify-qr', expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ ticketUuid: 'uuid-123', eventId: 'evt-1' }),
+      }));
+    });
+
+    it('fetchOrders calls /api/orders or /api/orders?email=', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      await fetchOrders();
+      expect(global.fetch).toHaveBeenCalledWith('/api/orders', { cache: 'no-store' });
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      await fetchOrders('user@test.com');
+      expect(global.fetch).toHaveBeenCalledWith('/api/orders?email=user%40test.com', { cache: 'no-store' });
+    });
+
+    it('uploadImage falls back to multipart /api/upload when signed url fails', async () => {
+      mockFetch
+        .mockRejectedValueOnce(new Error('Signed URL failure'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ imageUrl: 'https://storage/fallback.png' }),
+        });
+
+      const file = new File(['data'], 'test.png', { type: 'image/png' });
+      const result = await uploadImage(file);
+      expect(result).toBe('https://storage/fallback.png');
+      expect(global.fetch).toHaveBeenCalledWith('/api/upload', expect.objectContaining({
+        method: 'POST',
+      }));
+    });
   });
 });

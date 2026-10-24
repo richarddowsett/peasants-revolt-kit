@@ -1,5 +1,5 @@
-import StoreCatalogPage from './store/page';
+import StoreCataloguePage from './store/page';
 
 export default function HomePage() {
-  return <StoreCatalogPage />;
+  return <StoreCataloguePage />;
 }

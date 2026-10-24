@@ -8,7 +8,7 @@ Built with a **Next.js 14 Frontend** statically exported to Firebase Hosting, a 
 
 ## 🌟 Key Features
 
-- **Storefront Catalog (`/`)**: Main kit catalog supporting item browsing, multi-image display, drag-and-drop file uploads in admin, size selection (XS–XXL), sticky shopping basket drawer, and instant order creation.
+- **Storefront Catalogue (`/`)**: Main kit catalogue supporting item browsing, multi-image display, drag-and-drop file uploads in admin, size selection (XS–XXL), sticky shopping basket drawer, and instant order creation.
 - **Monzo Payment Deep-Linking**: Orders generate a unique reference (`PRRC-XXXX`) and direct deep links to Monzo transfers (`https://monzo.me/terenceanthonysumpter/[amount]?d=PRRC-XXXX`).
 - **User Order Tracking (`/store/orders`)**: Dedicated page allowing club members to look up order status, item breakdowns, and payment state.
 - **Organiser Admin CMS (`/admin`)**: Organiser portal protected by authentication with drag-and-drop multi-file upload for product images, product management, and updating customer order payment/fulfillment statuses.
@@ -23,7 +23,7 @@ The repository features comprehensive testing across unit, integration, and end-
 
 - **Backend Unit Tests** (Vitest): Covers all Domain Use Cases (`GetProducts`, `CreateOrder`, `ManageProduct`) and HTTP Controllers (`ProductsController`, `OrdersController`, `UploadController`).
 - **Frontend Unit Tests** (Vitest + React Testing Library): Covers API client methods, mock handlers, and UI component rendering (`StoreHeader`).
-- **Playwright E2E User Journey Tests**: Full automated browser test running against local Firestore emulator. Simulates Admin login $\rightarrow$ Product creation $\rightarrow$ Storefront catalog browsing $\rightarrow$ Monzo checkout order placement $\rightarrow$ Admin payment & fulfillment status updates.
+- **Playwright E2E User Journey Tests**: Full automated browser test running against local Firestore emulator. Simulates Admin login $\rightarrow$ Product creation $\rightarrow$ Storefront catalogue browsing $\rightarrow$ Monzo checkout order placement $\rightarrow$ Admin payment & fulfillment status updates.
 
 ### Test Commands
 

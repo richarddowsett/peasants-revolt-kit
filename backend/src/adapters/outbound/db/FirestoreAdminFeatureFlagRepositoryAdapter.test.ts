@@ -75,4 +75,35 @@ describe('FirestoreAdminFeatureFlagRepositoryAdapter', () => {
       { merge: true }
     );
   });
+
+  it('getAllFeatureFlags returns flags including fallback store_closed', async () => {
+    vi.mocked(adminDb.collection).mockReturnValue({
+      get: vi.fn().mockResolvedValue({
+        empty: false,
+        docs: [
+          {
+            id: 'flag_1',
+            data: () => ({ name: 'Flag 1', enabled: true, updatedAt: '2026-01-01' }),
+          },
+        ],
+      }),
+      doc: vi.fn(),
+    } as unknown as ReturnType<typeof adminDb.collection>);
+
+    const flags = await adapter.getAllFeatureFlags();
+    expect(flags.some((f) => f.id === 'flag_1')).toBe(true);
+    expect(flags.some((f) => f.id === 'store_closed')).toBe(true);
+  });
+
+  it('setFeatureFlag throws error when firestore fails', async () => {
+    const mockDoc = {
+      get: vi.fn().mockResolvedValue({ exists: false }),
+      set: vi.fn().mockRejectedValue(new Error('Set failed')),
+    };
+    vi.mocked(adminDb.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue(mockDoc),
+    } as unknown as ReturnType<typeof adminDb.collection>);
+
+    await expect(adapter.setFeatureFlag('test', true)).rejects.toThrow('Failed to save feature flag: Set failed');
+  });
 });

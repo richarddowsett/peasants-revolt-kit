@@ -82,8 +82,8 @@ test.describe('Manufacturer Order Export E2E Tests', () => {
       ]);
     }
 
-    await page.click('button:has-text("Products Catalog")');
-    await expect(page).toHaveURL(/\/admin\/catalog/);
+    await page.click('button:has-text("Products Catalogue")');
+    await expect(page).toHaveURL(/\/admin\/catalogue/);
     await page.click('button:has-text("Add New Kit Item")');
     await page.fill('input[placeholder="e.g. Official Club Running Vest"]', productName);
     await page.fill('textarea', 'High quality export test product');

@@ -21,7 +21,7 @@ import {
   formatFullSizeLabel,
 } from '@/domain/models/SizeGuide';
 
-export default function StoreCatalogPage() {
+export default function StoreCataloguePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [_authChecking, setAuthChecking] = useState<boolean>(true);
@@ -447,7 +447,7 @@ export default function StoreCatalogPage() {
         </div>
       </section>
 
-      {/* Main Catalog Content */}
+      {/* Main Catalogue Content */}
       <main className="max-w-6xl mx-auto px-4 py-10 flex-1 w-full">
         {loading ? (
           <div className="flex justify-center items-center py-20">
@@ -460,7 +460,7 @@ export default function StoreCatalogPage() {
             </div>
             <h2 className="text-xl font-bold text-slate-900 mb-2">No Products Available</h2>
             <p className="text-sm text-slate-500">
-              There are currently no products available in the store catalog. Please check back soon!
+              There are currently no products available in the store catalogue. Please check back soon!
             </p>
           </div>
         ) : (

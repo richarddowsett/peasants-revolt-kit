@@ -22,14 +22,14 @@ import EventsAdminPanel from '@/components/EventsAdminPanel';
 type AdminTab = 'products' | 'orders' | 'events';
 
 const ADMIN_TAB_PATHS: Record<AdminTab, string> = {
-  products: '/admin/catalog',
+  products: '/admin/catalogue',
   orders: '/admin/orders',
   events: '/admin/events',
 };
 
 function getTabFromPathname(pathname: string, fallback: AdminTab = 'orders'): AdminTab {
   const normalized = pathname.replace(/\/+$/, '');
-  if (normalized.endsWith('/admin/catalog') || normalized.endsWith('/admin/products')) {
+  if (normalized.endsWith('/admin/catalogue') || normalized.endsWith('/admin/catalog') || normalized.endsWith('/admin/products')) {
     return 'products';
   }
   if (normalized.endsWith('/admin/events')) {
@@ -564,16 +564,6 @@ export default function AdminCMSPage() {
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 flex gap-6">
           <button
-            onClick={() => handleTabChange('products')}
-            className={`py-4 text-xs font-extrabold border-b-2 transition ${
-              activeTab === 'products'
-                ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            Products Catalog ({products.length})
-          </button>
-          <button
             onClick={() => handleTabChange('orders')}
             className={`py-4 text-xs font-extrabold border-b-2 transition ${
               activeTab === 'orders'
@@ -592,6 +582,16 @@ export default function AdminCMSPage() {
             }`}
           >
             Events &amp; Tickets
+          </button>
+          <button
+            onClick={() => handleTabChange('products')}
+            className={`py-4 text-xs font-extrabold border-b-2 transition ${
+              activeTab === 'products'
+                ? 'border-[rgb(155,165,130)] text-[rgb(82,94,62)]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            Products Catalogue ({products.length})
           </button>
         </div>
       </div>

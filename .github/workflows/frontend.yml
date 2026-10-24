@@ -68,7 +68,7 @@ jobs:
           cd app
           npm run lint
 
-      - name: Run Frontend Unit Tests
+      - name: Run Frontend Unit Tests with 80% Minimum Coverage
         run: |
           cd app
           npm test

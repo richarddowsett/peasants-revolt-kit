@@ -26,11 +26,11 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     // Verify Admin Header & Tab (defaults to /admin/orders)
     await expect(page.locator('header', { hasText: 'Organiser CMS' })).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/orders/);
-    await expect(page.locator('button', { hasText: 'Products Catalog' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Products Catalogue' })).toBeVisible();
 
-    // Switch to Products Catalog tab and verify path updates to /admin/catalog
-    await page.click('button:has-text("Products Catalog")');
-    await expect(page).toHaveURL(/\/admin\/catalog/);
+    // Switch to Products Catalogue tab and verify path updates to /admin/catalogue
+    await page.click('button:has-text("Products Catalogue")');
+    await expect(page).toHaveURL(/\/admin\/catalogue/);
 
     // Click Add New Kit Item
     await page.click('button:has-text("Add New Kit Item")');
@@ -50,7 +50,7 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
       page.click('button:has-text("Save Product")'),
     ]);
 
-    // Verify product exists in Admin catalog
+    // Verify product exists in Admin catalogue
     await expect(page.locator(`text=${productName}`)).toBeVisible();
     await expect(page.locator('text=£29.99').first()).toBeVisible();
 

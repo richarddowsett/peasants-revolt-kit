@@ -93,6 +93,29 @@ describe('FirestoreAdminOrderRepositoryAdapter', () => {
   });
 
   describe('updateOrderStatus', () => {
+    it('successfully updates order status in database and memory store', async () => {
+      const mockGet = vi.fn().mockResolvedValueOnce({
+        exists: true,
+        data: () => ({
+          id: 'PRRC-0010',
+          userEmail: 'runner@example.com',
+          status: 'pending_payment',
+          totalAmount: 45,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }),
+      });
+      mockDoc.mockReturnValue({
+        set: mockSet,
+        get: mockGet,
+        delete: vi.fn(),
+      });
+      mockSet.mockResolvedValueOnce(undefined);
+
+      const result = await adapter.updateOrderStatus('PRRC-0010', 'payment_successful');
+      expect(result.status).toBe('payment_successful');
+    });
+
     it('explicitly throws an error when status update database write fails', async () => {
       const mockGet = vi.fn().mockResolvedValueOnce({
         exists: true,
@@ -116,6 +139,73 @@ describe('FirestoreAdminOrderRepositoryAdapter', () => {
       await expect(
         adapter.updateOrderStatus('PRRC-0010', 'payment_successful')
       ).rejects.toThrow('Failed to update order status in database: Firestore update failure');
+    });
+  });
+
+  describe('getOrderById & getOrderByTicketUuid & getAllOrders', () => {
+    it('returns order by id from firestore', async () => {
+      const mockGet = vi.fn().mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ id: 'PRRC-0010', userEmail: 'runner@example.com' }),
+      });
+      mockDoc.mockReturnValue({
+        set: mockSet,
+        get: mockGet,
+        delete: vi.fn(),
+      });
+
+      const order = await adapter.getOrderById('PRRC-0010');
+      expect(order?.id).toBe('PRRC-0010');
+    });
+
+    it('returns order by ticket uuid from firestore query', async () => {
+      mockCollection.mockReturnValue({
+        doc: mockDoc,
+        get: vi.fn(),
+        where: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            get: vi.fn().mockResolvedValueOnce({
+              empty: false,
+              docs: [{ data: () => ({ id: 'PRRC-0010', ticketUuid: 'uuid-123' }) }],
+            }),
+          })),
+        })),
+      });
+
+      const order = await adapter.getOrderByTicketUuid('uuid-123');
+      expect(order?.ticketUuid).toBe('uuid-123');
+
+      expect(await adapter.getOrderByTicketUuid('')).toBeNull();
+    });
+
+    it('returns all orders from collection snapshot', async () => {
+      mockCollection.mockReturnValue({
+        doc: mockDoc,
+        get: vi.fn().mockResolvedValueOnce({
+          empty: false,
+          docs: [{ data: () => ({ id: 'PRRC-0010', userEmail: 'runner@example.com' }) }],
+        }),
+        where: vi.fn(),
+      });
+
+      const all = await adapter.getAllOrders();
+      expect(all).toHaveLength(1);
+    });
+
+    it('updates specific order fields using updateOrderFields', async () => {
+      const mockGet = vi.fn().mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ id: 'PRRC-0010', userEmail: 'runner@example.com', status: 'pending_payment' }),
+      });
+      mockDoc.mockReturnValue({
+        set: mockSet,
+        get: mockGet,
+        delete: vi.fn(),
+      });
+      mockSet.mockResolvedValueOnce(undefined);
+
+      const updated = await adapter.updateOrderFields('PRRC-0010', { batchRef: 'BATCH-1' });
+      expect(updated.batchRef).toBe('BATCH-1');
     });
   });
 });

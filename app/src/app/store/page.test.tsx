@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import StoreCatalogPage from './page';
+import StoreCataloguePage from './page';
 
 // Mock dependencies
 vi.mock('@/lib/api', () => ({
@@ -60,13 +60,13 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-describe('StoreCatalogPage - Image Zoom Lightbox', () => {
+describe('StoreCataloguePage - Image Zoom Lightbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('opens image zoom lightbox when product image is clicked, and closes on Escape key', async () => {
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     // Wait for product to load
     await waitFor(() => {
@@ -91,7 +91,7 @@ describe('StoreCatalogPage - Image Zoom Lightbox', () => {
   });
 
   it('closes image zoom lightbox when Esc button is clicked', async () => {
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe('StoreCatalogPage - Image Zoom Lightbox', () => {
   });
 
   it('cycles images when ArrowRight and ArrowLeft keys are pressed', async () => {
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
@@ -137,13 +137,13 @@ describe('StoreCatalogPage - Image Zoom Lightbox', () => {
   });
 });
 
-describe('StoreCatalogPage - Sizing Guide Unit Switching (Inches & CM)', () => {
+describe('StoreCataloguePage - Sizing Guide Unit Switching (Inches & CM)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('converts sizes input in inches to cm when cm is selected, and displays inches when in is selected', async () => {
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     // Wait for product to load
     await waitFor(() => {
@@ -182,7 +182,7 @@ describe('StoreCatalogPage - Sizing Guide Unit Switching (Inches & CM)', () => {
   });
 });
 
-describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
+describe('StoreCataloguePage - Guest Browsing & Guest Checkout', () => {
   beforeEach(() => {
     mockCurrentUser = null;
     vi.clearAllMocks();
@@ -190,7 +190,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
   });
 
   it('renders products directly for guest users without showing a login gate', async () => {
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     // Should immediately display the official store banner and product without login blocking
     await waitFor(() => {
@@ -212,7 +212,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
       userName: 'Guest Runner',
     } as unknown as Awaited<ReturnType<typeof createOrder>>);
 
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
@@ -276,7 +276,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
 
   it('shows an error and does not create order if guest name is missing or whitespace', async () => {
     const { createOrder } = await import('@/lib/api');
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
@@ -307,7 +307,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
 
   it('shows an error and does not create order if guest email is missing or whitespace', async () => {
     const { createOrder } = await import('@/lib/api');
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
@@ -338,7 +338,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
 
   it('shows an error and does not create order if guest email is an invalid format', async () => {
     const { createOrder } = await import('@/lib/api');
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
@@ -368,7 +368,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
   });
 
   it('allows user to toggle between guest checkout and member sign-in within checkout modal', async () => {
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
@@ -408,7 +408,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
       userName: 'Guest Runner',
     } as unknown as Awaited<ReturnType<typeof createOrder>>);
 
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
@@ -451,7 +451,7 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
       updatedAt: '2026-01-01T00:00:00Z',
     });
 
-    render(<StoreCatalogPage />);
+    render(<StoreCataloguePage />);
 
     await waitFor(() => {
       expect(
@@ -465,5 +465,168 @@ describe('StoreCatalogPage - Guest Browsing & Guest Checkout', () => {
 
     const instagramLink = screen.getByRole('link', { name: /Follow @prrcbrentwood/i });
     expect(instagramLink).toHaveAttribute('href', 'https://www.instagram.com/prrcbrentwood/');
+  });
+
+  it('opens sizing guide modal, toggles measurement units between in and cm, and closes modal', async () => {
+    render(<StoreCataloguePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    const sizingGuideBtn = screen.getByRole('button', { name: /Sizing Guide/i });
+    fireEvent.click(sizingGuideBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Official Size Guide')).toBeInTheDocument();
+    });
+
+    // Check unit toggle
+    const cmBtn = screen.getByRole('button', { name: /Centimeters \(cm\)/i });
+    const inBtn = screen.getByRole('button', { name: /Inches \(in\)/i });
+
+    fireEvent.click(cmBtn);
+    expect(cmBtn).toHaveClass('text-white');
+
+    fireEvent.click(inBtn);
+    expect(inBtn).toHaveClass('text-white');
+
+    // Close modal
+    const closeBtn = screen.getByRole('button', { name: '×' });
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Official Size Guide')).not.toBeInTheDocument();
+    });
+  });
+
+  it('allows updating item quantities (+/-) and removing items from the cart slide-over', async () => {
+    render(<StoreCataloguePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    // Add to basket
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Your Basket')).toBeInTheDocument();
+    });
+
+    // Increment quantity
+    const plusBtn = screen.getByRole('button', { name: '+' });
+    fireEvent.click(plusBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('£50.00')).toBeInTheDocument();
+    });
+
+    // Decrement quantity
+    const minusBtn = screen.getByRole('button', { name: '-' });
+    fireEvent.click(minusBtn);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('£25.00').length).toBeGreaterThanOrEqual(2);
+    });
+
+    // Close cart drawer
+    const closeDrawerBtn = screen.getByRole('button', { name: '×' });
+    fireEvent.click(closeDrawerBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Your Basket')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows error messages on invalid input during guest checkout submission', async () => {
+    render(<StoreCataloguePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    // Add item and proceed to checkout
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /proceed to checkout/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /proceed to checkout/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Checkout as Guest')).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByPlaceholderText('e.g. Alex Smith');
+    const emailInput = screen.getByPlaceholderText('alex@example.com');
+    const form = nameInput.closest('form')!;
+
+    // Empty fields submitted directly
+    fireEvent.submit(form);
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Please enter your full name/i);
+    });
+
+    // Enter name only
+    fireEvent.change(nameInput, { target: { value: 'Test Runner' } });
+    fireEvent.submit(form);
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Please enter your email address/i);
+    });
+
+    // Enter invalid email
+    fireEvent.change(emailInput, { target: { value: 'notanemail' } });
+    fireEvent.submit(form);
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Please enter a valid email address/i);
+    });
+  });
+
+  it('handles gender split fit switching, size pill selection, and multi-image thumbnail switching', async () => {
+    const { fetchProducts: mockFetchProds } = await import('@/lib/api');
+    vi.mocked(mockFetchProds).mockResolvedValueOnce([
+      {
+        id: 'split-prod-1',
+        name: 'Split Gender T-Shirt',
+        description: 'Men and Women fit',
+        price: 30,
+        imageUrl: '/shirt1.png',
+        imageUrls: ['/shirt1.png', '/shirt2.png'],
+        sizes: ["Men's S", "Men's M", "Women's S", "Women's M"],
+        sizeGuideRows: [
+          { gender: 'men', size: 'S', chest: '36' },
+          { gender: 'men', size: 'M', chest: '38' },
+          { gender: 'women', size: 'S', chest: '32' },
+          { gender: 'women', size: 'M', chest: '34' },
+        ],
+        isPublished: true,
+      },
+    ]);
+
+    render(<StoreCataloguePage />);
+
+    expect(await screen.findByText('Split Gender T-Shirt')).toBeInTheDocument();
+
+    // Click Women's fit button
+    const womensFitBtn = screen.getByRole('button', { name: "Women's" });
+    fireEvent.click(womensFitBtn);
+
+    // Click M size pill
+    const sizeMPill = screen.getByRole('button', { name: 'M' });
+    fireEvent.click(sizeMPill);
+
+    // Switch image thumbnail
+    const thumbButtons = screen.getAllByRole('button').filter((b) => b.querySelector('img'));
+    if (thumbButtons.length > 1) {
+      fireEvent.click(thumbButtons[1]);
+    }
+
+    // Add to basket
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Your Basket')).toBeInTheDocument();
+      expect(screen.getByText(/Women's M/i)).toBeInTheDocument();
+    });
   });
 });

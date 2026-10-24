@@ -228,4 +228,170 @@ describe('EventsAdminPanel & DoorQrScanner', () => {
 
     playSpy.mockRestore();
   });
+
+  it('allows editing an existing event and saving changes', async () => {
+    vi.mocked(api.updateEvent).mockResolvedValue({
+      ...sampleEventWithStats.event,
+      title: 'PRRC Christmas Party 2026 Updated',
+      ticketPrice: 30,
+    });
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
+    });
+
+    // Click Edit button
+    fireEvent.click(screen.getByRole('button', { name: /Edit/i }));
+    expect(screen.getByTestId('event-admin-form')).toBeInTheDocument();
+
+    const titleInput = screen.getByLabelText(/Event Title/i);
+    expect(titleInput).toHaveValue('PRRC Christmas Party 2026');
+    fireEvent.change(titleInput, {
+      target: { value: 'PRRC Christmas Party 2026 Updated' },
+    });
+
+    const priceInput = screen.getByLabelText(/Ticket Price/i);
+    fireEvent.change(priceInput, {
+      target: { value: '30' },
+    });
+
+    fireEvent.submit(screen.getByTestId('event-admin-form'));
+
+    await waitFor(() => {
+      expect(api.updateEvent).toHaveBeenCalledWith(
+        'evt_1',
+        expect.objectContaining({
+          title: 'PRRC Christmas Party 2026 Updated',
+          ticketPrice: 30,
+        })
+      );
+    });
+  });
+
+  it('allows deleting an event after window.confirm', async () => {
+    window.confirm = vi.fn().mockReturnValue(true);
+    vi.mocked(api.deleteEvent).mockResolvedValue(undefined);
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringContaining('Are you sure you want to delete')
+    );
+    await waitFor(() => {
+      expect(api.deleteEvent).toHaveBeenCalledWith('evt_1');
+    });
+  });
+
+  it('updates ticket status from pending to payment received', async () => {
+    const pendingTicket = {
+      ...sampleTicket,
+      status: 'pending_payment' as const,
+      ticketEmailSentAt: undefined,
+    };
+    vi.mocked(api.fetchEventTickets).mockResolvedValueOnce([pendingTicket]);
+    vi.mocked(api.updateEventTicketStatus).mockResolvedValue({
+      ...sampleTicket,
+      status: 'payment_successful',
+    });
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Runner')).toBeInTheDocument();
+    });
+
+    const markPaymentBtn = screen.getByRole('button', {
+      name: /Mark Payment Received/i,
+    });
+    fireEvent.click(markPaymentBtn);
+
+    await waitFor(() => {
+      expect(api.updateEventTicketStatus).toHaveBeenCalledWith(
+        'PRRC-EVT-2026-0001',
+        'payment_successful'
+      );
+    });
+  });
+
+  it('resends ticket email, verifies check in, and cancels ticket for paid tickets', async () => {
+    vi.mocked(api.fetchEventTickets).mockResolvedValue([sampleTicket]);
+    vi.mocked(api.updateEventTicketStatus).mockResolvedValue({
+      ...sampleTicket,
+      status: 'cancelled',
+    });
+    vi.mocked(api.resendEventTicketEmail).mockResolvedValue({
+      success: true,
+      message: 'Ticket email resent',
+    });
+    vi.mocked(api.verifyEventTicketQr).mockResolvedValue({
+      valid: true,
+      status: 'checked_in_now',
+      message: 'Checked in',
+      ticket: { ...sampleTicket, checkedIn: true },
+    });
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Resend Ticket Email/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Resend Ticket Email/i }));
+    await waitFor(() => {
+      expect(api.resendEventTicketEmail).toHaveBeenCalledWith('PRRC-EVT-2026-0001');
+    });
+
+    // Check in now
+    fireEvent.click(screen.getByRole('button', { name: /Check In Now/i }));
+    await waitFor(() => {
+      expect(api.verifyEventTicketQr).toHaveBeenCalledWith(
+        sampleTicket.ticketUuid,
+        'evt_1'
+      );
+    });
+
+    // Cancel ticket
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+    await waitFor(() => {
+      expect(api.updateEventTicketStatus).toHaveBeenCalledWith(
+        'PRRC-EVT-2026-0001',
+        'cancelled'
+      );
+    });
+  });
+
+  it('handles custom logo file upload and resetting to standard logo in the event form', async () => {
+    vi.mocked(api.uploadImage).mockResolvedValue('https://storage.googleapis.com/test-bucket/custom-logo.png');
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Add New Event/i }));
+
+    const fileInput = screen.getByLabelText(/Upload Custom Logo/i);
+    const dummyFile = new File(['dummy content'], 'logo.png', { type: 'image/png' });
+    fireEvent.change(fileInput, { target: { files: [dummyFile] } });
+
+    await waitFor(() => {
+      expect(api.uploadImage).toHaveBeenCalledWith(dummyFile);
+      expect(screen.getByText(/Custom event logo uploaded to Cloud Storage/i)).toBeInTheDocument();
+    });
+
+    // Click "Use Standard Logo"
+    const standardLogoBtn = screen.getByRole('button', { name: /Use Standard Logo/i });
+    fireEvent.click(standardLogoBtn);
+
+    expect(screen.getByText(/Using standard Peasants Revolt Running Club logo/i)).toBeInTheDocument();
+  });
 });

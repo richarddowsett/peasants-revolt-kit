@@ -33,6 +33,10 @@ app/.firebase/
 test-results/
 playwright-report/
 
+# Coverage reports
+coverage/
+**/coverage/
+
 # Backend build output
 backend/dist/
 

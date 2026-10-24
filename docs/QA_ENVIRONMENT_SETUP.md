@@ -154,7 +154,7 @@ The QA smoke test suite (`e2e/qa-smoke.spec.ts`) runs directly against the live 
 1. **Unauthenticated Health Check**: `GET /api/health` returns HTTP 200 with `{ status: "ok" }`.
 2. **Unauthenticated Products API**: `GET /api/products` returns HTTP 200 with an array of products.
 3. **Storefront UI Verification**: Verifies that the live landing page loads with brand elements.
-4. **Admin CMS Authentication**: Logs into `/admin` using `QA_ADMIN_PASSWORD` (or fallback) and verifies access to Products Catalog and Customer Orders tabs.
+4. **Admin CMS Authentication**: Logs into `/admin` using `QA_ADMIN_PASSWORD` (or fallback) and verifies access to Products Catalogue and Customer Orders tabs.
 5. **Storefront Runner Journey**: Authenticates using predefined `QA_TEST_USER` credentials or registers a dynamic ephemeral account (`qa_smoke_<timestamp>@peasants.store`) to verify storefront access.
 6. **Order Tracking UI**: Verifies that `/store/orders` loads and renders order status UI (either sign-in prompt, empty state, or orders list with Order Ref).
 

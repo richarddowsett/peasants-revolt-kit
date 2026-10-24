@@ -1,8 +1,5 @@
 'use client';
 
-import React from 'react';
-import AdminCMSPage from '../page';
+import AdminCataloguePage from '../catalogue/page';
 
-export default function AdminCatalogPage() {
-  return <AdminCMSPage />;
-}
+export default AdminCataloguePage;

@@ -1,7 +1,22 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import StoreHeader from './StoreHeader';
+
+const mockSignOut = vi.fn();
+let authCallback: ((user: unknown) => void) | null = null;
+
+vi.mock('firebase/auth', () => ({
+  signOut: (...args: unknown[]) => mockSignOut(...args),
+  onAuthStateChanged: (_auth: unknown, cb: (user: unknown) => void) => {
+    authCallback = cb;
+    return () => {};
+  },
+}));
+
+vi.mock('@/lib/firebase', () => ({
+  auth: {},
+}));
 
 // Mock Next.js router & links
 vi.mock('next/navigation', () => ({
@@ -17,6 +32,10 @@ vi.mock('next/link', () => ({
 }));
 
 describe('StoreHeader Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders store branding title and basket count', () => {
     render(<StoreHeader cartItemCount={3} onOpenCart={vi.fn()} />);
 
@@ -43,5 +62,22 @@ describe('StoreHeader Component', () => {
 
     fireEvent.click(signInButton);
     expect(onOpenLoginMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders member profile and calls signOut when Sign Out button is clicked', async () => {
+    render(<StoreHeader cartItemCount={0} onOpenCart={vi.fn()} />);
+
+    if (authCallback) {
+      authCallback({ displayName: 'Alex Runner', email: 'alex@example.com' });
+    }
+
+    const signOutBtn = await screen.findByRole('button', { name: /sign out/i });
+    expect(signOutBtn).toBeInTheDocument();
+    expect(screen.getByText('Alex Runner')).toBeInTheDocument();
+
+    fireEvent.click(signOutBtn);
+    await waitFor(() => {
+      expect(mockSignOut).toHaveBeenCalled();
+    });
   });
 });

@@ -178,4 +178,142 @@ describe('ClubEventsPage (/events)', () => {
       userId: undefined,
     });
   });
+
+  it('displays error state when loading events fails and allows retrying', async () => {
+    vi.mocked(api.fetchEvents).mockRejectedValueOnce(new Error('Network error loading events'));
+    vi.mocked(api.fetchEvents).mockResolvedValueOnce([]);
+
+    render(<ClubEventsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error loading events')).toBeInTheDocument();
+    });
+
+    const retryBtn = screen.getByRole('button', { name: /Back to Events/i });
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('no-events-holding')).toBeInTheDocument();
+    });
+  });
+
+  it('displays sold out state when tickets are remaining <= 0', async () => {
+    const futureEvent = new Date(Date.now() + 14 * 86400 * 1000).toISOString();
+    const pastSale = new Date(Date.now() - 3600 * 1000).toISOString();
+
+    const soldOutEvent = {
+      event: {
+        id: 'evt_sold_out',
+        title: 'PRRC Evening Gala',
+        description: 'No tickets left',
+        startDate: futureEvent,
+        saleStartAt: pastSale,
+        maxTickets: 50,
+        ticketPrice: 20,
+        address: 'Brentwood',
+        logoUrl: '',
+        fromEmail: 'events@peasants-running-kit.store',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      isSaleOpen: true,
+      ticketsSold: 50,
+      ticketsRemaining: 0,
+      ticketsCheckedIn: 0,
+    };
+
+    vi.mocked(api.fetchEvents).mockResolvedValue([soldOutEvent]);
+
+    render(<ClubEventsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('PRRC Evening Gala')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('event-card'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('event-sold-out')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('event-purchase-form')).not.toBeInTheDocument();
+
+    // Click back to directory
+    const backBtn = screen.getByRole('button', { name: /Back to All Events/i });
+    fireEvent.click(backBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('events-list')).toBeInTheDocument();
+    });
+  });
+
+  it('validates customer form fields and handles ticket purchase API failure', async () => {
+    const futureEvent = new Date(Date.now() + 14 * 86400 * 1000).toISOString();
+    const pastSale = new Date(Date.now() - 3600 * 1000).toISOString();
+
+    const eventWithTickets = {
+      event: {
+        id: 'evt_open_2',
+        title: 'PRRC Track Night',
+        description: 'Track event',
+        startDate: futureEvent,
+        saleStartAt: pastSale,
+        maxTickets: 50,
+        ticketPrice: 15,
+        address: 'Brentwood Track',
+        logoUrl: '',
+        fromEmail: 'events@peasants-running-kit.store',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      isSaleOpen: true,
+      ticketsSold: 5,
+      ticketsRemaining: 45,
+      ticketsCheckedIn: 0,
+    };
+
+    vi.mocked(api.fetchEvents).mockResolvedValue([eventWithTickets]);
+    vi.mocked(api.purchaseEventTicket).mockRejectedValueOnce(new Error('Payment gateway down'));
+
+    render(<ClubEventsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('PRRC Track Night')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('event-card'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('event-purchase-form')).toBeInTheDocument();
+    });
+
+    const form = screen.getByRole('button', { name: /Buy Ticket/i }).closest('form')!;
+
+    // Try submit empty via form submit
+    fireEvent.submit(form);
+    await waitFor(() => {
+      expect(screen.getByText(/Please enter your full name/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), {
+      target: { value: 'Bob Runner' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+      target: { value: 'invalidemail' },
+    });
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Please enter a valid email address/i)).toBeInTheDocument();
+    });
+
+    // Valid inputs, but API fails
+    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+      target: { value: 'bob@example.com' },
+    });
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Payment gateway down/i)).toBeInTheDocument();
+    });
+  });
 });
