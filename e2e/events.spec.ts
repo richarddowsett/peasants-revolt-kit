@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 test.describe('Club Events & Ticketing End-to-End Journey', () => {
   const adminPassword = process.env.ADMIN_PASSWORD || 'peasants2026!';
@@ -151,5 +151,272 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       page.click('button:has-text("Verify & Check In")'),
     ]);
     await expect(scanResult.locator('text=Already Checked In')).toBeVisible();
+  });
+
+  test('Multiple Events Creation & Orders: Admin creates multiple events -> Customers place orders for each -> Admin verifies orders appear under each event correctly', async ({
+    page,
+    request,
+  }) => {
+    const timestamp = Date.now();
+    const eventA = {
+      title: `PRRC Spring 10K Trail ${timestamp}`,
+      description:
+        'Scenic 10km trail run through Weald Country Park with medals and refreshments.',
+      startDate: '2027-05-20T09:30',
+      saleStartAt: '2020-01-01T08:00',
+      maxTickets: '15',
+      price: '18',
+      address: 'Weald Country Park, South Weald, CM14 5QS',
+    };
+
+    const eventB = {
+      title: `PRRC Summer Solstice 5K ${timestamp}`,
+      description: 'Evening midsummer 5K club road race followed by social drinks.',
+      startDate: '2027-06-21T19:00',
+      saleStartAt: '2020-01-01T08:00',
+      maxTickets: '25',
+      price: '12',
+      address: 'King George Playing Fields, Ingrave Road, CM13 2AQ',
+    };
+
+    const customerA1 = {
+      name: 'Alice Spring Runner',
+      email: `alice.spring.${timestamp}@example.com`,
+    };
+    const customerA2 = {
+      name: 'Aaron Trail Pacer',
+      email: `aaron.trail.${timestamp}@example.com`,
+    };
+    const customerB1 = {
+      name: 'Bob Summer Sprinter',
+      email: `bob.summer.${timestamp}@example.com`,
+    };
+
+    const ensureAdminLoggedIn = async (targetPage: Page) => {
+      await targetPage.goto('/admin');
+      const pwdInput = targetPage.locator('input[type="password"]');
+      await pwdInput.waitFor({ state: 'attached', timeout: 3000 }).catch(() => {});
+      if (await pwdInput.isVisible()) {
+        await pwdInput.fill(adminPassword);
+        await Promise.all([
+          targetPage.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
+          targetPage.click('button[type="submit"]'),
+        ]);
+      }
+      await targetPage.click('button:has-text("Events & Tickets")');
+      await expect(targetPage).toHaveURL(/\/admin\/events/);
+    };
+
+    const createEventInAdmin = async (
+      targetPage: Page,
+      eventData: typeof eventA
+    ) => {
+      await targetPage.click('button:has-text("Add New Event")');
+      await expect(targetPage.getByTestId('event-admin-form')).toBeVisible();
+
+      await targetPage.fill('#admin-event-title', eventData.title);
+      await targetPage.fill('#admin-event-description', eventData.description);
+      await targetPage.fill('#admin-event-start-date', eventData.startDate);
+      await targetPage.fill('#admin-event-sale-date', eventData.saleStartAt);
+      await targetPage.fill('#admin-event-max-tickets', eventData.maxTickets);
+      await targetPage.fill('#admin-event-price', eventData.price);
+      await targetPage.fill('#admin-event-address', eventData.address);
+
+      await Promise.all([
+        targetPage.waitForResponse(
+          (r) => r.url().includes('/api/events') && r.request().method() === 'POST' && r.ok()
+        ),
+        targetPage.click('button:has-text("Create Event")'),
+      ]);
+
+      await expect(
+        targetPage.locator(`text=Created "${eventData.title}" successfully.`)
+      ).toBeVisible();
+    };
+
+    const purchaseTicket = async (
+      targetPage: Page,
+      eventTitle: string,
+      customer: { name: string; email: string }
+    ): Promise<string> => {
+      await targetPage.goto('/events');
+      await expect(targetPage.getByTestId('events-list')).toBeVisible();
+
+      const eventCard = targetPage
+        .getByTestId('event-card')
+        .filter({ hasText: eventTitle });
+      await expect(eventCard).toBeVisible();
+      await eventCard.click();
+
+      await expect(targetPage.getByTestId('event-detail-view')).toBeVisible();
+      await expect(targetPage.getByTestId('event-purchase-form')).toBeVisible();
+
+      await targetPage.fill('#ticket-customer-name', customer.name);
+      await targetPage.fill('#ticket-customer-email', customer.email);
+
+      await Promise.all([
+        targetPage.waitForResponse(
+          (r) => r.url().includes('/tickets') && r.request().method() === 'POST' && r.ok()
+        ),
+        targetPage.click('button:has-text("Buy Ticket")'),
+      ]);
+
+      await expect(targetPage.getByTestId('ticket-order-confirmation')).toBeVisible();
+      const orderRef = (
+        await targetPage.getByTestId('ticket-order-reference').innerText()
+      ).trim();
+      expect(orderRef).toMatch(/^PRRC-EVT-\d{4}-\d{4}$/);
+      return orderRef;
+    };
+
+    try {
+      // 1. Admin navigates to /admin/events and creates multiple new events through the UI
+      await ensureAdminLoggedIn(page);
+      await createEventInAdmin(page, eventA);
+      await createEventInAdmin(page, eventB);
+
+      // Verify both events appear in the admin event cards
+      const adminCardA = page
+        .locator('[data-testid^="admin-event-card-"]')
+        .filter({ hasText: eventA.title });
+      const adminCardB = page
+        .locator('[data-testid^="admin-event-card-"]')
+        .filter({ hasText: eventB.title });
+      await expect(adminCardA).toBeVisible();
+      await expect(adminCardB).toBeVisible();
+
+      // 2. Customers browse the public /events directory and place orders for each event
+      await page.goto('/events');
+      await expect(page.getByTestId('events-list')).toBeVisible();
+      await expect(
+        page.getByTestId('event-card').filter({ hasText: eventA.title })
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('event-card').filter({ hasText: eventB.title })
+      ).toBeVisible();
+
+      // Customer 1 places order for Event A
+      const orderRefA1 = await purchaseTicket(page, eventA.title, customerA1);
+
+      // Customer 2 places order for Event A
+      const orderRefA2 = await purchaseTicket(page, eventA.title, customerA2);
+
+      // Customer 3 places order for Event B
+      const orderRefB1 = await purchaseTicket(page, eventB.title, customerB1);
+
+      // Verify each customer can view their order via /store/orders
+      await page.goto(
+        `/store/orders?ref=${encodeURIComponent(orderRefA1)}&email=${encodeURIComponent(
+          customerA1.email
+        )}`
+      );
+      await expect(page.locator(`text=${orderRefA1}`).first()).toBeVisible();
+
+      await page.goto(
+        `/store/orders?ref=${encodeURIComponent(orderRefB1)}&email=${encodeURIComponent(
+          customerB1.email
+        )}`
+      );
+      await expect(page.locator(`text=${orderRefB1}`).first()).toBeVisible();
+
+      // 3. Admin visits /admin/events and verifies orders appear correctly segregated under each event
+      await ensureAdminLoggedIn(page);
+
+      // Select Event A
+      await adminCardA.click();
+      await expect(adminCardA).toContainText(`2 / ${eventA.maxTickets}`);
+      await expect(adminCardA).toContainText('13'); // 15 - 2 = 13 remaining
+
+      await expect(
+        page.locator(`text=Attendees & Ticket Orders — ${eventA.title} (2)`)
+      ).toBeVisible();
+
+      // Check Order A1 details in Event A attendee list
+      const ticketRowA1 = page.getByTestId(`event-ticket-row-${orderRefA1}`);
+      await expect(ticketRowA1).toBeVisible();
+      await expect(ticketRowA1).toContainText(customerA1.name);
+      await expect(ticketRowA1).toContainText(customerA1.email);
+      await expect(ticketRowA1).toContainText('Pending Payment');
+
+      // Check Order A2 details in Event A attendee list
+      const ticketRowA2 = page.getByTestId(`event-ticket-row-${orderRefA2}`);
+      await expect(ticketRowA2).toBeVisible();
+      await expect(ticketRowA2).toContainText(customerA2.name);
+      await expect(ticketRowA2).toContainText(customerA2.email);
+      await expect(ticketRowA2).toContainText('Pending Payment');
+
+      // Verify Event B order is NOT in Event A's list
+      await expect(page.getByTestId(`event-ticket-row-${orderRefB1}`)).not.toBeVisible();
+
+      // Select Event B
+      await adminCardB.click();
+      await expect(adminCardB).toContainText(`1 / ${eventB.maxTickets}`);
+      await expect(adminCardB).toContainText('24'); // 25 - 1 = 24 remaining
+
+      await expect(
+        page.locator(`text=Attendees & Ticket Orders — ${eventB.title} (1)`)
+      ).toBeVisible();
+
+      // Check Order B1 details in Event B attendee list
+      const ticketRowB1 = page.getByTestId(`event-ticket-row-${orderRefB1}`);
+      await expect(ticketRowB1).toBeVisible();
+      await expect(ticketRowB1).toContainText(customerB1.name);
+      await expect(ticketRowB1).toContainText(customerB1.email);
+      await expect(ticketRowB1).toContainText('Pending Payment');
+
+      // Verify Event A orders are NOT in Event B's list
+      await expect(page.getByTestId(`event-ticket-row-${orderRefA1}`)).not.toBeVisible();
+      await expect(page.getByTestId(`event-ticket-row-${orderRefA2}`)).not.toBeVisible();
+
+      // 4. Test Admin Order Actions on these orders
+      // In Event B: Admin cancels the unpaid order
+      page.once('dialog', (dialog) => dialog.accept());
+      await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes(`/api/event-tickets/${orderRefB1}/status`) && r.ok()
+        ),
+        ticketRowB1.locator('button:has-text("Cancel Order (Unpaid)")').click(),
+      ]);
+      await expect(ticketRowB1.locator('text=Cancelled')).toBeVisible();
+      await expect(
+        ticketRowB1.locator('text=Cancellation: Payment not received in good time')
+      ).toBeVisible();
+
+      // Capacity should be released on Event B card
+      await expect(adminCardB).toContainText(`0 / ${eventB.maxTickets}`);
+      await expect(adminCardB).toContainText(eventB.maxTickets);
+
+      // Switch back to Event A: mark Order A1 as paid
+      await adminCardA.click();
+      await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes(`/api/event-tickets/${orderRefA1}/status`) && r.ok()
+        ),
+        ticketRowA1
+          .locator('button:has-text("Mark Payment Received & Send Ticket")')
+          .click(),
+      ]);
+      await expect(
+        ticketRowA1.locator('text=Payment Received (Ticket Sent)')
+      ).toBeVisible();
+      await expect(ticketRowA1.locator('text=QR Email Sent')).toBeVisible();
+
+      // Order A2 remains unchanged
+      await expect(ticketRowA2.locator('text=Pending Payment')).toBeVisible();
+    } finally {
+      // Clean up the created test events
+      const allEventsRes = await request.get('/api/events?includePast=true');
+      if (allEventsRes.ok()) {
+        const allEvents = await allEventsRes.json();
+        for (const item of allEvents) {
+          if (
+            item?.event?.id &&
+            (item.event.title === eventA.title || item.event.title === eventB.title)
+          ) {
+            await request.delete(`/api/events/${item.event.id}`);
+          }
+        }
+      }
+    }
   });
 });
