@@ -290,9 +290,16 @@ function UserOrdersContent() {
       )}
 
       {order.status === 'cancelled' && (
-        <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500 font-medium flex items-center gap-1.5">
-          <XCircle size={14} className="text-slate-400 shrink-0" />
-          <span>This order has been cancelled.</span>
+        <div className="mt-4 pt-4 border-t border-red-100 bg-red-50/60 p-3.5 rounded-2xl text-xs space-y-1">
+          <div className="flex items-center gap-1.5 text-red-800 font-bold">
+            <XCircle size={15} className="text-red-500 shrink-0" />
+            <span>Order Cancelled</span>
+          </div>
+          <p className="text-slate-600 text-[11px] pl-5 leading-relaxed">
+            {order.cancellationReason
+              ? `Reason: ${order.cancellationReason}`
+              : 'This order has been cancelled.'}
+          </p>
         </div>
       )}
     </div>

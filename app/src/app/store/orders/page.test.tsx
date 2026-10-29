@@ -328,5 +328,37 @@ describe('UserOrdersPage', () => {
       fireEvent.click(screen.getByText('Close Login Modal'));
       expect(screen.queryByTestId('store-login-modal')).not.toBeInTheDocument();
     });
+
+    it('displays clear cancelled message and cancellation reason when order is cancelled', async () => {
+      const cancelledGuestOrder = {
+        ...mockGuestOrder,
+        id: 'PRRC-CANCELLED-1',
+        status: 'cancelled' as const,
+        cancellationReason: 'Payment not received in good time',
+      };
+
+      vi.mocked(lookupOrder).mockResolvedValueOnce(cancelledGuestOrder);
+
+      render(<UserOrdersPage />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Order Number \/ Reference/i)).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText(/Order Number \/ Reference/i), {
+        target: { value: 'PRRC-CANCELLED-1' },
+      });
+      fireEvent.change(screen.getByLabelText(/Email Address/i), {
+        target: { value: 'guestrunner@example.com' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Check Order Status/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Order Cancelled')).toBeInTheDocument();
+        expect(
+          screen.getByText(/Reason: Payment not received in good time/i)
+        ).toBeInTheDocument();
+      });
+    });
   });
 });

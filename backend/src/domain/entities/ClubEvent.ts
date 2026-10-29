@@ -121,6 +121,8 @@ export function mapEventTicketToOrder(ticket: EventTicket): Order {
     ticketEmailSentAt: ticket.ticketEmailSentAt,
     checkedIn: ticket.checkedIn,
     checkedInAt: ticket.checkedInAt,
+    cancellationReason: ticket.cancellationReason,
+    cancelledAt: ticket.cancelledAt,
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
   };

@@ -32,6 +32,8 @@ export interface Order {
   ticketEmailSentAt?: string;
   checkedIn?: boolean;
   checkedInAt?: string;
+  cancellationReason?: string;
+  cancelledAt?: string;
   createdAt: string;
   updatedAt: string;
 }

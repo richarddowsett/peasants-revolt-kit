@@ -277,59 +277,10 @@ export class FirestoreEventTicketRepositoryAdapter
       if (msg.includes('closed')) {
         throw new Error('Ticket sales for this event have closed.');
       }
-      console.warn(`[Firestore DB notice] Transaction failed in reserveAndCreateTicket:`, err);
-
-      // Memory fallback for offline / test environments
-      const startMs = Date.parse(input.event.startDate);
-      const saleEndMs = input.event.saleEndAt ? Date.parse(input.event.saleEndAt) : startMs;
-      if (!Number.isNaN(saleEndMs) && now.getTime() > saleEndMs) {
-        throw new Error('Ticket sales for this event have closed.');
-      }
-
-      const memActive = FirestoreEventTicketRepositoryAdapter.localMemoryTickets.filter(
-        (t) => t.eventId === eventId && t.status !== 'cancelled'
+      console.error(`[Firestore DB error] Transaction failed in reserveAndCreateTicket:`, err);
+      throw new Error(
+        `Failed to reserve ticket in database: ${msg || 'Database transaction error'}`
       );
-      if (memActive.length >= input.event.maxTickets) {
-        throw new Error('Sorry, this event is sold out!');
-      }
-
-      let seq = memActive.length + 1;
-      let ticketId = `PRRC-EVT-${eventYear}-${String(seq).padStart(4, '0')}`;
-      while (
-        FirestoreEventTicketRepositoryAdapter.localMemoryTickets.some(
-          (t) => t.id === ticketId
-        )
-      ) {
-        seq++;
-        ticketId = `PRRC-EVT-${eventYear}-${String(seq).padStart(4, '0')}`;
-      }
-
-      const paymentLinkUrl = input.paymentLinkGenerator(
-        ticketId,
-        Number(input.event.ticketPrice)
-      );
-      const fallbackTicket: EventTicket = stripUndefined({
-        id: ticketId,
-        eventId: input.event.id,
-        eventTitle: input.event.title,
-        eventStartDate: input.event.startDate,
-        eventAddress: input.event.address,
-        eventLogoUrl: input.event.logoUrl || undefined,
-        userName: input.userName,
-        userEmail: input.userEmail,
-        userId: input.userId,
-        unitPrice: input.event.ticketPrice,
-        status: 'pending_payment',
-        paymentLinkUrl,
-        monzoReference: ticketId,
-        ticketUuid: crypto.randomUUID(),
-        checkedIn: false,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      });
-
-      FirestoreEventTicketRepositoryAdapter.localMemoryTickets.push(fallbackTicket);
-      return fallbackTicket;
     }
   }
 

@@ -261,17 +261,17 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
       ).rejects.toThrow('Ticket sales for this event have closed.');
     });
 
-    it('falls back to local memory store when transaction throws network error', async () => {
+    it('throws database error and does not obscure failure when transaction fails', async () => {
       mockRunTransaction.mockRejectedValueOnce(new Error('Network error'));
 
-      const fallbackTicket = await adapter.reserveAndCreateTicket({
-        event: { ...sampleEvent, id: 'evt_fallback', maxTickets: 10 },
-        userName: 'Fallback User',
-        userEmail: 'fallback@example.com',
-        paymentLinkGenerator: (ref) => `https://monzo.me/${ref}`,
-      });
-
-      expect(fallbackTicket.userName).toBe('Fallback User');
+      await expect(
+        adapter.reserveAndCreateTicket({
+          event: { ...sampleEvent, id: 'evt_fallback', maxTickets: 10 },
+          userName: 'Fallback User',
+          userEmail: 'fallback@example.com',
+          paymentLinkGenerator: (ref) => `https://monzo.me/${ref}`,
+        })
+      ).rejects.toThrow('Failed to reserve ticket in database: Network error');
     });
 
     it('handles distinct ticket IDs in transactions when previous tickets exist in firestore', async () => {

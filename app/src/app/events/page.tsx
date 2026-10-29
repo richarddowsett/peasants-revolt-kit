@@ -189,7 +189,17 @@ export default function ClubEventsPage() {
       const updatedDetail = await fetchEventById(selectedEventStatus.event.id);
       setSelectedEventStatus(updatedDetail);
     } catch (err: unknown) {
-      setFormError((err as Error).message || 'Failed to purchase ticket. Please try again.');
+      const msg =
+        (err as Error).message || 'Failed to purchase ticket. Please try again.';
+      setFormError(msg);
+      try {
+        const refreshed = await fetchEventById(selectedEventStatus.event.id);
+        if (refreshed) {
+          setSelectedEventStatus(refreshed);
+        }
+      } catch {
+        // Ignore refresh error
+      }
     } finally {
       setSubmitting(false);
     }
@@ -721,8 +731,43 @@ export default function ClubEventsPage() {
                     </div>
 
                     {formError && (
-                      <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-bold">
-                        {formError}
+                      <div
+                        role="alert"
+                        data-testid="order-failure-alert"
+                        className="mb-6 p-5 rounded-2xl bg-red-50 border-2 border-red-300 shadow-sm space-y-3"
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="p-2 rounded-xl bg-red-100 text-red-700 flex-shrink-0 mt-0.5">
+                            <AlertTriangle className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-base font-extrabold text-red-900">
+                              Ticket Reservation Failed
+                            </h3>
+                            <p className="text-sm font-semibold text-red-800 mt-1 leading-snug">
+                              {formError}
+                            </p>
+                            <p className="text-xs text-red-700 mt-2 bg-red-100/70 p-2.5 rounded-lg border border-red-200">
+                              <strong>No payment was taken and no ticket was reserved.</strong> Your order was not placed. Please review your details and try again, or check event availability below.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setFormError(null)}
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors shadow-sm"
+                          >
+                            Try Again
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleBackToDirectory}
+                            className="px-4 py-2 rounded-xl bg-white border border-red-200 text-red-800 hover:bg-red-50 text-xs font-bold transition-colors"
+                          >
+                            Back to All Events
+                          </button>
+                        </div>
                       </div>
                     )}
 

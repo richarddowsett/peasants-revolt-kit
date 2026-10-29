@@ -317,7 +317,18 @@ describe('ClubEventsPage (/events)', () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
+      expect(screen.getByTestId('order-failure-alert')).toBeInTheDocument();
+      expect(screen.getByText(/Ticket Reservation Failed/i)).toBeInTheDocument();
       expect(screen.getByText(/Payment gateway down/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/No payment was taken and no ticket was reserved/i)
+      ).toBeInTheDocument();
+    });
+
+    // Dismiss failure alert
+    fireEvent.click(screen.getByRole('button', { name: /Try Again/i }));
+    await waitFor(() => {
+      expect(screen.queryByTestId('order-failure-alert')).not.toBeInTheDocument();
     });
   });
 

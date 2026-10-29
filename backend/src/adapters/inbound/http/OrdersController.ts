@@ -29,7 +29,10 @@ export class OrdersController {
         'Payload:',
         JSON.stringify(req.body)
       );
-      res.status(400).json({ error: message });
+      const isServerError =
+        message.toLowerCase().includes('database') ||
+        message.toLowerCase().includes('firestore');
+      res.status(isServerError ? 500 : 400).json({ error: message });
     }
   }
 

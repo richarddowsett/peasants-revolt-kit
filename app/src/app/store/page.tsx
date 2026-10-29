@@ -784,9 +784,36 @@ export default function StoreCataloguePage() {
 
                     <form onSubmit={handleCreateOrder} className="space-y-4">
                       {checkoutError && (
-                        <div role="alert" className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl mb-4 flex items-center gap-2">
-                          <AlertCircle size={14} className="shrink-0 text-red-500" />
-                          <span>{checkoutError}</span>
+                        <div
+                          role="alert"
+                          data-testid="checkout-failure-alert"
+                          className="bg-red-50 border-2 border-red-300 text-red-900 p-4 rounded-2xl mb-4 space-y-2 shadow-sm"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="p-1.5 rounded-lg bg-red-100 text-red-700 shrink-0 mt-0.5">
+                              <AlertCircle size={18} />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="text-sm font-extrabold text-red-900">
+                                Order Could Not Be Placed
+                              </h4>
+                              <p className="text-xs font-semibold text-red-800 mt-1 leading-snug">
+                                {checkoutError}
+                              </p>
+                              <p className="text-[11px] text-red-700 mt-2 bg-red-100/70 p-2 rounded-lg border border-red-200">
+                                <strong>Your order was not placed and no payment link was created.</strong> Your card was not charged. Please check your details and try again.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setCheckoutError('')}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition"
+                            >
+                              Dismiss &amp; Try Again
+                            </button>
+                          </div>
                         </div>
                       )}
                       <div>
@@ -925,9 +952,36 @@ export default function StoreCataloguePage() {
                     </div>
 
                     {checkoutError && (
-                      <div role="alert" className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl mb-4 flex items-center gap-2">
-                        <AlertCircle size={14} className="shrink-0 text-red-500" />
-                        <span>{checkoutError}</span>
+                      <div
+                        role="alert"
+                        data-testid="checkout-failure-alert"
+                        className="bg-red-50 border-2 border-red-300 text-red-900 p-4 rounded-2xl mb-4 space-y-2 shadow-sm"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="p-1.5 rounded-lg bg-red-100 text-red-700 shrink-0 mt-0.5">
+                            <AlertCircle size={18} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-extrabold text-red-900">
+                              Order Could Not Be Placed
+                            </h4>
+                            <p className="text-xs font-semibold text-red-800 mt-1 leading-snug">
+                              {checkoutError}
+                            </p>
+                            <p className="text-[11px] text-red-700 mt-2 bg-red-100/70 p-2 rounded-lg border border-red-200">
+                              <strong>Your order was not placed and no payment link was created.</strong> Your card was not charged. Please check your details and try again.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setCheckoutError('')}
+                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition"
+                          >
+                            Dismiss &amp; Try Again
+                          </button>
+                        </div>
                       </div>
                     )}
 

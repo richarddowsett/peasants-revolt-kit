@@ -582,6 +582,48 @@ describe('StoreCataloguePage - Guest Browsing & Guest Checkout', () => {
     });
   });
 
+  it('displays a clear and obvious order failure alert when order creation fails', async () => {
+    const { createOrder: mockCreateOrder } = await import('@/lib/api');
+    vi.mocked(mockCreateOrder).mockRejectedValueOnce(
+      new Error('Database error: Unable to persist order to storage')
+    );
+
+    render(<StoreCataloguePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Peasants Race Vest')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /add to basket/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /proceed to checkout/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /proceed to checkout/i }));
+
+    const nameInput = screen.getByPlaceholderText('e.g. Alex Smith');
+    const emailInput = screen.getByPlaceholderText('alex@example.com');
+    const form = nameInput.closest('form')!;
+
+    fireEvent.change(nameInput, { target: { value: 'Alex Runner' } });
+    fireEvent.change(emailInput, { target: { value: 'alex@example.com' } });
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('checkout-failure-alert')).toBeInTheDocument();
+      expect(screen.getByText('Order Could Not Be Placed')).toBeInTheDocument();
+      expect(screen.getByText(/Database error: Unable to persist order/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Your order was not placed and no payment link was created/i)
+      ).toBeInTheDocument();
+    });
+
+    // Dismiss error
+    fireEvent.click(screen.getByRole('button', { name: /Dismiss & Try Again/i }));
+    await waitFor(() => {
+      expect(screen.queryByTestId('checkout-failure-alert')).not.toBeInTheDocument();
+    });
+  });
+
   it('handles gender split fit switching, size pill selection, and multi-image thumbnail switching', async () => {
     const { fetchProducts: mockFetchProds } = await import('@/lib/api');
     vi.mocked(mockFetchProds).mockResolvedValueOnce([

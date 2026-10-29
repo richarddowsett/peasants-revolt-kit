@@ -96,7 +96,10 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] purchaseTicket failed:', message);
-      res.status(400).json({ error: message });
+      const isServerError =
+        message.toLowerCase().includes('database') ||
+        message.toLowerCase().includes('firestore');
+      res.status(isServerError ? 500 : 400).json({ error: message });
     }
   }
 
