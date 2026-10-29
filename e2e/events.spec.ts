@@ -69,9 +69,12 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
     await expect(page.getByTestId('events-list')).toBeVisible();
     const eventCard = page.getByTestId('event-card').filter({ hasText: eventTitle });
     await expect(eventCard).toBeVisible();
+    await expect(eventCard.getByTestId('event-card-sale-deadline')).toBeVisible();
     await eventCard.click();
 
     await expect(page.getByTestId('event-detail-view')).toBeVisible();
+    await expect(page.getByTestId('event-detail-sale-deadline')).toBeVisible();
+    await expect(page.getByTestId('ticket-deadline-banner')).toBeVisible();
     await expect(page.getByTestId('event-purchase-form')).toBeVisible();
 
     const uniqueEmail = `runner_${Date.now()}@example.com`;

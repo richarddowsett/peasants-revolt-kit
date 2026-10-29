@@ -396,4 +396,67 @@ describe('ClubEventsPage (/events)', () => {
     // Form should not be rendered
     expect(screen.queryByTestId('event-purchase-form')).not.toBeInTheDocument();
   });
+
+  it('displays the ticket sale deadline on event cards, detail metadata bar, and purchase form', async () => {
+    const saleEnd = '2026-11-20T18:00:00.000Z';
+    const eventStart = '2026-11-25T19:00:00.000Z';
+    const saleStart = '2026-10-01T00:00:00.000Z';
+
+    const eventWithDeadline = {
+      event: {
+        id: 'evt_deadline_1',
+        title: 'PRRC 10K Celebration',
+        description: 'Post race dinner',
+        startDate: eventStart,
+        saleStartAt: saleStart,
+        saleEndAt: saleEnd,
+        maxTickets: 30,
+        ticketPrice: 15,
+        address: 'Brentwood',
+        logoUrl: '',
+        fromEmail: 'events@peasants-running-kit.store',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      isSaleOpen: true,
+      isSaleClosed: false,
+      ticketsSold: 5,
+      ticketsRemaining: 25,
+      ticketsCheckedIn: 0,
+    };
+
+    vi.mocked(api.fetchEvents).mockResolvedValue([eventWithDeadline]);
+    vi.mocked(api.fetchEventById).mockResolvedValue(eventWithDeadline);
+
+    render(<ClubEventsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('PRRC 10K Celebration')).toBeInTheDocument();
+    });
+
+    // 1. Directory card shows ticket deadline
+    const cardDeadline = screen.getByTestId('event-card-sale-deadline');
+    expect(cardDeadline).toBeInTheDocument();
+    expect(cardDeadline).toHaveTextContent(/Ticket Deadline:/i);
+    expect(cardDeadline).toHaveTextContent(/20 November 2026/i);
+
+    // Click into detail view
+    fireEvent.click(screen.getByTestId('event-card'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('event-detail-view')).toBeInTheDocument();
+    });
+
+    // 2. Event detail metadata bar shows ticket deadline tile
+    const detailDeadlineTile = screen.getByTestId('event-detail-sale-deadline');
+    expect(detailDeadlineTile).toBeInTheDocument();
+    expect(detailDeadlineTile).toHaveTextContent(/Ticket Deadline/i);
+    expect(detailDeadlineTile).toHaveTextContent(/20 November 2026/i);
+
+    // 3. Purchase form shows ticket deadline banner
+    const deadlineBanner = screen.getByTestId('ticket-deadline-banner');
+    expect(deadlineBanner).toBeInTheDocument();
+    expect(deadlineBanner).toHaveTextContent(/Ticket Sales Deadline:/i);
+    expect(deadlineBanner).toHaveTextContent(/20 November 2026/i);
+  });
 });

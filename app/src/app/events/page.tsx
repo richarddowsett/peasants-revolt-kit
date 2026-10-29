@@ -393,6 +393,16 @@ export default function ClubEventsPage() {
                               <MapPin className="w-4 h-4 text-[#525e3e] flex-shrink-0" />
                               <span className="font-medium truncate">{evt.address}</span>
                             </div>
+                            <div
+                              data-testid="event-card-sale-deadline"
+                              className="flex items-center space-x-2 text-slate-600 pt-1.5 border-t border-slate-200/60"
+                            >
+                              <Clock className="w-4 h-4 text-[#525e3e] flex-shrink-0" />
+                              <span>
+                                <strong className="text-slate-800">Ticket Deadline:</strong>{' '}
+                                {formatEventDateTime(evt.saleEndAt || evt.startDate)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -466,7 +476,7 @@ export default function ClubEventsPage() {
               </div>
 
               {/* Event Metadata Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 bg-[#f8faf5] border-b border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 bg-[#f8faf5] border-b border-slate-200">
                 <div className="p-4 sm:p-5 flex items-center space-x-3">
                   <Calendar className="w-5 h-5 text-[#525e3e] flex-shrink-0" />
                   <div>
@@ -486,6 +496,27 @@ export default function ClubEventsPage() {
                     </div>
                     <div className="text-sm font-extrabold text-slate-900">
                       {activeEvent.address || 'Venue TBA'}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  data-testid="event-detail-sale-deadline"
+                  className="p-4 sm:p-5 flex items-center space-x-3"
+                >
+                  <Clock className="w-5 h-5 text-[#525e3e] flex-shrink-0" />
+                  <div>
+                    <div className="text-[11px] font-bold uppercase text-slate-400">
+                      Ticket Deadline
+                    </div>
+                    <div className="text-sm font-extrabold text-slate-900">
+                      {formatEventDateTime(activeEvent.saleEndAt || activeEvent.startDate)}
+                    </div>
+                    <div className="text-[10px] font-semibold text-slate-500">
+                      {isSaleClosed ? (
+                        <span className="text-amber-700 font-bold">Sales Closed</span>
+                      ) : (
+                        <span>Buying closes at this time</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -618,8 +649,10 @@ export default function ClubEventsPage() {
                     </h2>
                     <p className="text-sm text-slate-600 mb-8">
                       Tickets go on sale on{' '}
-                      <strong>{formatEventDateTime(activeEvent.saleStartAt)}</strong>. Only{' '}
-                      <strong>{activeEvent.maxTickets} tickets</strong> are available!
+                      <strong>{formatEventDateTime(activeEvent.saleStartAt)}</strong> and ticket sales
+                      close on{' '}
+                      <strong>{formatEventDateTime(activeEvent.saleEndAt || activeEvent.startDate)}</strong>.
+                      Only <strong>{activeEvent.maxTickets} tickets</strong> are available!
                     </p>
 
                     <div className="grid grid-cols-4 gap-3 sm:gap-4 max-w-lg mx-auto mb-8">
@@ -728,6 +761,23 @@ export default function ClubEventsPage() {
                           <span>Sign in to pre-fill details</span>
                         </button>
                       )}
+                    </div>
+
+                    {/* Ticket Sales Deadline Callout */}
+                    <div
+                      data-testid="ticket-deadline-banner"
+                      className="mb-6 p-4 rounded-2xl bg-[#f8faf5] border border-[#d6dec7] flex items-start space-x-3 text-xs text-slate-700"
+                    >
+                      <Clock className="w-5 h-5 text-[#525e3e] flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-extrabold block text-sm text-slate-900">
+                          Ticket Sales Deadline:{' '}
+                          {formatEventDateTime(activeEvent.saleEndAt || activeEvent.startDate)}
+                        </span>
+                        <p className="mt-0.5 text-slate-600">
+                          Ticket sales will close automatically at this deadline. Please complete your reservation before then.
+                        </p>
+                      </div>
                     </div>
 
                     {formError && (
