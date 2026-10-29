@@ -2,7 +2,17 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Instagram, Package, Lock, ExternalLink, Clock } from 'lucide-react';
+import {
+  Instagram,
+  Package,
+  Lock,
+  ExternalLink,
+  Clock,
+  Calendar,
+  Ticket,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
 
 export default function StoreHoldingPage() {
   return (
@@ -29,8 +39,10 @@ export default function StoreHoldingPage() {
           <div className="flex items-center gap-3 text-xs">
             <Link
               href="/events"
-              className="text-slate-300 hover:text-white transition flex items-center gap-1.5 font-semibold px-3 py-1.5 rounded-xl hover:bg-slate-800"
+              data-testid="holding-page-header-events-button"
+              className="text-white bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] transition flex items-center gap-1.5 font-bold px-3.5 py-1.5 rounded-xl shadow-sm"
             >
+              <Calendar size={14} />
               <span>Club Events</span>
             </Link>
             <Link
@@ -73,6 +85,39 @@ export default function StoreHoldingPage() {
             The store is currently closed but check back again soon for further updates. Follow our official club Instagram page for kit drop announcements, club runs, and race updates!
           </p>
 
+          {/* Events Highlight & Prominent Button */}
+          <div className="bg-[#f4f6f0] border-2 border-[#d6dec7] rounded-2xl p-5 sm:p-6 mb-8 text-left shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-[rgb(82,94,62)] text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Calendar size={22} />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[rgb(82,94,62)] mb-0.5">
+                    <Sparkles size={12} />
+                    <span>Live &amp; Upcoming</span>
+                  </div>
+                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">
+                    Club Events &amp; Tickets Are Open
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Upcoming social runs, track sessions, and races are live for ticket booking.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/events"
+                data-testid="holding-page-events-button"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white text-xs sm:text-sm font-extrabold px-5 py-3 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5 shrink-0"
+              >
+                <Ticket size={16} />
+                <span>Browse Club Events</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3 justify-center items-center">
             {/* Instagram Link CTA */}
@@ -80,7 +125,7 @@ export default function StoreHoldingPage() {
               href="https://www.instagram.com/prrcbrentwood/"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white text-xs sm:text-sm font-bold px-6 py-3.5 rounded-2xl shadow transition transform hover:-translate-y-0.5"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold px-6 py-3.5 rounded-2xl shadow transition transform hover:-translate-y-0.5"
             >
               <Instagram size={18} />
               <span>Follow @prrcbrentwood</span>
@@ -109,6 +154,12 @@ export default function StoreHoldingPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} Peasants Revolt Running Club. All rights reserved.</p>
           <div className="flex items-center gap-4">
+            <Link
+              href="/events"
+              className="hover:text-[rgb(82,94,62)] transition flex items-center gap-1 font-medium"
+            >
+              <Calendar size={14} /> Events
+            </Link>
             <a
               href="https://www.instagram.com/prrcbrentwood/"
               target="_blank"

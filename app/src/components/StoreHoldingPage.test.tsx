@@ -4,8 +4,14 @@ import { describe, it, expect, vi } from 'vitest';
 import StoreHoldingPage from './StoreHoldingPage';
 
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
+  default: ({
+    children,
+    href,
+    ...props
+  }: { children: React.ReactNode; href: string } & Record<string, unknown>) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -46,5 +52,23 @@ describe('StoreHoldingPage', () => {
 
     const adminLink = screen.getByRole('link', { name: /Organiser CMS/i });
     expect(adminLink).toHaveAttribute('href', '/admin');
+  });
+
+  it('renders prominent buttons and banner for club events', () => {
+    render(<StoreHoldingPage />);
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Club Events & Tickets Are Open/i })
+    ).toBeInTheDocument();
+
+    const mainEventsBtn = screen.getByTestId('holding-page-events-button');
+    expect(mainEventsBtn).toBeInTheDocument();
+    expect(mainEventsBtn).toHaveAttribute('href', '/events');
+    expect(mainEventsBtn).toHaveTextContent(/Browse Club Events/i);
+
+    const headerEventsBtn = screen.getByTestId('holding-page-header-events-button');
+    expect(headerEventsBtn).toBeInTheDocument();
+    expect(headerEventsBtn).toHaveAttribute('href', '/events');
+    expect(headerEventsBtn).toHaveTextContent(/Club Events/i);
   });
 });
