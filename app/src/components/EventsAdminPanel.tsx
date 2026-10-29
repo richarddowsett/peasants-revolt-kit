@@ -90,15 +90,27 @@ export default function EventsAdminPanel() {
       const safeList = Array.isArray(list) ? list : [];
       setEvents(safeList);
 
+      const urlEventId =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('eventId')
+          : null;
+
       const targetId =
         preferredEventId !== undefined
           ? preferredEventId
           : selectedEventId && safeList.some((e) => e.event.id === selectedEventId)
           ? selectedEventId
+          : urlEventId && safeList.some((e) => e.event.id === urlEventId)
+          ? urlEventId
           : safeList[0]?.event.id || null;
 
       setSelectedEventId(targetId);
       if (targetId) {
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('eventId', targetId);
+          window.history.replaceState({}, '', url.toString());
+        }
         await loadTicketsForEvent(targetId);
       } else {
         setTickets([]);
@@ -249,6 +261,11 @@ export default function EventsAdminPanel() {
 
   const handleSelectEvent = async (eventId: string) => {
     setSelectedEventId(eventId);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('eventId', eventId);
+      window.history.replaceState({}, '', url.toString());
+    }
     await loadTicketsForEvent(eventId);
   };
 

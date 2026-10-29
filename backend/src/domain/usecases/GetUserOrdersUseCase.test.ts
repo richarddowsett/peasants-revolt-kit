@@ -45,6 +45,47 @@ describe('GetUserOrdersUseCase', () => {
     expect(result).toEqual([sampleOrder]);
   });
 
+  it('includes event tickets from ticketRepo in getAllOrders and sorts by date descending', async () => {
+    const mockTicketRepo = {
+      createTicket: vi.fn(),
+      getTicketById: vi.fn(),
+      getTicketByUuid: vi.fn(),
+      listTicketsByEvent: vi.fn(),
+      listTicketsByEmail: vi.fn(),
+      listAllTickets: vi.fn().mockResolvedValue([
+        {
+          id: 'PRRC-EVT-2026-0001',
+          eventId: 'evt_1',
+          eventTitle: 'Christmas Party',
+          eventStartDate: '2026-12-19T19:30:00.000Z',
+          eventAddress: 'Brentwood',
+          userName: 'Event Attendee',
+          userEmail: 'attendee@example.com',
+          unitPrice: 25,
+          status: 'pending_payment' as const,
+          paymentLinkUrl: 'https://monzo.me/25',
+          monzoReference: 'PRRC-EVT-2026-0001',
+          ticketUuid: 'uuid-1',
+          checkedIn: false,
+          createdAt: '2026-02-01T00:00:00Z',
+          updatedAt: '2026-02-01T00:00:00Z',
+        },
+      ]),
+      updateTicket: vi.fn(),
+      cancelTicketAndReleaseCapacity: vi.fn(),
+      reserveAndCreateTicket: vi.fn(),
+    };
+
+    const useCaseWithTickets = new GetUserOrdersUseCase(orderRepo, mockTicketRepo);
+    vi.mocked(orderRepo.getAllOrders).mockResolvedValue([sampleOrder]);
+
+    const allOrders = await useCaseWithTickets.getAllOrders();
+    expect(allOrders).toHaveLength(2);
+    expect(allOrders[0].id).toBe('PRRC-EVT-2026-0001'); // Newer created date
+    expect(allOrders[0].orderType).toBe('event_ticket');
+    expect(allOrders[1].id).toBe('PRRC-0001');
+  });
+
   describe('getOrderByRefAndEmail', () => {
     it('returns null if orderRef or email is empty', async () => {
       expect(await useCase.getOrderByRefAndEmail('', 'guest@example.com')).toBeNull();

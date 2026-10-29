@@ -304,6 +304,11 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       // Customer 3 places order for Event B
       const orderRefB1 = await purchaseTicket(page, eventB.title, customerB1);
 
+      // Verify that all ticket references across Event A and Event B are distinct without any ID collision
+      expect(orderRefA1).not.toBe(orderRefA2);
+      expect(orderRefA1).not.toBe(orderRefB1);
+      expect(orderRefA2).not.toBe(orderRefB1);
+
       // Verify each customer can view their order via /store/orders
       await page.goto(
         `/store/orders?ref=${encodeURIComponent(orderRefA1)}&email=${encodeURIComponent(
@@ -319,8 +324,34 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       );
       await expect(page.locator(`text=${orderRefB1}`).first()).toBeVisible();
 
-      // 3. Admin visits /admin/events and verifies orders appear correctly segregated under each event
-      await ensureAdminLoggedIn(page);
+      // 3. Admin visits the main admin screen (/admin) and verifies ticket orders appear under Customer Orders with accurate counts
+      await page.goto('/admin');
+      const pwdInput = page.locator('input[type="password"]');
+      await pwdInput.waitFor({ state: 'attached', timeout: 3000 }).catch(() => {});
+      if (await pwdInput.isVisible()) {
+        await pwdInput.fill(adminPassword);
+        await Promise.all([
+          page.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
+          page.click('button[type="submit"]'),
+        ]);
+      }
+
+      // Verify Customer Orders tab displays the ticket orders and non-zero counts
+      await expect(page.getByText('Manage Customer Orders')).toBeVisible();
+      await expect(page.locator(`text=${orderRefA1}`).first()).toBeVisible();
+      await expect(page.locator(`text=${orderRefA2}`).first()).toBeVisible();
+      await expect(page.locator(`text=${orderRefB1}`).first()).toBeVisible();
+
+      // Verify "Pending Payment" filter button has a count of at least 3
+      const pendingPaymentBtn = page.locator('button:has-text("Pending Payment")');
+      await expect(pendingPaymentBtn).toBeVisible();
+      const countBadge = pendingPaymentBtn.locator('span').last();
+      const countNum = parseInt((await countBadge.innerText()).trim(), 10);
+      expect(countNum).toBeGreaterThanOrEqual(3);
+
+      // 4. Admin navigates to /admin/events and verifies orders appear correctly segregated under each event
+      await page.click('button:has-text("Events & Tickets")');
+      await expect(page).toHaveURL(/\/admin\/events/);
 
       // Select Event A
       await adminCardA.click();

@@ -179,10 +179,16 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
       const mockTx = {
         get: vi
           .fn()
+          // 1. eventRef
           .mockResolvedValueOnce({
             exists: true,
             data: () => sampleEvent,
           })
+          // 2. counterRef
+          .mockResolvedValueOnce({
+            exists: false,
+          })
+          // 3. ticketRef
           .mockResolvedValueOnce({
             exists: false,
           }),
@@ -202,7 +208,7 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
       expect(mockTx.create).toHaveBeenCalled();
       expect(mockTx.set).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ ticketsSold: 1, nextTicketSequence: 2 }),
+        expect.objectContaining({ nextSequence: 2 }),
         { merge: true }
       );
     });
@@ -266,6 +272,45 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
       });
 
       expect(fallbackTicket.userName).toBe('Fallback User');
+    });
+
+    it('handles distinct ticket IDs in transactions when previous tickets exist in firestore', async () => {
+      const eventB = { ...sampleEvent, id: 'evt_2', nextTicketSequence: 1 };
+      const mockTx = {
+        get: vi
+          .fn()
+          // 1. Read event
+          .mockResolvedValueOnce({
+            exists: true,
+            data: () => eventB,
+          })
+          // 2. Read counterRef
+          .mockResolvedValueOnce({
+            exists: false,
+          })
+          // 3. Check ticketRef PRRC-EVT-2026-0001 -> ALREADY EXISTS (created by another event)!
+          .mockResolvedValueOnce({
+            exists: true,
+            data: () => ({ id: 'PRRC-EVT-2026-0001', eventId: 'evt_1' }),
+          })
+          // 4. Check ticketRef PRRC-EVT-2026-0002 -> does not exist
+          .mockResolvedValueOnce({
+            exists: false,
+          }),
+        create: vi.fn(),
+        set: vi.fn(),
+      };
+      mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
+
+      const ticket = await adapter.reserveAndCreateTicket({
+        event: eventB,
+        userName: 'Bob Runner',
+        userEmail: 'bob@example.com',
+        paymentLinkGenerator: () => 'link',
+      });
+
+      expect(ticket.id).toBe('PRRC-EVT-2026-0002');
+      expect(mockTx.create).toHaveBeenCalled();
     });
   });
 

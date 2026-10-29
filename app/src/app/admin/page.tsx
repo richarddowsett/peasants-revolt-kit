@@ -15,6 +15,7 @@ import {
 import { Product, SizeGuideRow, GenderFit } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
+import { isEventTicketOrderType } from '@/domain/models/ClubEvent';
 import { Lock, Plus, Trash2, Edit3, CheckCircle, Package, ArrowLeft, RefreshCw, Upload, Loader2, Star, Eye, EyeOff, Ruler, Send, Store, AlertTriangle, Printer, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import EventsAdminPanel from '@/components/EventsAdminPanel';
@@ -463,6 +464,10 @@ export default function AdminCMSPage() {
     cancelled: orders.filter((o) => o.status === 'cancelled').length,
   };
 
+  const paidKitOrdersCount = orders.filter(
+    (o) => o.status === 'payment_successful' && !isEventTicketOrderType(o.orderType)
+  ).length;
+
   const filteredOrders = orders.filter((order) =>
     orderStatusFilter === 'all' ? true : order.status === orderStatusFilter
   );
@@ -711,7 +716,7 @@ export default function AdminCMSPage() {
                   <Printer size={15} />
                   <span>Export for Manufacturer</span>
                   <span className="bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                    {orderCounts['payment_successful']}
+                    {paidKitOrdersCount}
                   </span>
                 </Link>
 
@@ -784,9 +789,16 @@ export default function AdminCMSPage() {
                     >
                       <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-100 gap-2 mb-3">
                         <div>
-                          <span className="font-mono font-bold text-sm text-slate-900 mr-2">
-                            {order.id}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="font-mono font-bold text-sm text-slate-900">
+                              {order.id}
+                            </span>
+                            {isEventTicketOrderType(order.orderType) && (
+                              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                Event Ticket
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-slate-600 font-medium">
                             {order.userName} ({order.userEmail})
                           </span>
@@ -837,10 +849,10 @@ export default function AdminCMSPage() {
                               onClick={() => handleUpdateOrderStatus(order.id, 'payment_successful')}
                               className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1"
                             >
-                              <CheckCircle size={14} /> Mark Payment Received
+                              <CheckCircle size={14} /> {isEventTicketOrderType(order.orderType) ? 'Mark Payment Received & Send Ticket' : 'Mark Payment Received'}
                             </button>
                           )}
-                          {order.status !== 'order_sent' && order.status !== 'completed' && order.status !== 'cancelled' && (
+                          {order.status !== 'order_sent' && order.status !== 'completed' && order.status !== 'cancelled' && !isEventTicketOrderType(order.orderType) && (
                             <button
                               onClick={() => handleUpdateOrderStatus(order.id, 'order_sent')}
                               className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1"

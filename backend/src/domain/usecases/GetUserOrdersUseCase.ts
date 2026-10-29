@@ -58,6 +58,15 @@ export class GetUserOrdersUseCase implements GetUserOrdersInboundPort {
   }
 
   async getAllOrders(): Promise<Order[]> {
-    return this.orderRepo.getAllOrders();
+    const kitOrders = await this.orderRepo.getAllOrders();
+    if (!this.ticketRepo) {
+      return kitOrders;
+    }
+
+    const tickets = await this.ticketRepo.listAllTickets();
+    const ticketOrders = tickets.map(mapEventTicketToOrder);
+    return [...kitOrders, ...ticketOrders].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }
 }

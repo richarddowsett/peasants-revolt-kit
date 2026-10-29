@@ -56,7 +56,6 @@ const createOrderUseCase = new CreateOrderUseCase(
   featureFlagRepoAdapter
 );
 const getUserOrdersUseCase = new GetUserOrdersUseCase(orderRepoAdapter, eventTicketRepoAdapter);
-const updateOrderStatusUseCase = new UpdateOrderStatusUseCase(orderRepoAdapter);
 const getFeatureFlagUseCase = new GetFeatureFlagUseCase(featureFlagRepoAdapter);
 const setFeatureFlagUseCase = new SetFeatureFlagUseCase(featureFlagRepoAdapter);
 
@@ -77,6 +76,11 @@ const updateEventTicketStatusUseCase = new UpdateEventTicketStatusUseCase(
 );
 const verifyAndCheckInEventTicketUseCase = new VerifyAndCheckInEventTicketUseCase(
   eventTicketRepoAdapter
+);
+
+const updateOrderStatusUseCase = new UpdateOrderStatusUseCase(
+  orderRepoAdapter,
+  updateEventTicketStatusUseCase
 );
 
 // 3. Instantiate Driving (Inbound) HTTP Controllers (Injecting Core Use Cases / Ports)

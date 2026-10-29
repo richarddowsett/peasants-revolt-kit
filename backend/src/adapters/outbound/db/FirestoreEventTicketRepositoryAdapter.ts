@@ -198,17 +198,26 @@ export class FirestoreEventTicketRepositoryAdapter
           throw new Error('Sorry, this event is sold out!');
         }
 
-        const nextSeq =
-          typeof eventData.nextTicketSequence === 'number'
-            ? eventData.nextTicketSequence
-            : currentTicketsSold + 1;
+        const counterRef = adminDb.collection('counters').doc(`event_tickets_${eventYear}`);
+        const counterSnap = await transaction.get(counterRef);
+        let seq = 1;
+        if (counterSnap.exists && typeof counterSnap.data()?.nextSequence === 'number') {
+          seq = counterSnap.data()!.nextSequence;
+        } else if (typeof eventData.nextTicketSequence === 'number') {
+          seq = eventData.nextTicketSequence;
+        } else {
+          seq = currentTicketsSold + 1;
+        }
 
-        const ticketId = `PRRC-EVT-${eventYear}-${String(nextSeq).padStart(4, '0')}`;
-        const ticketRef = adminDb.collection(this.collectionName).doc(ticketId);
+        let ticketId = `PRRC-EVT-${eventYear}-${String(seq).padStart(4, '0')}`;
+        let ticketRef = adminDb.collection(this.collectionName).doc(ticketId);
+        let existingTicketDoc = await transaction.get(ticketRef);
 
-        const existingTicketDoc = await transaction.get(ticketRef);
-        if (existingTicketDoc.exists) {
-          throw new Error(`Ticket ID conflict for ${ticketId}. Please retry.`);
+        while (existingTicketDoc.exists) {
+          seq++;
+          ticketId = `PRRC-EVT-${eventYear}-${String(seq).padStart(4, '0')}`;
+          ticketRef = adminDb.collection(this.collectionName).doc(ticketId);
+          existingTicketDoc = await transaction.get(ticketRef);
         }
 
         const paymentLinkUrl = input.paymentLinkGenerator(
@@ -240,10 +249,16 @@ export class FirestoreEventTicketRepositoryAdapter
         transaction.create(ticketRef, ticket);
 
         transaction.set(
+          counterRef,
+          { nextSequence: seq + 1, updatedAt: nowIso },
+          { merge: true }
+        );
+
+        transaction.set(
           eventRef,
           {
             ticketsSold: currentTicketsSold + 1,
-            nextTicketSequence: nextSeq + 1,
+            nextTicketSequence: seq + 1,
             updatedAt: nowIso,
           },
           { merge: true }
