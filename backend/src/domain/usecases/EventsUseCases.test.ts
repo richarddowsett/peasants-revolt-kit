@@ -101,6 +101,13 @@ describe('Club Events & Ticketing Use Cases', () => {
         const activeTickets = ticketsStore.filter(
           (t) => t.eventId === input.event.id && t.status !== 'cancelled'
         );
+        const startMs = Date.parse(input.event.startDate);
+        const saleEndMs = input.event.saleEndAt
+          ? Date.parse(input.event.saleEndAt)
+          : startMs;
+        if (!Number.isNaN(saleEndMs) && now.getTime() > saleEndMs) {
+          throw new Error('Ticket sales for this event have closed.');
+        }
         if (activeTickets.length >= input.event.maxTickets) {
           throw new Error('Sorry, this event is sold out!');
         }
@@ -214,6 +221,58 @@ describe('Club Events & Ticketing Use Cases', () => {
       await deleteUseCase.execute(pastEvent.id);
       const afterDelete = await listUseCase.execute({ includePast: true, now });
       expect(afterDelete).toHaveLength(1);
+    });
+
+    it('validates saleEndAt against saleStartAt and startDate and supports configuring closing date', async () => {
+      const createUseCase = new CreateEventUseCase(eventRepo);
+      const updateUseCase = new UpdateEventUseCase(eventRepo);
+
+      // saleEndAt before saleStartAt -> throws
+      await expect(
+        createUseCase.execute({
+          title: 'Closing Test',
+          description: 'Desc',
+          startDate: '2027-10-10T10:00:00.000Z',
+          saleStartAt: '2027-09-01T10:00:00.000Z',
+          saleEndAt: '2027-08-01T10:00:00.000Z',
+          maxTickets: 20,
+          ticketPrice: 10,
+          address: 'Park',
+        })
+      ).rejects.toThrow('Ticket sale closing date cannot be before sale opening date.');
+
+      // saleEndAt after startDate -> throws
+      await expect(
+        createUseCase.execute({
+          title: 'Closing Test',
+          description: 'Desc',
+          startDate: '2027-10-10T10:00:00.000Z',
+          saleStartAt: '2027-09-01T10:00:00.000Z',
+          saleEndAt: '2027-10-11T10:00:00.000Z',
+          maxTickets: 20,
+          ticketPrice: 10,
+          address: 'Park',
+        })
+      ).rejects.toThrow('Ticket sale closing date cannot be after the event start date.');
+
+      // Valid saleEndAt
+      const eventWithClosing = await createUseCase.execute({
+        title: 'Autumn Trail 10K',
+        description: 'Trail event',
+        startDate: '2027-10-10T10:00:00.000Z',
+        saleStartAt: '2027-09-01T10:00:00.000Z',
+        saleEndAt: '2027-10-08T18:00:00.000Z',
+        maxTickets: 20,
+        ticketPrice: 10,
+        address: 'Park',
+      });
+      expect(eventWithClosing.saleEndAt).toBe('2027-10-08T18:00:00.000Z');
+
+      // Update saleEndAt
+      const updated = await updateUseCase.execute(eventWithClosing.id, {
+        saleEndAt: '2027-10-09T12:00:00.000Z',
+      });
+      expect(updated.saleEndAt).toBe('2027-10-09T12:00:00.000Z');
     });
   });
 
@@ -390,6 +449,69 @@ describe('Club Events & Ticketing Use Cases', () => {
       );
       expect(ticket3.id).toBe('PRRC-EVT-2026-0003');
       expect(ticket3.userName).toBe('User 3');
+    });
+
+    it('blocks ticket purchases once saleEndAt is reached while keeping the event visible in listings', async () => {
+      const createUseCase = new CreateEventUseCase(eventRepo);
+      const purchaseUseCase = new PurchaseEventTicketUseCase(
+        eventRepo,
+        ticketRepo,
+        paymentGateway
+      );
+      const listUseCase = new ListEventsUseCase(eventRepo, ticketRepo);
+      const getByIdUseCase = new GetEventByIdUseCase(eventRepo, ticketRepo);
+
+      const event = await createUseCase.execute({
+        title: 'Spring Marathon Social',
+        description: 'Post race social drinks and pasta party.',
+        startDate: '2027-04-25T18:00:00.000Z',
+        saleStartAt: '2027-03-01T09:00:00.000Z',
+        saleEndAt: '2027-04-20T23:59:00.000Z',
+        maxTickets: 50,
+        ticketPrice: 20,
+        address: 'London Tavern',
+      });
+
+      // 1. Before saleEndAt (e.g. 2027-04-10) -> Purchase succeeds, isSaleOpen: true, isSaleClosed: false
+      const openTime = new Date('2027-04-10T12:00:00.000Z');
+      const ticket = await purchaseUseCase.execute(
+        {
+          eventId: event.id,
+          userName: 'Early Bird',
+          userEmail: 'early@example.com',
+        },
+        openTime
+      );
+      expect(ticket.userName).toBe('Early Bird');
+
+      const statsBefore = await getByIdUseCase.execute(event.id, openTime);
+      expect(statsBefore?.isSaleOpen).toBe(true);
+      expect(statsBefore?.isSaleClosed).toBe(false);
+
+      // 2. After saleEndAt, but before startDate (e.g. 2027-04-22) -> Purchase blocked
+      const closedTime = new Date('2027-04-22T12:00:00.000Z');
+      await expect(
+        purchaseUseCase.execute(
+          {
+            eventId: event.id,
+            userName: 'Late Runner',
+            userEmail: 'late@example.com',
+          },
+          closedTime
+        )
+      ).rejects.toThrow('Ticket sales for this event have closed.');
+
+      // Stats reflect closed sales
+      const statsAfter = await getByIdUseCase.execute(event.id, closedTime);
+      expect(statsAfter?.isSaleOpen).toBe(false);
+      expect(statsAfter?.isSaleClosed).toBe(true);
+
+      // Event is STILL listed in upcoming events directory so attendees can view reminders!
+      const upcomingEvents = await listUseCase.execute({ includePast: false, now: closedTime });
+      const found = upcomingEvents.find((e) => e.event.id === event.id);
+      expect(found).toBeDefined();
+      expect(found?.isSaleClosed).toBe(true);
+      expect(found?.isSaleOpen).toBe(false);
     });
   });
 

@@ -72,6 +72,7 @@ describe('ClubEventsPage (/events)', () => {
         updatedAt: new Date().toISOString(),
       },
       isSaleOpen: false,
+      isSaleClosed: false,
       ticketsSold: 0,
       ticketsRemaining: 50,
       ticketsCheckedIn: 0,
@@ -115,6 +116,7 @@ describe('ClubEventsPage (/events)', () => {
         updatedAt: new Date().toISOString(),
       },
       isSaleOpen: true,
+      isSaleClosed: false,
       ticketsSold: 4,
       ticketsRemaining: 46,
       ticketsCheckedIn: 0,
@@ -217,6 +219,7 @@ describe('ClubEventsPage (/events)', () => {
         updatedAt: new Date().toISOString(),
       },
       isSaleOpen: true,
+      isSaleClosed: false,
       ticketsSold: 50,
       ticketsRemaining: 0,
       ticketsCheckedIn: 0,
@@ -266,6 +269,7 @@ describe('ClubEventsPage (/events)', () => {
         updatedAt: new Date().toISOString(),
       },
       isSaleOpen: true,
+      isSaleClosed: false,
       ticketsSold: 5,
       ticketsRemaining: 45,
       ticketsCheckedIn: 0,
@@ -315,5 +319,70 @@ describe('ClubEventsPage (/events)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Payment gateway down/i)).toBeInTheDocument();
     });
+  });
+
+  it('displays sales closed state and banner when an event ticket sale closing date has passed', async () => {
+    const futureEvent = new Date(Date.now() + 14 * 86400 * 1000).toISOString();
+    const pastSaleStart = new Date(Date.now() - 7 * 86400 * 1000).toISOString();
+    const pastSaleEnd = new Date(Date.now() - 3600 * 1000).toISOString();
+
+    const closedEvent = {
+      event: {
+        id: 'evt_closed_1',
+        title: 'PRRC Closed Ticket Social',
+        description: 'Ticket sales have ended for this event',
+        startDate: futureEvent,
+        saleStartAt: pastSaleStart,
+        saleEndAt: pastSaleEnd,
+        maxTickets: 30,
+        ticketPrice: 10,
+        address: 'Brentwood High Street',
+        logoUrl: '',
+        fromEmail: 'events@peasants-running-kit.store',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      isSaleOpen: false,
+      isSaleClosed: true,
+      ticketsSold: 20,
+      ticketsRemaining: 10,
+      ticketsCheckedIn: 0,
+    };
+
+    vi.mocked(api.fetchEvents).mockResolvedValue([closedEvent]);
+    vi.mocked(api.fetchEventById).mockResolvedValue(closedEvent);
+
+    render(<ClubEventsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('PRRC Closed Ticket Social')).toBeInTheDocument();
+    });
+
+    // Check that "Sales Closed" badge is visible on the directory card
+    expect(screen.getByText('Sales Closed')).toBeInTheDocument();
+
+    // Click event card
+    fireEvent.click(screen.getByTestId('event-card'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('event-sales-closed')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole('heading', { name: /Ticket Sales for This Event Have Closed/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Online ticket sales closed on/i)
+    ).toBeInTheDocument();
+
+    // Reminder details should still be visible
+    expect(screen.getByText('Brentwood High Street')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /View My Orders/i })).toHaveAttribute(
+      'href',
+      '/store/orders'
+    );
+
+    // Form should not be rendered
+    expect(screen.queryByTestId('event-purchase-form')).not.toBeInTheDocument();
   });
 });

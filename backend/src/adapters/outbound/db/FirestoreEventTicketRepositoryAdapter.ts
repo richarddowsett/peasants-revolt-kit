@@ -188,6 +188,12 @@ export class FirestoreEventTicketRepositoryAdapter
             ? eventData.ticketsSold
             : 0;
 
+        const startMs = Date.parse(eventData.startDate);
+        const saleEndMs = eventData.saleEndAt ? Date.parse(eventData.saleEndAt) : startMs;
+        if (!Number.isNaN(saleEndMs) && now.getTime() > saleEndMs) {
+          throw new Error('Ticket sales for this event have closed.');
+        }
+
         if (currentTicketsSold >= eventData.maxTickets) {
           throw new Error('Sorry, this event is sold out!');
         }
@@ -253,9 +259,18 @@ export class FirestoreEventTicketRepositoryAdapter
       if (msg.includes('sold out')) {
         throw new Error('Sorry, this event is sold out!');
       }
+      if (msg.includes('closed')) {
+        throw new Error('Ticket sales for this event have closed.');
+      }
       console.warn(`[Firestore DB notice] Transaction failed in reserveAndCreateTicket:`, err);
 
       // Memory fallback for offline / test environments
+      const startMs = Date.parse(input.event.startDate);
+      const saleEndMs = input.event.saleEndAt ? Date.parse(input.event.saleEndAt) : startMs;
+      if (!Number.isNaN(saleEndMs) && now.getTime() > saleEndMs) {
+        throw new Error('Ticket sales for this event have closed.');
+      }
+
       const memActive = FirestoreEventTicketRepositoryAdapter.localMemoryTickets.filter(
         (t) => t.eventId === eventId && t.status !== 'cancelled'
       );

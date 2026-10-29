@@ -229,6 +229,32 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
       ).rejects.toThrow('Sorry, this event is sold out!');
     });
 
+    it('throws closed error when saleEndAt is reached', async () => {
+      const closedEvent = {
+        ...sampleEvent,
+        saleEndAt: '2026-11-15T00:00:00.000Z',
+      };
+      const mockTx = {
+        get: vi.fn().mockResolvedValueOnce({
+          exists: true,
+          data: () => closedEvent,
+        }),
+        create: vi.fn(),
+        set: vi.fn(),
+      };
+      mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
+
+      await expect(
+        adapter.reserveAndCreateTicket({
+          event: closedEvent,
+          userName: 'Late Runner',
+          userEmail: 'late@example.com',
+          paymentLinkGenerator: () => 'link',
+          now: new Date('2026-11-20T00:00:00.000Z'),
+        })
+      ).rejects.toThrow('Ticket sales for this event have closed.');
+    });
+
     it('falls back to local memory store when transaction throws network error', async () => {
       mockRunTransaction.mockRejectedValueOnce(new Error('Network error'));
 

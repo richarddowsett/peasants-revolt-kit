@@ -34,6 +34,7 @@ describe('EventsAdminPanel & DoorQrScanner', () => {
       updatedAt: '2026-10-01T00:00:00.000Z',
     },
     isSaleOpen: true,
+    isSaleClosed: false,
     ticketsSold: 1,
     ticketsRemaining: 49,
     ticketsCheckedIn: 0,
@@ -95,6 +96,9 @@ describe('EventsAdminPanel & DoorQrScanner', () => {
     fireEvent.change(screen.getByLabelText(/Ticket Sale Countdown/i), {
       target: { value: '2026-06-01T09:00' },
     });
+    fireEvent.change(screen.getByLabelText(/Ticket Sales Close Date/i), {
+      target: { value: '2026-07-15T12:00' },
+    });
     fireEvent.change(screen.getByLabelText(/Event Address/i), {
       target: { value: 'Melbourne Park Athletics Track' },
     });
@@ -104,6 +108,29 @@ describe('EventsAdminPanel & DoorQrScanner', () => {
     await waitFor(() => {
       expect(api.createEvent).toHaveBeenCalledTimes(1);
     });
+    expect(api.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'PRRC Summer Track Night',
+        saleEndAt: expect.stringMatching(/2026-07-15T\d{2}:00:00\.000Z/),
+      })
+    );
+  });
+
+  it('displays the Sales Closed badge on an event card when isSaleClosed is true', async () => {
+    const closedEventWithStats = {
+      ...sampleEventWithStats,
+      isSaleClosed: true,
+      isSaleOpen: false,
+    };
+    vi.mocked(api.fetchEvents).mockResolvedValueOnce([closedEventWithStats]);
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Sales Closed')).toBeInTheDocument();
   });
 
   it('verifies a ticket UUID on the dedicated DoorQrScanner screen, flashes a green banner on success, and flashes red on failure', async () => {

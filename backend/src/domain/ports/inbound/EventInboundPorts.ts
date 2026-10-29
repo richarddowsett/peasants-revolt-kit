@@ -19,6 +19,7 @@ export interface CreateEventInput {
   description: string;
   startDate: string;
   saleStartAt: string;
+  saleEndAt?: string;
   maxTickets: number;
   ticketPrice: number;
   address: string;
@@ -35,6 +36,7 @@ export interface UpdateEventInput {
   description?: string;
   startDate?: string;
   saleStartAt?: string;
+  saleEndAt?: string;
   maxTickets?: number;
   ticketPrice?: number;
   address?: string;

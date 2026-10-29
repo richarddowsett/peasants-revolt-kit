@@ -58,6 +58,7 @@ export default function EventsAdminPanel() {
   const [descriptionInput, setDescriptionInput] = useState('');
   const [startDateInput, setStartDateInput] = useState('');
   const [saleStartAtInput, setSaleStartAtInput] = useState('');
+  const [saleEndAtInput, setSaleEndAtInput] = useState('');
   const [maxTicketsInput, setMaxTicketsInput] = useState('50');
   const [ticketPriceInput, setTicketPriceInput] = useState('25');
   const [addressInput, setAddressInput] = useState('');
@@ -131,6 +132,7 @@ export default function EventsAdminPanel() {
     setDescriptionInput('');
     setStartDateInput('');
     setSaleStartAtInput('');
+    setSaleEndAtInput('');
     setMaxTicketsInput('50');
     setTicketPriceInput('25');
     setAddressInput('');
@@ -151,6 +153,7 @@ export default function EventsAdminPanel() {
     setDescriptionInput(evt.description);
     setStartDateInput(toDatetimeLocalValue(evt.startDate));
     setSaleStartAtInput(toDatetimeLocalValue(evt.saleStartAt));
+    setSaleEndAtInput(toDatetimeLocalValue(evt.saleEndAt));
     setMaxTicketsInput(String(evt.maxTickets));
     setTicketPriceInput(String(evt.ticketPrice));
     setAddressInput(evt.address);
@@ -190,12 +193,14 @@ export default function EventsAdminPanel() {
     try {
       const startIso = startDateInput ? new Date(startDateInput).toISOString() : '';
       const saleIso = saleStartAtInput ? new Date(saleStartAtInput).toISOString() : '';
+      const saleEndIso = saleEndAtInput ? new Date(saleEndAtInput).toISOString() : '';
 
       const payload = {
         title: titleInput.trim(),
         description: descriptionInput.trim(),
         startDate: startIso,
         saleStartAt: saleIso,
+        saleEndAt: saleEndIso || undefined,
         maxTickets: Number(maxTicketsInput),
         ticketPrice: Number(ticketPriceInput),
         address: addressInput.trim(),
@@ -451,6 +456,26 @@ export default function EventsAdminPanel() {
 
               <div>
                 <label
+                  htmlFor="admin-event-sale-end-date"
+                  className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
+                >
+                  Ticket Sales Close Date &amp; Time
+                </label>
+                <input
+                  id="admin-event-sale-end-date"
+                  type="datetime-local"
+                  placeholder="Defaults to event start time"
+                  value={saleEndAtInput}
+                  onChange={(e) => setSaleEndAtInput(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm"
+                />
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  Optional. Once reached, ticket sales stop while keeping event details visible.
+                </span>
+              </div>
+
+              <div>
+                <label
                   htmlFor="admin-event-max-tickets"
                   className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
                 >
@@ -667,13 +692,20 @@ export default function EventsAdminPanel() {
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs">
-                    <span className="font-bold text-slate-500">
-                      {new Date(evt.startDate).toLocaleDateString('en-GB', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-slate-500">
+                        {new Date(evt.startDate).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </span>
+                      {item.isSaleClosed && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                          Sales Closed
+                        </span>
+                      )}
+                    </div>
                     <div
                       className="flex items-center space-x-2"
                       onClick={(e) => e.stopPropagation()}

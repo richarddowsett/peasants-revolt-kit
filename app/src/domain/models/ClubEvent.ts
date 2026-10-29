@@ -4,6 +4,7 @@ export interface ClubEvent {
   description: string;
   startDate: string;
   saleStartAt: string;
+  saleEndAt?: string;
   maxTickets: number;
   ticketPrice: number;
   address: string;
@@ -18,6 +19,7 @@ export interface ClubEvent {
 export interface ClubEventWithStats {
   event: ClubEvent;
   isSaleOpen: boolean;
+  isSaleClosed: boolean;
   ticketsSold: number;
   ticketsRemaining: number;
   ticketsCheckedIn: number;

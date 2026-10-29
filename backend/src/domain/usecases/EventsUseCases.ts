@@ -37,14 +37,18 @@ export function buildClubEventStats(
 
   const saleStartMs = Date.parse(event.saleStartAt);
   const startMs = Date.parse(event.startDate);
+  const saleEndMs = event.saleEndAt ? Date.parse(event.saleEndAt) : startMs;
+
+  const isSaleClosed = !Number.isNaN(saleEndMs) && now.getTime() > saleEndMs;
   const isSaleOpen =
     !Number.isNaN(saleStartMs) &&
     now.getTime() >= saleStartMs &&
-    (Number.isNaN(startMs) || now.getTime() <= startMs);
+    (Number.isNaN(saleEndMs) || now.getTime() <= saleEndMs);
 
   return {
     event,
     isSaleOpen,
+    isSaleClosed,
     ticketsSold,
     ticketsRemaining,
     ticketsCheckedIn,
@@ -123,6 +127,19 @@ export class CreateEventUseCase implements CreateEventInboundPort {
       throw new Error('Please provide a valid ticket sale start date and time.');
     }
 
+    const saleEndAt = (input.saleEndAt || '').trim();
+    if (saleEndAt) {
+      if (Number.isNaN(Date.parse(saleEndAt))) {
+        throw new Error('Please provide a valid ticket sale closing date and time.');
+      }
+      if (Date.parse(saleEndAt) < Date.parse(saleStartAt)) {
+        throw new Error('Ticket sale closing date cannot be before sale opening date.');
+      }
+      if (Date.parse(saleEndAt) > Date.parse(startDate)) {
+        throw new Error('Ticket sale closing date cannot be after the event start date.');
+      }
+    }
+
     const maxTickets = Number(input.maxTickets);
     if (!Number.isFinite(maxTickets) || maxTickets < 1) {
       throw new Error('Number of tickets must be at least 1.');
@@ -145,6 +162,7 @@ export class CreateEventUseCase implements CreateEventInboundPort {
       description,
       startDate,
       saleStartAt,
+      saleEndAt: saleEndAt || undefined,
       maxTickets: Math.floor(maxTickets),
       ticketPrice,
       address,
@@ -189,6 +207,27 @@ export class UpdateEventUseCase implements UpdateEventInboundPort {
       throw new Error('Please provide a valid ticket sale start date and time.');
     }
 
+    let saleEndAt: string | undefined;
+    if (input.saleEndAt !== undefined) {
+      const trimmedEnd = input.saleEndAt.trim();
+      if (trimmedEnd) {
+        if (Number.isNaN(Date.parse(trimmedEnd))) {
+          throw new Error('Please provide a valid ticket sale closing date and time.');
+        }
+        if (Date.parse(trimmedEnd) < Date.parse(saleStartAt)) {
+          throw new Error('Ticket sale closing date cannot be before sale opening date.');
+        }
+        if (Date.parse(trimmedEnd) > Date.parse(startDate)) {
+          throw new Error('Ticket sale closing date cannot be after the event start date.');
+        }
+        saleEndAt = trimmedEnd;
+      } else {
+        saleEndAt = undefined;
+      }
+    } else {
+      saleEndAt = existing.saleEndAt;
+    }
+
     const maxTickets =
       input.maxTickets !== undefined ? Number(input.maxTickets) : existing.maxTickets;
     if (!Number.isFinite(maxTickets) || maxTickets < 1) {
@@ -217,6 +256,7 @@ export class UpdateEventUseCase implements UpdateEventInboundPort {
       description,
       startDate,
       saleStartAt,
+      saleEndAt,
       maxTickets: Math.floor(maxTickets),
       ticketPrice,
       address,
@@ -264,6 +304,12 @@ export class PurchaseEventTicketUseCase implements PurchaseEventTicketInboundPor
     }
 
     const startMs = Date.parse(event.startDate);
+    const saleEndMs = event.saleEndAt ? Date.parse(event.saleEndAt) : startMs;
+
+    if (!Number.isNaN(saleEndMs) && now.getTime() > saleEndMs) {
+      throw new Error('Ticket sales for this event have closed.');
+    }
+
     if (!Number.isNaN(startMs) && now.getTime() > startMs) {
       throw new Error('This event has already started.');
     }

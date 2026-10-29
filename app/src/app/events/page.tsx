@@ -200,19 +200,31 @@ export default function ClubEventsPage() {
     ? computeCountdown(activeEvent.saleStartAt, nowMs)
     : { totalMs: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
 
-  const isCountdownActive = Boolean(
+  const isSaleClosed = Boolean(
     selectedEventStatus &&
+      (selectedEventStatus.isSaleClosed ||
+        (activeEvent &&
+          nowMs >
+            (activeEvent.saleEndAt
+              ? Date.parse(activeEvent.saleEndAt)
+              : Date.parse(activeEvent.startDate))))
+  );
+  const isSoldOut = Boolean(
+    selectedEventStatus && selectedEventStatus.ticketsRemaining <= 0
+  );
+  const isCountdownActive = Boolean(
+    !isSaleClosed &&
+      selectedEventStatus &&
       activeEvent?.saleStartAt &&
       countdown.totalMs > 0 &&
       !selectedEventStatus.isSaleOpen
   );
   const isSaleOpenNow = Boolean(
-    selectedEventStatus &&
+    !isSaleClosed &&
+      !isSoldOut &&
+      selectedEventStatus &&
       (selectedEventStatus.isSaleOpen ||
         (activeEvent?.saleStartAt && countdown.totalMs === 0))
-  );
-  const isSoldOut = Boolean(
-    selectedEventStatus && selectedEventStatus.ticketsRemaining <= 0
   );
 
   return (
@@ -381,6 +393,11 @@ export default function ClubEventsPage() {
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-red-100 text-red-800">
                               Sold Out
                             </span>
+                          ) : item.isSaleClosed ? (
+                            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>Sales Closed</span>
+                            </span>
                           ) : saleNotStarted ? (
                             <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800">
                               <Clock className="w-3.5 h-3.5" />
@@ -470,9 +487,15 @@ export default function ClubEventsPage() {
                     </div>
                     <div className="text-sm font-extrabold text-slate-900">
                       £{Number(activeEvent.ticketPrice).toFixed(2)} &bull;{' '}
-                      <span className="text-[#525e3e]">
-                        {selectedEventStatus.ticketsRemaining} of {activeEvent.maxTickets} left
-                      </span>
+                      {isSaleClosed ? (
+                        <span className="text-amber-700">Sales Closed</span>
+                      ) : isSoldOut ? (
+                        <span className="text-red-700">Sold Out</span>
+                      ) : (
+                        <span className="text-[#525e3e]">
+                          {selectedEventStatus.ticketsRemaining} of {activeEvent.maxTickets} left
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -637,6 +660,40 @@ export default function ClubEventsPage() {
                       <Instagram className="w-4 h-4" />
                       <span>@prrcbrentwood on Instagram</span>
                     </a>
+                  </div>
+                ) : isSaleClosed ? (
+                  /* TICKET SALES CLOSED STATE */
+                  <div data-testid="event-sales-closed" className="text-center py-8">
+                    <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-extrabold uppercase tracking-wider mb-3">
+                      <Clock className="w-4 h-4" />
+                      <span>Ticket Sales Closed</span>
+                    </div>
+                    <h2 className="text-2xl font-extrabold text-slate-900 mb-2">
+                      Ticket Sales for This Event Have Closed
+                    </h2>
+                    <p className="text-slate-600 max-w-lg mx-auto mb-6 leading-relaxed">
+                      Online ticket sales closed on{' '}
+                      <strong>{formatEventDateTime(activeEvent.saleEndAt || activeEvent.startDate)}</strong>.
+                      If you already have a ticket, you can view your ticket and QR code in My Orders.
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <Link
+                        href="/store/orders"
+                        className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-[#525e3e] hover:bg-[#434d32] text-white font-bold text-sm shadow-sm transition-all"
+                      >
+                        <Ticket className="w-4 h-4" />
+                        <span>View My Orders</span>
+                      </Link>
+                      <a
+                        href="https://www.instagram.com/prrcbrentwood/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm transition-all"
+                      >
+                        <Instagram className="w-4 h-4" />
+                        <span>@prrcbrentwood on Instagram</span>
+                      </a>
+                    </div>
                   </div>
                 ) : isSaleOpenNow ? (
                   /* TICKET PURCHASE FORM (1 TICKET PER ORDER) */
