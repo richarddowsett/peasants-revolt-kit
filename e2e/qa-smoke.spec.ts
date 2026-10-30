@@ -54,7 +54,9 @@ test.describe('Peasants Running Kit Live QA Deployment Smoke Tests', () => {
     const brandElement = page
       .locator('text=Peasants')
       .or(page.locator('text=Official Gear & Kit'))
-      .or(page.locator('input[placeholder="runner@peasants.store"]'));
+      .or(page.locator('input[placeholder="runner@peasants.store"]'))
+      .or(page.locator('text=The Store Is Currently Closed'))
+      .or(page.locator('text=Store Temporarily Closed'));
     await expect(brandElement.first()).toBeVisible({ timeout: 15000 });
   });
 
@@ -110,12 +112,70 @@ test.describe('Peasants Running Kit Live QA Deployment Smoke Tests', () => {
 
     const loginInput = page.locator('input[placeholder="runner@peasants.store"]');
     const storeBanner = page.locator('text=Official Gear & Kit');
+    const closedBanner = page
+      .locator('text=Store Temporarily Closed')
+      .or(page.locator('text=The Store Is Currently Closed'));
 
-    // Wait for auth check or store render
+    // Wait for auth check, store render, or holding page
     await Promise.race([
       loginInput.waitFor({ timeout: 10000 }).catch(() => null),
-      storeBanner.waitFor({ timeout: 10000 }).catch(() => null),
+      storeBanner.first().waitFor({ timeout: 10000 }).catch(() => null),
+      closedBanner.first().waitFor({ timeout: 10000 }).catch(() => null),
     ]);
+
+    const isStoreClosed = await closedBanner.first().isVisible().catch(() => false);
+
+    if (isStoreClosed) {
+      // When the store is temporarily closed, verify holding page & events navigation,
+      // and verify runner authentication via the member portal on /store/orders
+      await expect(closedBanner.first()).toBeVisible();
+      await expect(
+        page.locator('text=Club Events & Tickets Are Open')
+          .or(page.locator('text=Browse Club Events'))
+          .or(page.locator('text=Track Existing Order'))
+          .first()
+      ).toBeVisible();
+
+      // Test runner authentication via order tracker / member portal
+      await page.goto('/store/orders');
+      const memberSignInBtn = page.locator('button:has-text("Sign In as Club Member")');
+      await expect(memberSignInBtn).toBeVisible({ timeout: 10000 });
+      await memberSignInBtn.click();
+
+      const modalLoginInput = page.locator('input[placeholder="runner@peasants.store"]');
+      await expect(modalLoginInput).toBeVisible({ timeout: 5000 });
+
+      if (testUserEmail) {
+        await modalLoginInput.fill(testUserEmail);
+        await page.fill('input[type="password"]', testUserPassword);
+        await page.click('button:has-text("Sign In to Store")');
+      } else {
+        const ephemeralEmail = `qa_smoke_${Date.now()}@peasants.store`;
+        await page.click('text=Register now');
+        await page.fill('input[placeholder="Alex"]', 'QA');
+        await page.fill('input[placeholder="Runner"]', 'Smoke');
+        await page.fill('input[placeholder="runner@peasants.store"]', ephemeralEmail);
+        await page.fill('input[type="password"]', testUserPassword);
+        await page.click('button:has-text("Register & Access Store")');
+      }
+
+      // Verify authenticated view on /store/orders
+      const myOrdersHeading = page.locator('h1', { hasText: 'My Orders' });
+      const authErrorAlert = page.locator('div.bg-red-50');
+
+      await Promise.race([
+        myOrdersHeading.waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
+        authErrorAlert.waitFor({ state: 'visible', timeout: 15000 }).catch(() => null),
+      ]);
+
+      if (await authErrorAlert.isVisible()) {
+        const errorText = await authErrorAlert.innerText();
+        throw new Error(`QA Storefront authentication failed: ${errorText.trim()}`);
+      }
+
+      await expect(myOrdersHeading).toBeVisible({ timeout: 10000 });
+      return;
+    }
 
     if (await loginInput.isVisible()) {
       if (testUserEmail) {
