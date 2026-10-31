@@ -131,4 +131,64 @@ describe('EventsController', () => {
     await controller.verifyAndCheckInQr({ body: {} } as Request, mockRes as Response);
     expect(mockRes.status).toHaveBeenCalledWith(400);
   });
+
+  it('alerts via ErrorAlertOutboundPort on unexpected ticket purchase, email, and admin failures, but skips business validation errors', async () => {
+    const mockAlertPort = {
+      reportError: vi.fn().mockResolvedValue({ logged: true, emailSent: true }),
+    };
+
+    const alertedController = new EventsController(
+      mockListEventsUseCase as unknown as ConstructorParameters<typeof EventsController>[0],
+      mockGetEventByIdUseCase as unknown as ConstructorParameters<typeof EventsController>[1],
+      mockCreateEventUseCase as unknown as ConstructorParameters<typeof EventsController>[2],
+      mockUpdateEventUseCase as unknown as ConstructorParameters<typeof EventsController>[3],
+      mockDeleteEventUseCase as unknown as ConstructorParameters<typeof EventsController>[4],
+      mockPurchaseTicketUseCase as unknown as ConstructorParameters<typeof EventsController>[5],
+      mockUpdateTicketStatusUseCase as unknown as ConstructorParameters<typeof EventsController>[6],
+      mockVerifyQrUseCase as unknown as ConstructorParameters<typeof EventsController>[7],
+      mockTicketRepo as unknown as ConstructorParameters<typeof EventsController>[8],
+      mockAlertPort
+    );
+
+    // 1. Sold out (business validation) -> should NOT alert
+    mockPurchaseTicketUseCase.execute.mockRejectedValueOnce(
+      new Error('Sorry, this event is sold out!')
+    );
+    await alertedController.purchaseTicket(
+      { params: { id: 'evt_1' }, body: { userName: 'Jane', userEmail: 'jane@example.com' } } as unknown as Request,
+      mockRes as Response
+    );
+    expect(mockAlertPort.reportError).not.toHaveBeenCalled();
+
+    // 2. Database error during ticket purchase -> SHOULD alert with TICKET_FAILURE
+    mockPurchaseTicketUseCase.execute.mockRejectedValueOnce(
+      new Error('Failed to reserve ticket in database: Transaction aborted')
+    );
+    await alertedController.purchaseTicket(
+      { params: { id: 'evt_1' }, body: { userName: 'Jane', userEmail: 'jane@example.com' } } as unknown as Request,
+      mockRes as Response
+    );
+    expect(mockAlertPort.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'TICKET_FAILURE',
+        operation: 'POST /api/events/:id/tickets',
+        httpStatus: 500,
+      })
+    );
+
+    // 3. Resend ticket email failure -> SHOULD alert with EMAIL_DELIVERY_FAILURE
+    mockUpdateTicketStatusUseCase.resendTicketEmail.mockRejectedValueOnce(
+      new Error('Resend failed to send ticket email')
+    );
+    await alertedController.resendTicketEmail(
+      { params: { ticketId: 'PRRC-EVT-2026-0001' } } as unknown as Request,
+      mockRes as Response
+    );
+    expect(mockAlertPort.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'EMAIL_DELIVERY_FAILURE',
+        operation: 'POST /api/event-tickets/:ticketId/resend-email',
+      })
+    );
+  });
 });

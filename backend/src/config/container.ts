@@ -8,6 +8,8 @@ import { FirestoreAdminFeatureFlagRepositoryAdapter } from '../adapters/outbound
 import { FirestoreEventRepositoryAdapter } from '../adapters/outbound/db/FirestoreEventRepositoryAdapter';
 import { FirestoreEventTicketRepositoryAdapter } from '../adapters/outbound/db/FirestoreEventTicketRepositoryAdapter';
 import { ResendTicketEmailAdapter } from '../adapters/outbound/email/ResendTicketEmailAdapter';
+import { ErrorObservabilityAdapter } from '../adapters/outbound/observability/ErrorObservabilityAdapter';
+import { createGlobalErrorMiddleware } from '../adapters/inbound/http/errorMiddleware';
 
 // Core Use Cases (Implementing Inbound Ports)
 import { GetProductsUseCase } from '../domain/usecases/GetProductsUseCase';
@@ -45,7 +47,12 @@ const storageAdapter = new FirebaseAdminStorageAdapter();
 const featureFlagRepoAdapter = new FirestoreAdminFeatureFlagRepositoryAdapter();
 const eventRepoAdapter = new FirestoreEventRepositoryAdapter();
 const eventTicketRepoAdapter = new FirestoreEventTicketRepositoryAdapter();
-const ticketEmailAdapter = new ResendTicketEmailAdapter();
+export const errorObservabilityAdapter = new ErrorObservabilityAdapter();
+const ticketEmailAdapter = new ResendTicketEmailAdapter(
+  undefined,
+  undefined,
+  errorObservabilityAdapter
+);
 
 // 2. Instantiate Core Use Cases (Injecting Driven Outbound Adapters)
 const getProductsUseCase = new GetProductsUseCase(productRepoAdapter);
@@ -85,17 +92,29 @@ const updateOrderStatusUseCase = new UpdateOrderStatusUseCase(
 );
 
 // 3. Instantiate Driving (Inbound) HTTP Controllers (Injecting Core Use Cases / Ports)
-export const productsController = new ProductsController(getProductsUseCase, manageProductUseCase);
+export const productsController = new ProductsController(
+  getProductsUseCase,
+  manageProductUseCase,
+  errorObservabilityAdapter
+);
 export const ordersController = new OrdersController(
   createOrderUseCase,
   getUserOrdersUseCase,
-  updateOrderStatusUseCase
+  updateOrderStatusUseCase,
+  errorObservabilityAdapter
 );
-export const adminController = new AdminController(adminAuthAdapter);
-export const uploadController = new UploadController(storageAdapter);
+export const adminController = new AdminController(
+  adminAuthAdapter,
+  errorObservabilityAdapter
+);
+export const uploadController = new UploadController(
+  storageAdapter,
+  errorObservabilityAdapter
+);
 export const featureFlagsController = new FeatureFlagsController(
   getFeatureFlagUseCase,
-  setFeatureFlagUseCase
+  setFeatureFlagUseCase,
+  errorObservabilityAdapter
 );
 export const eventsController = new EventsController(
   listEventsUseCase,
@@ -106,5 +125,7 @@ export const eventsController = new EventsController(
   purchaseEventTicketUseCase,
   updateEventTicketStatusUseCase,
   verifyAndCheckInEventTicketUseCase,
-  eventTicketRepoAdapter
+  eventTicketRepoAdapter,
+  errorObservabilityAdapter
 );
+export const globalErrorMiddleware = createGlobalErrorMiddleware(errorObservabilityAdapter);

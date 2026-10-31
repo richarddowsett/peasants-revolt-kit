@@ -8,11 +8,13 @@ app/out/
 # Firebase local cache
 app/.firebase/
 
-# Terraform local state & lock files
+# Terraform local state, lock & variable files
 .terraform/
 **/.terraform/
 *.tfstate
 *.tfstate.backup
+*.tfvars
+*.auto.tfvars
 
 # Agent working files
 .agents/

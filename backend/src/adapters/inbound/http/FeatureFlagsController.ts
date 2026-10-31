@@ -1,11 +1,14 @@
 import { Request, Response } from 'express';
 import { GetFeatureFlagInboundPort } from '../../../domain/ports/inbound/GetFeatureFlagInboundPort';
 import { SetFeatureFlagInboundPort } from '../../../domain/ports/inbound/SetFeatureFlagInboundPort';
+import { ErrorAlertOutboundPort } from '../../../domain/ports/outbound/ErrorAlertOutboundPort';
+import { isErrorAlreadyAlerted } from '../../outbound/observability/ErrorObservabilityAdapter';
 
 export class FeatureFlagsController {
   constructor(
     private getFeatureFlagUseCase: GetFeatureFlagInboundPort,
-    private setFeatureFlagUseCase: SetFeatureFlagInboundPort
+    private setFeatureFlagUseCase: SetFeatureFlagInboundPort,
+    private errorAlertPort?: ErrorAlertOutboundPort
   ) {}
 
   async getFlags(req: Request, res: Response): Promise<void> {
@@ -13,7 +16,17 @@ export class FeatureFlagsController {
       const flags = await this.getFeatureFlagUseCase.getAllFlags();
       res.json(flags);
     } catch (err: unknown) {
-      res.status(500).json({ error: (err as Error).message || 'Failed to retrieve feature flags' });
+      const message = (err as Error).message || 'Failed to retrieve feature flags';
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'SYSTEM_ERROR',
+          operation: 'GET /api/feature-flags',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 500,
+        });
+      }
+      res.status(500).json({ error: message });
     }
   }
 
@@ -27,7 +40,18 @@ export class FeatureFlagsController {
       }
       res.json(flag);
     } catch (err: unknown) {
-      res.status(500).json({ error: (err as Error).message || 'Failed to retrieve feature flag' });
+      const message = (err as Error).message || 'Failed to retrieve feature flag';
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'SYSTEM_ERROR',
+          operation: 'GET /api/feature-flags/:id',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 500,
+          metadata: { flagId: req.params?.id },
+        });
+      }
+      res.status(500).json({ error: message });
     }
   }
 
@@ -50,7 +74,18 @@ export class FeatureFlagsController {
 
       res.json(updated);
     } catch (err: unknown) {
-      res.status(400).json({ error: (err as Error).message || 'Failed to update feature flag' });
+      const message = (err as Error).message || 'Failed to update feature flag';
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'ADMIN_ACTION_FAILURE',
+          operation: 'PATCH /api/feature-flags/:id',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 400,
+          metadata: { flagId: req.params?.id, enabled: req.body?.enabled },
+        });
+      }
+      res.status(400).json({ error: message });
     }
   }
 }

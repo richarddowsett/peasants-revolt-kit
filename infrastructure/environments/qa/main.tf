@@ -6,6 +6,7 @@ module "core" {
   region         = var.region
   service_name   = var.service_name
   admin_password = var.admin_password
+  alert_email    = var.alert_email
 }
 
 # -----------------------------------------------------------------------------

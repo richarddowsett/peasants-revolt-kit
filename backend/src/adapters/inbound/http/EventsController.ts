@@ -10,6 +10,11 @@ import {
   VerifyAndCheckInEventTicketInboundPort,
 } from '../../../domain/ports/inbound/EventInboundPorts';
 import { EventTicketRepositoryOutboundPort } from '../../../domain/ports/outbound/EventTicketRepositoryOutboundPort';
+import { ErrorAlertOutboundPort } from '../../../domain/ports/outbound/ErrorAlertOutboundPort';
+import {
+  isErrorAlreadyAlerted,
+  isTicketPurchaseBusinessValidationError,
+} from '../../outbound/observability/ErrorObservabilityAdapter';
 
 export class EventsController {
   constructor(
@@ -21,7 +26,8 @@ export class EventsController {
     private purchaseEventTicketUseCase: PurchaseEventTicketInboundPort,
     private updateEventTicketStatusUseCase: UpdateEventTicketStatusInboundPort,
     private verifyAndCheckInEventTicketUseCase: VerifyAndCheckInEventTicketInboundPort,
-    private ticketRepo: EventTicketRepositoryOutboundPort
+    private ticketRepo: EventTicketRepositoryOutboundPort,
+    private errorAlertPort?: ErrorAlertOutboundPort
   ) {}
 
   async listEvents(req: Request, res: Response): Promise<void> {
@@ -32,6 +38,15 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] listEvents failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'TICKET_FAILURE',
+          operation: 'GET /api/events',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 500,
+        });
+      }
       res.status(500).json({ error: message });
     }
   }
@@ -47,6 +62,16 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] getEventById failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'TICKET_FAILURE',
+          operation: 'GET /api/events/:id',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 500,
+          metadata: { eventId: req.params?.id },
+        });
+      }
       res.status(500).json({ error: message });
     }
   }
@@ -58,6 +83,16 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] createEvent failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'ADMIN_ACTION_FAILURE',
+          operation: 'POST /api/events',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 400,
+          metadata: { title: req.body?.title },
+        });
+      }
       res.status(400).json({ error: message });
     }
   }
@@ -69,6 +104,16 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] updateEvent failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'ADMIN_ACTION_FAILURE',
+          operation: 'PUT /api/events/:id',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 400,
+          metadata: { eventId: req.params?.id, title: req.body?.title },
+        });
+      }
       res.status(400).json({ error: message });
     }
   }
@@ -80,6 +125,16 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] deleteEvent failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'ADMIN_ACTION_FAILURE',
+          operation: 'DELETE /api/events/:id',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 400,
+          metadata: { eventId: req.params?.id },
+        });
+      }
       res.status(400).json({ error: message });
     }
   }
@@ -99,7 +154,33 @@ export class EventsController {
       const isServerError =
         message.toLowerCase().includes('database') ||
         message.toLowerCase().includes('firestore');
-      res.status(isServerError ? 500 : 400).json({ error: message });
+      const httpStatus = isServerError ? 500 : 400;
+
+      if (
+        this.errorAlertPort &&
+        !isTicketPurchaseBusinessValidationError(message) &&
+        !isErrorAlreadyAlerted(err)
+      ) {
+        const isEmailError =
+          message.toLowerCase().includes('resend') ||
+          message.toLowerCase().includes('ticket email') ||
+          message.toLowerCase().includes('ticketuuid');
+
+        await this.errorAlertPort.reportError({
+          category: isEmailError ? 'EMAIL_DELIVERY_FAILURE' : 'TICKET_FAILURE',
+          operation: 'POST /api/events/:id/tickets',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus,
+          metadata: {
+            eventId: req.params?.id,
+            userName: req.body?.userName,
+            userEmail: req.body?.userEmail,
+          },
+        });
+      }
+
+      res.status(httpStatus).json({ error: message });
     }
   }
 
@@ -110,6 +191,16 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] listEventTickets failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'ADMIN_ACTION_FAILURE',
+          operation: 'GET /api/events/:id/tickets',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 500,
+          metadata: { eventId: req.params?.id },
+        });
+      }
       res.status(500).json({ error: message });
     }
   }
@@ -126,6 +217,24 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] updateTicketStatus failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        const isEmailError =
+          message.toLowerCase().includes('resend') ||
+          message.toLowerCase().includes('ticket email') ||
+          message.toLowerCase().includes('ticketuuid');
+
+        await this.errorAlertPort.reportError({
+          category: isEmailError ? 'EMAIL_DELIVERY_FAILURE' : 'ADMIN_ACTION_FAILURE',
+          operation: 'PATCH /api/event-tickets/:ticketId/status',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 400,
+          metadata: {
+            ticketId: req.params?.ticketId,
+            status: req.body?.status,
+          },
+        });
+      }
       res.status(400).json({ error: message });
     }
   }
@@ -139,6 +248,16 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] resendTicketEmail failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'EMAIL_DELIVERY_FAILURE',
+          operation: 'POST /api/event-tickets/:ticketId/resend-email',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 400,
+          metadata: { ticketId: req.params?.ticketId },
+        });
+      }
       res.status(400).json({ error: message });
     }
   }
@@ -154,6 +273,19 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] verifyAndCheckInQr failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'ADMIN_ACTION_FAILURE',
+          operation: 'POST /api/events/verify-qr',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 400,
+          metadata: {
+            ticketUuid: req.body?.ticketUuid,
+            eventId: req.body?.eventId,
+          },
+        });
+      }
       res.status(400).json({ error: message });
     }
   }

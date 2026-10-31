@@ -2,12 +2,18 @@ import { Request, Response } from 'express';
 import { CreateOrderInboundPort } from '../../../domain/ports/inbound/CreateOrderInboundPort';
 import { GetUserOrdersInboundPort } from '../../../domain/ports/inbound/GetUserOrdersInboundPort';
 import { UpdateOrderStatusInboundPort } from '../../../domain/ports/inbound/UpdateOrderStatusInboundPort';
+import { ErrorAlertOutboundPort } from '../../../domain/ports/outbound/ErrorAlertOutboundPort';
+import {
+  isErrorAlreadyAlerted,
+  isOrderBusinessValidationError,
+} from '../../outbound/observability/ErrorObservabilityAdapter';
 
 export class OrdersController {
   constructor(
     private createOrderUseCase: CreateOrderInboundPort,
     private getUserOrdersUseCase: GetUserOrdersInboundPort,
-    private updateOrderStatusUseCase: UpdateOrderStatusInboundPort
+    private updateOrderStatusUseCase: UpdateOrderStatusInboundPort,
+    private errorAlertPort?: ErrorAlertOutboundPort
   ) {}
 
   async createOrder(req: Request, res: Response): Promise<void> {
@@ -32,7 +38,29 @@ export class OrdersController {
       const isServerError =
         message.toLowerCase().includes('database') ||
         message.toLowerCase().includes('firestore');
-      res.status(isServerError ? 500 : 400).json({ error: message });
+      const httpStatus = isServerError ? 500 : 400;
+
+      if (
+        this.errorAlertPort &&
+        !isOrderBusinessValidationError(message) &&
+        !isErrorAlreadyAlerted(err)
+      ) {
+        await this.errorAlertPort.reportError({
+          category: 'ORDER_FAILURE',
+          operation: 'POST /api/orders',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus,
+          metadata: {
+            itemCount: Array.isArray(req.body?.items) ? req.body.items.length : 0,
+            items: req.body?.items,
+            userName: req.body?.userName,
+            userEmail: req.body?.userEmail,
+          },
+        });
+      }
+
+      res.status(httpStatus).json({ error: message });
     }
   }
 
@@ -69,6 +97,19 @@ export class OrdersController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Order API ERROR] getOrders failed:', message);
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'ORDER_FAILURE',
+          operation: 'GET /api/orders',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 500,
+          metadata: {
+            orderRef: req.query?.orderRef,
+            email: req.query?.email,
+          },
+        });
+      }
       res.status(500).json({ error: message });
     }
   }
@@ -90,6 +131,20 @@ export class OrdersController {
         `[Order API ERROR] Failed to update order ${req.params.id} status:`,
         message
       );
+      if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
+        await this.errorAlertPort.reportError({
+          category: 'ADMIN_ACTION_FAILURE',
+          operation: 'PATCH /api/orders/:id/status',
+          errorMessage: message,
+          stack: (err as Error).stack,
+          httpStatus: 400,
+          metadata: {
+            orderId: req.params?.id,
+            status: req.body?.status,
+            batchRef: req.body?.batchRef,
+          },
+        });
+      }
       res.status(400).json({ error: message });
     }
   }

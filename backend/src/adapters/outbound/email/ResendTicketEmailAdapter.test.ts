@@ -145,4 +145,43 @@ describe('ResendTicketEmailAdapter', () => {
     delete process.env.ENVIRONMENT;
     delete process.env.FORCE_GCP_SECRET_MANAGER;
   });
+
+  it('reports EMAIL_DELIVERY_FAILURE via ErrorAlertOutboundPort and rethrows when Resend fails to send ticket email', async () => {
+    process.env.RESEND_API_KEY = 're_test_key_123';
+    process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8085';
+
+    const mockSend = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'Domain not verified' },
+    });
+
+    const mockErrorAlertPort = {
+      reportError: vi.fn().mockResolvedValue({ logged: true, emailSent: true }),
+    };
+
+    const adapter = new ResendTicketEmailAdapter(
+      undefined,
+      () => ({
+        emails: { send: mockSend },
+      }),
+      mockErrorAlertPort
+    );
+
+    await expect(adapter.sendEventTicketEmail(sampleTicket, sampleEvent)).rejects.toThrow(
+      'Resend failed to send ticket email: Domain not verified'
+    );
+
+    expect(mockErrorAlertPort.reportError).toHaveBeenCalledTimes(1);
+    expect(mockErrorAlertPort.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'EMAIL_DELIVERY_FAILURE',
+        operation: 'ResendTicketEmailAdapter.sendEventTicketEmail',
+        errorMessage: 'Resend failed to send ticket email: Domain not verified',
+        metadata: expect.objectContaining({
+          ticketId: 'PRRC-EVT-2026-0001',
+          eventId: 'evt_xmas_2026',
+        }),
+      })
+    );
+  });
 });

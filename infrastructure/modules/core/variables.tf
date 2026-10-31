@@ -38,3 +38,10 @@ variable "container_image" {
   default     = "us-docker.pkg.dev/cloudrun/container/hello"
   description = "Initial container image used to bootstrap Cloud Run (defaults to official public hello image; subsequent deployments are managed via CI/CD)"
 }
+
+variable "alert_email" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Email address for production observability and error alert notifications"
+}

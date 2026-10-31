@@ -204,6 +204,11 @@ resource "google_cloud_run_v2_service" "api" {
         value = var.environment == "qa" ? "Peasants Running Club <eventsqa@peasants-running-kit.store>" : "Peasants Running Club <events@peasants-running-kit.store>"
       }
 
+      env {
+        name  = "ALERT_EMAIL"
+        value = var.environment == "production" ? var.alert_email : ""
+      }
+
       ports {
         container_port = 8080
       }
@@ -269,4 +274,130 @@ data "google_firebase_web_app_config" "web_app_config" {
   provider   = google-beta
   project    = var.project_id
   web_app_id = google_firebase_web_app.web_app.app_id
+}
+
+# -----------------------------------------------------------------------------
+# Observability & Monitoring (Cloud Logging + Cloud Monitoring Email Alerts)
+# -----------------------------------------------------------------------------
+
+resource "google_project_service" "logging_api" {
+  project            = var.project_id
+  service            = "logging.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "monitoring_api" {
+  project            = var.project_id
+  service            = "monitoring.googleapis.com"
+  disable_on_destroy = false
+}
+
+locals {
+  enable_prod_email_alerts = var.environment == "production" && trimspace(var.alert_email) != ""
+}
+
+# Email Notification Channel (Production Only)
+resource "google_monitoring_notification_channel" "email_alerts" {
+  count        = local.enable_prod_email_alerts ? 1 : 0
+  project      = var.project_id
+  display_name = "Peasants Running Kit Production Error Alerts"
+  type         = "email"
+
+  labels = {
+    email_address = trimspace(var.alert_email)
+  }
+
+  depends_on = [google_project_service.monitoring_api]
+}
+
+# Log-Based Alert Policy: Backend Order, Ticket, Email, and Admin Failures (Production Only)
+resource "google_monitoring_alert_policy" "backend_error_logs" {
+  count        = local.enable_prod_email_alerts ? 1 : 0
+  project      = var.project_id
+  display_name = "[PROD] Peasants Running Kit - Backend Application Error Alert"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Cloud Run Backend Structured ERROR Log Entry"
+
+    condition_matched_log {
+      filter = <<-EOT
+        resource.type="cloud_run_revision"
+        AND resource.labels.service_name="${var.service_name}"
+        AND severity>="ERROR"
+      EOT
+
+      label_extractors = {
+        alert_category = "EXTRACT(jsonPayload.alertCategory)"
+        operation      = "EXTRACT(jsonPayload.operation)"
+      }
+    }
+  }
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+    auto_close = "1800s"
+  }
+
+  documentation {
+    content   = "An error or exception occurred in the **Peasants Running Kit** production backend (`${var.service_name}`). Check Cloud Run logs in GCP Cloud Logging for full details."
+    mime_type = "text/markdown"
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email_alerts[0].name]
+
+  depends_on = [
+    google_project_service.logging_api,
+    google_project_service.monitoring_api,
+    google_cloud_run_v2_service.api,
+  ]
+}
+
+# Metric-Based Alert Policy: Cloud Run HTTP 5xx Server Errors / Container Crashes (Production Only)
+resource "google_monitoring_alert_policy" "cloud_run_5xx" {
+  count        = local.enable_prod_email_alerts ? 1 : 0
+  project      = var.project_id
+  display_name = "[PROD] Peasants Running Kit - Cloud Run HTTP 5xx Server Error"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Cloud Run 5xx Request Count > 0"
+
+    condition_threshold {
+      filter = <<-EOT
+        metric.type="run.googleapis.com/request_count"
+        AND resource.type="cloud_run_revision"
+        AND resource.label."service_name"="${var.service_name}"
+        AND metric.label."response_code_class"="5xx"
+      EOT
+
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_DELTA"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
+  documentation {
+    content   = "The **Peasants Running Kit** production Cloud Run service (`${var.service_name}`) returned one or more HTTP 5xx responses (e.g. unhandled exception, database outage, or container crash)."
+    mime_type = "text/markdown"
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email_alerts[0].name]
+
+  depends_on = [
+    google_project_service.monitoring_api,
+    google_cloud_run_v2_service.api,
+  ]
 }

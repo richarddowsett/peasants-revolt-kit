@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { apiRouter } from './adapters/inbound/http/router';
+import { globalErrorMiddleware } from './config/container';
 
 dotenv.config();
 
@@ -25,6 +26,9 @@ app.use((req, res, next) => {
 
 // Mount Hexagonal HTTP API Router
 app.use('/api', apiRouter);
+
+// Global Express Error Middleware for Observability & Alerting
+app.use(globalErrorMiddleware);
 
 app.listen(port, () => {
   console.log(`Peasants Running Kit Hexagonal Backend API listening on port ${port}`);

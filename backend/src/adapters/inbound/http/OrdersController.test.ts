@@ -85,7 +85,17 @@ describe('OrdersController', () => {
       expect(res.json).toHaveBeenCalledWith(mockOrder);
     });
 
-    it('should respond with status 400 when createOrderUseCase throws an error', async () => {
+    it('should respond with status 400 when createOrderUseCase throws an error and NOT alert on business validation errors', async () => {
+      const mockAlertPort = {
+        reportError: vi.fn().mockResolvedValue({ logged: true, emailSent: true }),
+      };
+      controller = new OrdersController(
+        createOrderUseCase,
+        getUserOrdersUseCase,
+        updateOrderStatusUseCase,
+        mockAlertPort
+      );
+
       vi.mocked(createOrderUseCase.execute).mockRejectedValueOnce(
         new Error('Order must contain at least one item.')
       );
@@ -94,6 +104,41 @@ describe('OrdersController', () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({ error: 'Order must contain at least one item.' });
+      expect(mockAlertPort.reportError).not.toHaveBeenCalled();
+    });
+
+    it('should respond with status 500 and report ORDER_FAILURE via ErrorAlertOutboundPort on database/unexpected failure', async () => {
+      const mockAlertPort = {
+        reportError: vi.fn().mockResolvedValue({ logged: true, emailSent: true }),
+      };
+      controller = new OrdersController(
+        createOrderUseCase,
+        getUserOrdersUseCase,
+        updateOrderStatusUseCase,
+        mockAlertPort
+      );
+
+      req.body = {
+        userEmail: 'user@example.com',
+        userName: 'Jane Doe',
+        items: [{ productId: 'prod-1', productName: 'Jacket', price: 50, size: 'M', quantity: 1 }],
+      };
+
+      vi.mocked(createOrderUseCase.execute).mockRejectedValueOnce(
+        new Error('Failed to persist order to database: Firestore unavailable')
+      );
+
+      await controller.createOrder(req as Request, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(mockAlertPort.reportError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'ORDER_FAILURE',
+          operation: 'POST /api/orders',
+          errorMessage: 'Failed to persist order to database: Firestore unavailable',
+          httpStatus: 500,
+        })
+      );
     });
   });
 

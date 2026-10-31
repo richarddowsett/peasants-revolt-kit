@@ -28,3 +28,10 @@ variable "admin_password" {
   sensitive   = true
   description = "Admin CMS authentication password override"
 }
+
+variable "alert_email" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Email address for production observability and error alert notifications"
+}

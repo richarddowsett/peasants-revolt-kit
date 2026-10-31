@@ -63,12 +63,14 @@ jobs:
             echo "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD || 'peasants2026!' }}" >> $GITHUB_ENV
             echo "TARGET_STORAGE_BUCKET=peasants-running-kit-product-images" >> $GITHUB_ENV
             echo "TARGET_EVENTS_EMAIL_FROM=Peasants Running Club <events@peasants-running-kit.store>" >> $GITHUB_ENV
+            echo "TARGET_ALERT_EMAIL=${{ secrets.ALERT_EMAIL }}" >> $GITHUB_ENV
           else
             echo "TARGET_PROJECT_ID=peasants-running-kit-qa" >> $GITHUB_ENV
             echo "TARGET_ENVIRONMENT=qa" >> $GITHUB_ENV
             echo "ADMIN_PASSWORD=${{ secrets.QA_ADMIN_PASSWORD || 'peasants2026!' }}" >> $GITHUB_ENV
             echo "TARGET_STORAGE_BUCKET=peasants-running-kit-qa-product-images" >> $GITHUB_ENV
             echo "TARGET_EVENTS_EMAIL_FROM=Peasants Running Club <eventsqa@peasants-running-kit.store>" >> $GITHUB_ENV
+            echo "TARGET_ALERT_EMAIL=" >> $GITHUB_ENV
           fi
 
       - name: Setup Node.js
@@ -132,6 +134,7 @@ jobs:
             ADMIN_PASSWORD=${{ env.ADMIN_PASSWORD }}
             STORAGE_BUCKET=${{ env.TARGET_STORAGE_BUCKET }}
             EVENTS_EMAIL_FROM=${{ env.TARGET_EVENTS_EMAIL_FROM }}
+            ALERT_EMAIL=${{ env.TARGET_ALERT_EMAIL }}
           flags: '--allow-unauthenticated --port=8080'
 
       - name: Verify Backend Deployment Health Check

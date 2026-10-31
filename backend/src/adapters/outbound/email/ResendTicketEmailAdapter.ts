@@ -4,6 +4,8 @@ import QRCode from 'qrcode';
 import { Resend } from 'resend';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { EmailOutboundPort } from '../../../domain/ports/outbound/EmailOutboundPort';
+import { ErrorAlertOutboundPort } from '../../../domain/ports/outbound/ErrorAlertOutboundPort';
+import { markErrorAsAlerted } from '../observability/ErrorObservabilityAdapter';
 import {
   ClubEvent,
   DEFAULT_EVENTS_FROM_EMAIL,
@@ -40,7 +42,8 @@ export class ResendTicketEmailAdapter implements EmailOutboundPort {
     } = (apiKey: string) =>
       new Resend(apiKey) as unknown as {
         emails: { send: (payload: ResendEmailPayload) => Promise<ResendSendResponse> };
-      }
+      },
+    private errorAlertPort?: ErrorAlertOutboundPort
   ) {
     if (secretManagerClient) {
       this.secretManagerClient = secretManagerClient;
@@ -239,82 +242,104 @@ export class ResendTicketEmailAdapter implements EmailOutboundPort {
     ticket: EventTicket,
     event: ClubEvent
   ): Promise<{ sent: boolean; messageId?: string }> {
-    const ticketUuid = ticket.ticketUuid;
-    if (!ticketUuid) {
-      throw new Error(`Ticket ${ticket.id} does not have a ticketUuid to encode in the QR code.`);
-    }
+    try {
+      const ticketUuid = ticket.ticketUuid;
+      if (!ticketUuid) {
+        throw new Error(`Ticket ${ticket.id} does not have a ticketUuid to encode in the QR code.`);
+      }
 
-    const qrPngBuffer = await QRCode.toBuffer(ticketUuid, {
-      type: 'png',
-      width: 320,
-      margin: 2,
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff',
-      },
-    });
-
-    const customLogoUrl = (event.logoUrl || ticket.eventLogoUrl || '').trim();
-    const logoBuffer = customLogoUrl ? null : this.loadClubLogoBuffer();
-    const html = this.buildTicketEmailHtml(ticket, event, Boolean(logoBuffer));
-
-    const defaultFrom = getDefaultEventsFromEmail();
-    const configuredFrom = event.fromEmail?.trim();
-    const fromAddress =
-      isQaEnvironment() && (!configuredFrom || configuredFrom === DEFAULT_EVENTS_FROM_EMAIL)
-        ? defaultFrom
-        : configuredFrom || defaultFrom;
-    const subject = `Your Peasants Running Club Ticket: ${event.title} (${ticket.id})`;
-
-    const apiKey = await this.resolveResendApiKey();
-    if (!apiKey) {
-      console.log(
-        `[ResendTicketEmailAdapter Preview] No Resend API key configured in Secret Manager or env. Simulated sending ticket email for ${ticket.id} (UUID: ${ticketUuid}) from '${fromAddress}' to '${ticket.userEmail}'.`
-      );
-      return { sent: true, messageId: `simulated_${ticket.id}` };
-    }
-
-    const resend = this.resendFactory(apiKey);
-    const attachments: Array<{
-      filename: string;
-      content: Buffer;
-      contentId?: string;
-    }> = [
-      {
-        filename: `ticket-${ticket.id}.png`,
-        content: qrPngBuffer,
-        contentId: 'ticket-qr',
-      },
-    ];
-
-    if (logoBuffer) {
-      attachments.push({
-        filename: 'logo.png',
-        content: logoBuffer,
-        contentId: 'club-logo',
+      const qrPngBuffer = await QRCode.toBuffer(ticketUuid, {
+        type: 'png',
+        width: 320,
+        margin: 2,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff',
+        },
       });
-    }
 
-    const response = await resend.emails.send({
-      from: fromAddress,
-      to: [ticket.userEmail],
-      subject,
-      html,
-      attachments,
-    });
+      const customLogoUrl = (event.logoUrl || ticket.eventLogoUrl || '').trim();
+      const logoBuffer = customLogoUrl ? null : this.loadClubLogoBuffer();
+      const html = this.buildTicketEmailHtml(ticket, event, Boolean(logoBuffer));
 
-    if (response?.error) {
-      throw new Error(
-        `Resend failed to send ticket email: ${
-          response.error.message || JSON.stringify(response.error)
-        }`
+      const defaultFrom = getDefaultEventsFromEmail();
+      const configuredFrom = event.fromEmail?.trim();
+      const fromAddress =
+        isQaEnvironment() && (!configuredFrom || configuredFrom === DEFAULT_EVENTS_FROM_EMAIL)
+          ? defaultFrom
+          : configuredFrom || defaultFrom;
+      const subject = `Your Peasants Running Club Ticket: ${event.title} (${ticket.id})`;
+
+      const apiKey = await this.resolveResendApiKey();
+      if (!apiKey) {
+        console.log(
+          `[ResendTicketEmailAdapter Preview] No Resend API key configured in Secret Manager or env. Simulated sending ticket email for ${ticket.id} (UUID: ${ticketUuid}) from '${fromAddress}' to '${ticket.userEmail}'.`
+        );
+        return { sent: true, messageId: `simulated_${ticket.id}` };
+      }
+
+      const resend = this.resendFactory(apiKey);
+      const attachments: Array<{
+        filename: string;
+        content: Buffer;
+        contentId?: string;
+      }> = [
+        {
+          filename: `ticket-${ticket.id}.png`,
+          content: qrPngBuffer,
+          contentId: 'ticket-qr',
+        },
+      ];
+
+      if (logoBuffer) {
+        attachments.push({
+          filename: 'logo.png',
+          content: logoBuffer,
+          contentId: 'club-logo',
+        });
+      }
+
+      const response = await resend.emails.send({
+        from: fromAddress,
+        to: [ticket.userEmail],
+        subject,
+        html,
+        attachments,
+      });
+
+      if (response?.error) {
+        throw new Error(
+          `Resend failed to send ticket email: ${
+            response.error.message || JSON.stringify(response.error)
+          }`
+        );
+      }
+
+      const messageId = response?.data?.id || `resend_${ticket.id}`;
+      console.log(
+        `[ResendTicketEmailAdapter] Sent event ticket email for ${ticket.id} (UUID: ${ticketUuid}) to ${ticket.userEmail} (id: ${messageId})`
       );
+      return { sent: true, messageId };
+    } catch (err: unknown) {
+      if (this.errorAlertPort) {
+        await this.errorAlertPort.reportError({
+          category: 'EMAIL_DELIVERY_FAILURE',
+          operation: 'ResendTicketEmailAdapter.sendEventTicketEmail',
+          errorMessage: (err as Error).message || 'Ticket email delivery failed',
+          stack: (err as Error).stack,
+          metadata: {
+            ticketId: ticket.id,
+            ticketUuid: ticket.ticketUuid,
+            eventId: event.id,
+            eventTitle: event.title,
+            ticketStatus: ticket.status,
+            userName: ticket.userName,
+            userEmail: ticket.userEmail,
+          },
+        });
+        markErrorAsAlerted(err);
+      }
+      throw err;
     }
-
-    const messageId = response?.data?.id || `resend_${ticket.id}`;
-    console.log(
-      `[ResendTicketEmailAdapter] Sent event ticket email for ${ticket.id} (UUID: ${ticketUuid}) to ${ticket.userEmail} (id: ${messageId})`
-    );
-    return { sent: true, messageId };
   }
 }
