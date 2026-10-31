@@ -169,7 +169,7 @@ describe('Club Events & Ticketing Use Cases', () => {
     paymentGateway = {
       generatePaymentLink: vi.fn(
         (ref: string, amount: number) =>
-          `https://revolut.me/terenclgf?currency=GBP&amount=${Math.round(amount * 100)}`
+          `https://revolut.me/terenclgf?currency=GBP&amount=${Math.round(amount * 100)}&note=${encodeURIComponent(ref)}`
       ),
       getGatewayName: vi.fn(() => 'Revolut'),
     };

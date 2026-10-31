@@ -9,7 +9,7 @@ Built with a **Next.js 14 Frontend** statically exported to Firebase Hosting, a 
 ## 🌟 Key Features
 
 - **Storefront Catalogue (`/`)**: Main kit catalogue supporting item browsing, multi-image display, drag-and-drop file uploads in admin, size selection (XS–XXL), sticky shopping basket drawer, and instant order creation.
-- **Revolut Payment Deep-Linking**: Orders generate a unique reference (`PRRC-XXXX`) and direct deep links to Revolut transfers (`https://revolut.me/terenclgf?currency=GBP&amount=[amountInPence]`).
+- **Revolut Payment Deep-Linking**: Orders generate a unique reference (`PRRC-XXXX`) and direct deep links to Revolut transfers (`https://revolut.me/terenclgf?currency=GBP&amount=[amountInPence]&note=[orderReference]`).
 - **User Order Tracking (`/store/orders`)**: Dedicated page allowing club members to look up order status, item breakdowns, and payment state.
 - **Organiser Admin CMS (`/admin`)**: Organiser portal protected by authentication with drag-and-drop multi-file upload for product images, product management, and updating customer order payment/fulfillment statuses.
 - **Hexagonal Architecture**: Strict separation of concern between Domain Entities, Inbound/Outbound Ports, Use Cases, Driving HTTP Controllers, and Driven Database/Storage Adapters.
