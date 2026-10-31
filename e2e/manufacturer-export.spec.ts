@@ -120,7 +120,7 @@ test.describe('Manufacturer Order Export E2E Tests', () => {
 
     await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/orders') && r.ok()),
-      page.click('button[type="submit"]:has-text("Generate Monzo Payment Link")'),
+      page.click('button[type="submit"]:has-text("Generate Revolut Payment Link")'),
     ]);
 
     await expect(page.locator('text=Order Placed!')).toBeVisible();

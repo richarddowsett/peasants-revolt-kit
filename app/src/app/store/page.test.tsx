@@ -269,7 +269,7 @@ describe('StoreCataloguePage - Guest Browsing & Guest Checkout', () => {
       expect(screen.getByText('Order Placed!')).toBeInTheDocument();
     });
     expect(screen.getAllByText('PRRC-5555').length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: /pay £25.00 via monzo/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /pay £25.00 via revolut/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /back to store/i })).toBeInTheDocument();
     expect(screen.queryByText(/view my order status/i)).not.toBeInTheDocument();
   });

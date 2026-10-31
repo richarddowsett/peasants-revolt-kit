@@ -1,19 +1,4 @@
-import { PaymentGatewayOutboundPort } from '../../../domain/ports/outbound/PaymentGatewayOutboundPort';
+import { RevolutPaymentGatewayAdapter } from './RevolutPaymentGatewayAdapter';
 
-export class MonzoPaymentGatewayAdapter implements PaymentGatewayOutboundPort {
-  private readonly monzoUsername: string;
-
-  constructor(monzoUsername: string = process.env.MONZO_USERNAME || 'terenceanthonysumpter') {
-    this.monzoUsername = monzoUsername;
-  }
-
-  generatePaymentLink(orderReference: string, amount: number): string {
-    const formattedAmount = amount.toFixed(2);
-    const encodedRef = encodeURIComponent(orderReference);
-    return `https://monzo.me/${this.monzoUsername}/${formattedAmount}?d=${encodedRef}`;
-  }
-
-  getGatewayName(): string {
-    return 'Monzo';
-  }
-}
+export { RevolutPaymentGatewayAdapter };
+export { RevolutPaymentGatewayAdapter as MonzoPaymentGatewayAdapter };

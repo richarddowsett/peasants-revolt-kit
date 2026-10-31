@@ -286,15 +286,15 @@ function UserOrdersContent() {
       {order.status === 'pending_payment' && !isFreeEvent && (
         <div className="mt-4 pt-4 border-t border-amber-100 bg-amber-50 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <p className="text-xs text-amber-900 font-medium">
-            Payment pending via Monzo. Please include reference <strong className="font-mono">{order.id}</strong> in your transfer.
+            Payment pending via Revolut. Please include reference <strong className="font-mono">{order.id}</strong> in your transfer.
           </p>
           <a
             href={order.paymentLinkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-[#ff4d4d] hover:bg-[#e63939] text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow flex items-center justify-center gap-1.5 transition shrink-0"
+            className="bg-slate-900 hover:bg-black text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow flex items-center justify-center gap-1.5 transition shrink-0"
           >
-            Pay via Monzo <ExternalLink size={14} />
+            Pay via Revolut <ExternalLink size={14} />
           </a>
         </div>
       )}

@@ -454,7 +454,7 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
     }
   });
 
-  test('Free Events Journey: Admin creates free event -> Cost input hidden -> Customer views Free Event & books ticket with Order Complete & no Monzo link -> Verified in Orders & Admin CMS', async ({
+  test('Free Events Journey: Admin creates free event -> Cost input hidden -> Customer views Free Event & books ticket with Order Complete & no Revolut link -> Verified in Orders & Admin CMS', async ({
     page,
     request,
   }) => {
@@ -557,10 +557,10 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       ).toBeVisible();
       await expect(page.locator('text=Free Event (£0.00)')).toBeVisible();
 
-      // NO Monzo link or Monzo reference warning should be present!
-      await expect(page.locator('text=IMPORTANT: Do NOT change the Monzo payment reference')).not.toBeVisible();
+      // NO Revolut link or payment reference warning should be present!
+      await expect(page.locator('text=IMPORTANT: Include your payment reference in Revolut')).not.toBeVisible();
       await expect(page.locator('a:has-text("Pay")')).not.toBeVisible();
-      await expect(page.locator('text=via Monzo')).not.toBeVisible();
+      await expect(page.locator('text=via Revolut')).not.toBeVisible();
 
       // 6. Check order tracker on /store/orders
       await page.goto(
@@ -569,7 +569,7 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       await expect(page.locator(`text=${freeTicketId}`).first()).toBeVisible();
       await expect(page.locator('text=Free Event').first()).toBeVisible();
       await expect(page.locator('text=Total: Free (£0.00)').first()).toBeVisible();
-      await expect(page.locator('a:has-text("Pay via Monzo")')).not.toBeVisible();
+      await expect(page.locator('a:has-text("Pay via Revolut")')).not.toBeVisible();
 
       // 7. Verify in Admin CMS: ticket is listed with Free Event and confirmed status
       await page.goto('/admin/events');

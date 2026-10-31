@@ -97,16 +97,16 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     await page.fill('input[placeholder="e.g. Alex Smith"]', customerName);
     await page.fill('input[placeholder="alex@example.com"]', customerEmail);
 
-    // Generate Monzo Payment Link
+    // Generate Revolut Payment Link
     await Promise.all([
       page.waitForResponse((resp) => resp.url().includes('/api/orders') && resp.ok()),
-      page.click('button[type="submit"]:has-text("Generate Monzo Payment Link")'),
+      page.click('button[type="submit"]:has-text("Generate Revolut Payment Link")'),
     ]);
 
-    // Verify Order Placed Screen & Monzo Link
+    // Verify Order Placed Screen & Revolut Link
     await expect(page.locator('text=Order Placed!')).toBeVisible();
     await expect(page.locator('text=Order Reference:').first()).toBeVisible();
-    await expect(page.locator('a', { hasText: 'Pay £29.99 via Monzo' })).toBeVisible();
+    await expect(page.locator('a', { hasText: 'Pay £29.99 via Revolut' })).toBeVisible();
 
     // Extract Order ID (PRRC-XXXX)
     const orderRefElement = page.locator('span.font-mono.underline');
@@ -204,12 +204,12 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
     // 9. Submit Order
     await Promise.all([
       page.waitForResponse((resp) => resp.url().includes('/api/orders') && resp.ok()),
-      page.click('button[type="submit"]:has-text("Generate Monzo Payment Link")'),
+      page.click('button[type="submit"]:has-text("Generate Revolut Payment Link")'),
     ]);
 
     // 10. Verify Order Placed modal
     await expect(page.locator('text=Order Placed!')).toBeVisible();
-    await expect(page.locator('a', { hasText: 'via Monzo' })).toBeVisible();
+    await expect(page.locator('a', { hasText: 'via Revolut' })).toBeVisible();
     await expect(page.locator('button:has-text("Back to Store")')).toBeVisible();
 
     // 11. Click Back to Store
@@ -236,7 +236,7 @@ test.describe('Peasants Running Kit End-to-End E2E User Journeys', () => {
 
     await Promise.all([
       page.waitForResponse((resp) => resp.url().includes('/api/orders') && resp.ok()),
-      page.click('button[type="submit"]:has-text("Generate Monzo Payment Link")'),
+      page.click('button[type="submit"]:has-text("Generate Revolut Payment Link")'),
     ]);
 
     await expect(page.locator('text=Order Placed!')).toBeVisible();

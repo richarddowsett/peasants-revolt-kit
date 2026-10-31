@@ -586,7 +586,7 @@ export default function ClubEventsPage() {
                                 </>
                               ) : (
                                 <>
-                                  Complete your Monzo payment below. Once the organiser marks your payment as received, your branded QR entry ticket will be emailed to{' '}
+                                  Complete your Revolut payment below. Once the organiser marks your payment as received, your branded QR entry ticket will be emailed to{' '}
                                   <strong>{completedTicket.userEmail}</strong>.
                                 </>
                               )}
@@ -632,14 +632,14 @@ export default function ClubEventsPage() {
                               <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                               <div className="text-xs text-amber-900 space-y-1 leading-relaxed">
                                 <p className="font-extrabold text-sm text-amber-950">
-                                  IMPORTANT: Do NOT change the Monzo payment reference!
+                                  IMPORTANT: Include your payment reference in Revolut!
                                 </p>
                                 <p>
-                                  Your reference{' '}
+                                  Please include your ticket reference{' '}
                                   <span className="font-mono font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
-                                    {completedTicket.monzoReference}
+                                    {completedTicket.monzoReference || completedTicket.id}
                                   </span>{' '}
-                                  is pre-filled automatically. Keeping it exact ensures we can verify
+                                  in your Revolut transfer note. This ensures we can verify
                                   your payment and email your QR code ticket promptly.
                                 </p>
                               </div>
@@ -649,9 +649,9 @@ export default function ClubEventsPage() {
                               href={completedTicket.paymentLinkUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full py-4 px-6 bg-[#ff4f40] hover:bg-[#e03e30] text-white font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition-all text-base"
+                              className="w-full py-4 px-6 bg-slate-900 hover:bg-black text-white font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition-all text-base"
                             >
-                              <span>Pay £{Number(completedTicket.unitPrice).toFixed(2)} via Monzo</span>
+                              <span>Pay £{Number(completedTicket.unitPrice).toFixed(2)} via Revolut</span>
                               <ExternalLink className="w-5 h-5" />
                             </a>
                           </>

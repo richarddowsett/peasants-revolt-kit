@@ -96,7 +96,7 @@ describe('ClubEventsPage (/events)', () => {
     expect(screen.getByText(/Countdown to Ticket Release/i)).toBeInTheDocument();
   });
 
-  it('renders the ticket purchase form when sales are open and completes a 1-ticket Monzo checkout', async () => {
+  it('renders the ticket purchase form when sales are open and completes a 1-ticket Revolut checkout', async () => {
     const pastSale = new Date(Date.now() - 3600 * 1000).toISOString();
     const futureEvent = new Date(Date.now() + 14 * 86400 * 1000).toISOString();
 
@@ -138,7 +138,7 @@ describe('ClubEventsPage (/events)', () => {
       userEmail: 'alice@example.com',
       unitPrice: 20,
       status: 'pending_payment',
-      paymentLinkUrl: 'https://monzo.me/rebeccannevarney/20.00?d=PRRC-EVT-2026-0005',
+      paymentLinkUrl: 'https://revolut.me/terenclgf?currency=GBP&amount=2000',
       monzoReference: 'PRRC-EVT-2026-0005',
       ticketUuid: '550e8400-e29b-41d4-a716-446655440000',
       checkedIn: false,
@@ -460,7 +460,7 @@ describe('ClubEventsPage (/events)', () => {
     expect(deadlineBanner).toHaveTextContent(/20 November 2026/i);
   });
 
-  it('displays Free Event on cards and handles free ticket booking with Order Complete and no Monzo link', async () => {
+  it('displays Free Event on cards and handles free ticket booking with Order Complete and no Revolut link', async () => {
     const freeEventWithStats = {
       event: {
         id: 'evt_free_1',
@@ -549,9 +549,9 @@ describe('ClubEventsPage (/events)', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Free Event (£0.00)')).toBeInTheDocument();
 
-    // Assert Monzo elements are NOT rendered
-    expect(screen.queryByText(/IMPORTANT: Do NOT change the Monzo payment reference/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Pay .* via Monzo/i })).not.toBeInTheDocument();
+    // Assert Revolut elements are NOT rendered
+    expect(screen.queryByText(/IMPORTANT: Include your payment reference in Revolut/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Pay .* via Revolut/i })).not.toBeInTheDocument();
 
     // Assert Link to Orders is rendered
     expect(screen.getByRole('link', { name: /View My Ticket in Orders/i })).toBeInTheDocument();

@@ -441,7 +441,7 @@ export default function StoreCataloguePage() {
               Peasants Revolt Running Club Store
             </h1>
             <p className="text-slate-200 text-sm max-w-xl">
-              Order your official club tops and kit. Select your items, review your basket, and complete your order via Monzo transfer!
+              Order your official club tops and kit. Select your items, review your basket, and complete your order via Revolut transfer!
             </p>
           </div>
         </div>
@@ -742,7 +742,7 @@ export default function StoreCataloguePage() {
         </div>
       )}
 
-      {/* Checkout & Monzo Payment Modal */}
+      {/* Checkout & Revolut Payment Modal */}
       {isCheckoutOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -860,7 +860,7 @@ export default function StoreCataloguePage() {
                         disabled={isSubmitting}
                         className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition flex justify-center items-center gap-2"
                       >
-                        {isSubmitting ? 'Creating Order...' : 'Generate Monzo Payment Link'}
+                        {isSubmitting ? 'Creating Order...' : 'Generate Revolut Payment Link'}
                       </button>
                     </form>
                   </>
@@ -1030,14 +1030,14 @@ export default function StoreCataloguePage() {
                         disabled={isSubmitting}
                         className="w-full bg-[rgb(82,94,62)] hover:bg-[rgb(68,78,50)] text-white font-bold text-xs py-3.5 rounded-xl shadow transition flex justify-center items-center gap-2"
                       >
-                        {isSubmitting ? 'Creating Order...' : 'Generate Monzo Payment Link'}
+                        {isSubmitting ? 'Creating Order...' : 'Generate Revolut Payment Link'}
                       </button>
                     </form>
                   </>
                 )}
               </>
             ) : (
-              /* Order Created & Monzo Link Modal */
+              /* Order Created & Revolut Link Modal */
               <div className="text-center py-2">
                 <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Check size={32} />
@@ -1049,13 +1049,13 @@ export default function StoreCataloguePage() {
 
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left text-xs text-amber-900 mb-6 space-y-2">
                   <p className="font-bold flex items-center gap-1.5 text-amber-800">
-                    <ShieldCheck size={16} /> Important Monzo Payment Step:
+                    <ShieldCheck size={16} /> Important Revolut Payment Step:
                   </p>
                   <p>
-                    1. Click the button below to open the Monzo payment link for <strong>£{createdOrder.totalAmount.toFixed(2)}</strong>.
+                    1. Click the button below to open the Revolut payment link for <strong>£{createdOrder.totalAmount.toFixed(2)}</strong>.
                   </p>
                   <p>
-                    2. In the Monzo transfer note, please include your Order Reference: <strong className="font-mono">{createdOrder.id}</strong>.
+                    2. In the Revolut transfer note, please include your Order Reference: <strong className="font-mono">{createdOrder.id}</strong>.
                   </p>
                   <p>
                     3. Once received, the club organiser will mark your order as <strong>Payment Successful</strong> in the system!
@@ -1066,9 +1066,9 @@ export default function StoreCataloguePage() {
                   href={createdOrder.paymentLinkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full bg-[#ff4d4d] hover:bg-[#e63939] text-white font-black text-sm py-3.5 px-4 rounded-2xl shadow flex items-center justify-center gap-2 transition mb-3"
+                  className="w-full bg-slate-900 hover:bg-black text-white font-black text-sm py-3.5 px-4 rounded-2xl shadow flex items-center justify-center gap-2 transition mb-3"
                 >
-                  Pay £{createdOrder.totalAmount.toFixed(2)} via Monzo <ExternalLink size={16} />
+                  Pay £{createdOrder.totalAmount.toFixed(2)} via Revolut <ExternalLink size={16} />
                 </a>
 
                 {currentUser ? (

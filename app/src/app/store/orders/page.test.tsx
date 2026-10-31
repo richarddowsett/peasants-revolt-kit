@@ -172,7 +172,7 @@ describe('UserOrdersPage', () => {
 
       expect(screen.getAllByText('Cancelled').length).toBeGreaterThan(0);
       expect(screen.getByText('This order has been cancelled.')).toBeInTheDocument();
-      expect(screen.queryByText(/Pay via Monzo/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Pay via Revolut/i)).not.toBeInTheDocument();
 
       const card = screen.getByText('USER-ORD-CANCELLED').closest('.opacity-60');
       expect(card).toBeInTheDocument();
@@ -255,7 +255,7 @@ describe('UserOrdersPage', () => {
       expect(screen.getByText(/2x/i)).toBeInTheDocument();
       expect(screen.getByText(/Race Vest \(L\)/i)).toBeInTheDocument();
       expect(screen.getByText('Total: £50.00')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /Pay via Monzo/i })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /Pay via Revolut/i })).toHaveAttribute(
         'href',
         'https://monzo.me/pay/PRRC-4321?amount=50'
       );
@@ -361,7 +361,7 @@ describe('UserOrdersPage', () => {
       });
     });
 
-    it('renders Free Event badge, Free (£0.00) total, and no Monzo link for free event tickets', async () => {
+    it('renders Free Event badge, Free (£0.00) total, and no Revolut link for free event tickets', async () => {
       const freeTicketOrder = {
         id: 'PRRC-EVT-2026-0088',
         userEmail: 'freetracker@example.com',
@@ -409,7 +409,7 @@ describe('UserOrdersPage', () => {
         expect(screen.getByText('Total: Free (£0.00)')).toBeInTheDocument();
       });
 
-      expect(screen.queryByRole('link', { name: /Pay via Monzo/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /Pay via Revolut/i })).not.toBeInTheDocument();
     });
   });
 });
