@@ -117,10 +117,13 @@ describe('Club Events & Ticketing Use Cases', () => {
         input.event.ticketsSold = (input.event.ticketsSold || 0) + 1;
 
         const ticketId = `PRRC-EVT-${eventYear}-${String(seq).padStart(4, '0')}`;
-        const paymentLinkUrl = input.paymentLinkGenerator(
-          ticketId,
-          Number(input.event.ticketPrice)
-        );
+        const isFreeEvent = Boolean(input.event.isFree || Number(input.event.ticketPrice) === 0);
+        const paymentLinkUrl = isFreeEvent
+          ? ''
+          : input.paymentLinkGenerator(
+              ticketId,
+              Number(input.event.ticketPrice)
+            );
         const ticket: EventTicket = {
           id: ticketId,
           eventId: input.event.id,
@@ -131,8 +134,9 @@ describe('Club Events & Ticketing Use Cases', () => {
           userName: input.userName,
           userEmail: input.userEmail,
           userId: input.userId,
-          unitPrice: input.event.ticketPrice,
-          status: 'pending_payment',
+          unitPrice: isFreeEvent ? 0 : input.event.ticketPrice,
+          isFree: isFreeEvent,
+          status: isFreeEvent ? 'payment_successful' : 'pending_payment',
           paymentLinkUrl,
           monzoReference: ticketId,
           ticketUuid: crypto.randomUUID(),
@@ -273,6 +277,50 @@ describe('Club Events & Ticketing Use Cases', () => {
         saleEndAt: '2027-10-09T12:00:00.000Z',
       });
       expect(updated.saleEndAt).toBe('2027-10-09T12:00:00.000Z');
+    });
+
+    it('supports creating free events and ensures free status and £0 price are preserved on updates', async () => {
+      const createUseCase = new CreateEventUseCase(eventRepo);
+      const updateUseCase = new UpdateEventUseCase(eventRepo);
+
+      // Create free event
+      const freeEvent = await createUseCase.execute({
+        title: 'Weekly 5k Social Run',
+        description: 'Free casual parkrun warmup',
+        startDate: '2027-05-01T09:00:00.000Z',
+        saleStartAt: '2027-04-01T09:00:00.000Z',
+        maxTickets: 50,
+        ticketPrice: 0,
+        isFree: true,
+        address: 'Brentwood Park',
+      });
+
+      expect(freeEvent.isFree).toBe(true);
+      expect(freeEvent.ticketPrice).toBe(0);
+
+      // Creating a paid event with £0 price should fail
+      await expect(
+        createUseCase.execute({
+          title: 'Paid Event with invalid zero price',
+          description: 'Should throw',
+          startDate: '2027-05-01T09:00:00.000Z',
+          saleStartAt: '2027-04-01T09:00:00.000Z',
+          maxTickets: 10,
+          ticketPrice: 0,
+          isFree: false,
+          address: 'Park',
+        })
+      ).rejects.toThrow('Ticket price must be greater than £0.');
+
+      // Update free event: even if input attempts to pass ticketPrice: 20, free events remain free with £0
+      const updatedFree = await updateUseCase.execute(freeEvent.id, {
+        title: 'Weekly 5k Social Run (Updated)',
+        ticketPrice: 20,
+      });
+
+      expect(updatedFree.isFree).toBe(true);
+      expect(updatedFree.ticketPrice).toBe(0);
+      expect(updatedFree.title).toBe('Weekly 5k Social Run (Updated)');
     });
   });
 
@@ -512,6 +560,51 @@ describe('Club Events & Ticketing Use Cases', () => {
       expect(found).toBeDefined();
       expect(found?.isSaleClosed).toBe(true);
       expect(found?.isSaleOpen).toBe(false);
+    });
+
+    it('purchasing a free event ticket immediately sets payment_successful, sends email directly and skips payment link', async () => {
+      const createUseCase = new CreateEventUseCase(eventRepo);
+      const purchaseUseCase = new PurchaseEventTicketUseCase(
+        eventRepo,
+        ticketRepo,
+        paymentGateway,
+        emailPort
+      );
+
+      const freeEvent = await createUseCase.execute({
+        title: 'Free Community Track Session',
+        description: 'Casual track evening for all club members',
+        startDate: '2027-06-15T19:00:00.000Z',
+        saleStartAt: '2027-05-01T09:00:00.000Z',
+        maxTickets: 30,
+        ticketPrice: 0,
+        isFree: true,
+        address: 'Brentwood Track',
+      });
+
+      const orderTime = new Date('2027-05-10T10:00:00.000Z');
+      const ticket = await purchaseUseCase.execute(
+        {
+          eventId: freeEvent.id,
+          userName: 'Free Runner',
+          userEmail: 'freerunner@example.com',
+          userId: 'user_free_123',
+        },
+        orderTime
+      );
+
+      expect(ticket.isFree).toBe(true);
+      expect(ticket.unitPrice).toBe(0);
+      expect(ticket.status).toBe('payment_successful');
+      expect(ticket.paymentLinkUrl).toBe('');
+      expect(ticket.monzoReference).toBe(ticket.id);
+      expect(paymentGateway.generatePaymentLink).not.toHaveBeenCalled();
+      expect(emailPort.sendEventTicketEmail).toHaveBeenCalledTimes(1);
+      expect(emailPort.sendEventTicketEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ id: ticket.id, status: 'payment_successful' }),
+        expect.objectContaining({ id: freeEvent.id, isFree: true })
+      );
+      expect(ticket.ticketEmailSentAt).toBeDefined();
     });
   });
 

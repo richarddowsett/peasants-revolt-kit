@@ -22,6 +22,7 @@ export interface CreateEventInput {
   saleEndAt?: string;
   maxTickets: number;
   ticketPrice: number;
+  isFree?: boolean;
   address: string;
   logoUrl?: string;
   fromEmail?: string;
@@ -39,6 +40,7 @@ export interface UpdateEventInput {
   saleEndAt?: string;
   maxTickets?: number;
   ticketPrice?: number;
+  isFree?: boolean;
   address?: string;
   logoUrl?: string;
   fromEmail?: string;

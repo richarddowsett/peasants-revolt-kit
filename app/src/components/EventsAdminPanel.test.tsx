@@ -453,4 +453,105 @@ describe('EventsAdminPanel & DoorQrScanner', () => {
 
     expect(screen.getByText(/Using standard Peasants Revolt Running Club logo/i)).toBeInTheDocument();
   });
+
+  it('toggles free event, hides ticket price input, and creates a free event with isFree: true and ticketPrice: 0', async () => {
+    vi.mocked(api.createEvent).mockResolvedValue({
+      ...sampleEventWithStats.event,
+      id: 'evt_free_1',
+      title: 'Free 5k Social',
+      ticketPrice: 0,
+      isFree: true,
+    });
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-event-card-evt_1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Add New Event/i }));
+
+    // Price input is initially visible
+    expect(screen.getByLabelText(/Ticket Price \(£\)/i)).toBeInTheDocument();
+
+    // Toggle free event checkbox
+    const freeCheckbox = screen.getByLabelText(/Free Event \(no ticket payment required\)/i);
+    fireEvent.click(freeCheckbox);
+
+    // Price input should now be hidden
+    expect(screen.queryByLabelText(/Ticket Price \(£\)/i)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Event Title/i), {
+      target: { value: 'Free 5k Social' },
+    });
+    fireEvent.change(screen.getByLabelText(/Event Description/i), {
+      target: { value: 'Free social 5k run for club runners' },
+    });
+    fireEvent.change(screen.getByLabelText(/Event Start Date/i), {
+      target: { value: '2026-08-01T09:00' },
+    });
+    fireEvent.change(screen.getByLabelText(/Ticket Sale Countdown/i), {
+      target: { value: '2026-07-01T09:00' },
+    });
+    fireEvent.change(screen.getByLabelText(/Event Address/i), {
+      target: { value: 'Weald Country Park' },
+    });
+
+    fireEvent.submit(screen.getByTestId('event-admin-form'));
+
+    await waitFor(() => {
+      expect(api.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Free 5k Social',
+          isFree: true,
+          ticketPrice: 0,
+        })
+      );
+    });
+  });
+
+  it('displays Free Event badge on cards and disables free checkbox when editing an existing event', async () => {
+    const freeEventWithStats = {
+      event: {
+        ...sampleEventWithStats.event,
+        id: 'evt_free_active',
+        title: 'Weekly Free Track Social',
+        ticketPrice: 0,
+        isFree: true,
+      },
+      isSaleOpen: true,
+      isSaleClosed: false,
+      ticketsSold: 1,
+      ticketsRemaining: 49,
+      ticketsCheckedIn: 0,
+    };
+    const freeTicket = {
+      ...sampleTicket,
+      id: 'PRRC-EVT-2026-0099',
+      eventId: 'evt_free_active',
+      isFree: true,
+      unitPrice: 0,
+      paymentLinkUrl: '',
+    };
+
+    vi.mocked(api.fetchEvents).mockResolvedValue([freeEventWithStats]);
+    vi.mocked(api.fetchEventTickets).mockResolvedValue([freeTicket]);
+
+    render(<EventsAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-event-card-evt_free_active')).toBeInTheDocument();
+    });
+
+    // Check "Free Event" badge in card header
+    expect(screen.getAllByText('Free Event').length).toBeGreaterThan(0);
+
+    // Edit the free event
+    fireEvent.click(screen.getByRole('button', { name: /Edit/i }));
+
+    const freeCheckbox = screen.getByLabelText(/Free Event \(no ticket payment required\)/i);
+    expect(freeCheckbox).toBeChecked();
+    expect(freeCheckbox).toBeDisabled();
+    expect(screen.getByText(/Free \/ Paid setting is locked after event creation/i)).toBeInTheDocument();
+  });
 });

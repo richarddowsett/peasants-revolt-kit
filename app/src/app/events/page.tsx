@@ -372,7 +372,9 @@ export default function ClubEventsPage() {
                               Ticket
                             </span>
                             <span className="text-lg font-black text-white">
-                              £{Number(evt.ticketPrice).toFixed(2)}
+                              {evt.isFree || Number(evt.ticketPrice) === 0
+                                ? 'Free Event'
+                                : `£${Number(evt.ticketPrice).toFixed(2)}`}
                             </span>
                           </div>
                         </div>
@@ -527,7 +529,12 @@ export default function ClubEventsPage() {
                       Ticket Price
                     </div>
                     <div className="text-sm font-extrabold text-slate-900">
-                      £{Number(activeEvent.ticketPrice).toFixed(2)} &bull;{' '}
+                      {activeEvent.isFree || Number(activeEvent.ticketPrice) === 0 ? (
+                        <span className="text-emerald-700 font-extrabold">Free Event</span>
+                      ) : (
+                        `£${Number(activeEvent.ticketPrice).toFixed(2)}`
+                      )}{' '}
+                      &bull;{' '}
                       {isSaleClosed ? (
                         <span className="text-amber-700">Sales Closed</span>
                       ) : isSoldOut ? (
@@ -557,86 +564,111 @@ export default function ClubEventsPage() {
               {/* Body: Countdown OR Sold Out OR Purchase Form OR Completed Ticket */}
               <div className="p-6 sm:p-10">
                 {completedTicket ? (
-                  /* COMPLETED TICKET RESERVATION — MONZO CHECKOUT */
-                  <div data-testid="ticket-order-confirmation" className="space-y-6">
-                    <div className="flex items-center space-x-3 text-emerald-700 bg-emerald-50 border border-emerald-200 p-4 rounded-2xl">
-                      <CheckCircle2 className="w-7 h-7 flex-shrink-0" />
-                      <div>
-                        <h2 className="text-lg font-extrabold">Ticket Reserved!</h2>
-                        <p className="text-xs text-emerald-800">
-                          Complete your Monzo payment below. Once the organiser marks your
-                          payment as received, your branded QR entry ticket will be emailed to{' '}
-                          <strong>{completedTicket.userEmail}</strong>.
-                        </p>
-                      </div>
-                    </div>
+                  /* COMPLETED TICKET RESERVATION */
+                  (() => {
+                    const isCompletedTicketFree = Boolean(
+                      completedTicket.isFree || Number(completedTicket.unitPrice) === 0
+                    );
 
-                    <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-3">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500">Ticket Reference:</span>
-                        <span
-                          data-testid="ticket-order-reference"
-                          className="font-mono font-bold text-slate-900 bg-white px-2.5 py-1 rounded border border-slate-200"
-                        >
-                          {completedTicket.id}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500">Event:</span>
-                        <span className="font-bold text-slate-800">
-                          {completedTicket.eventTitle}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500">Attendee:</span>
-                        <span className="font-bold text-slate-800">
-                          {completedTicket.userName} ({completedTicket.userEmail})
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-base font-extrabold pt-3 border-t border-slate-200">
-                        <span>Total Due (1 Ticket):</span>
-                        <span className="text-[#525e3e]">
-                          £{Number(completedTicket.unitPrice).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
+                    return (
+                      <div data-testid="ticket-order-confirmation" className="space-y-6">
+                        <div className="flex items-center space-x-3 text-emerald-700 bg-emerald-50 border border-emerald-200 p-4 rounded-2xl">
+                          <CheckCircle2 className="w-7 h-7 flex-shrink-0" />
+                          <div>
+                            <h2 className="text-lg font-extrabold">
+                              {isCompletedTicketFree ? 'Order Complete!' : 'Ticket Reserved!'}
+                            </h2>
+                            <p className="text-xs text-emerald-800">
+                              {isCompletedTicketFree ? (
+                                <>
+                                  Ticket Confirmed! Your free ticket has been reserved and your branded entry ticket with QR code has been emailed directly to{' '}
+                                  <strong>{completedTicket.userEmail}</strong>.
+                                </>
+                              ) : (
+                                <>
+                                  Complete your Monzo payment below. Once the organiser marks your payment as received, your branded QR entry ticket will be emailed to{' '}
+                                  <strong>{completedTicket.userEmail}</strong>.
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </div>
 
-                    <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex items-start space-x-3">
-                      <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-xs text-amber-900 space-y-1 leading-relaxed">
-                        <p className="font-extrabold text-sm text-amber-950">
-                          IMPORTANT: Do NOT change the Monzo payment reference!
-                        </p>
-                        <p>
-                          Your reference{' '}
-                          <span className="font-mono font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
-                            {completedTicket.monzoReference}
-                          </span>{' '}
-                          is pre-filled automatically. Keeping it exact ensures we can verify
-                          your payment and email your QR code ticket promptly.
-                        </p>
+                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-3">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500">Ticket Reference:</span>
+                            <span
+                              data-testid="ticket-order-reference"
+                              className="font-mono font-bold text-slate-900 bg-white px-2.5 py-1 rounded border border-slate-200"
+                            >
+                              {completedTicket.id}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500">Event:</span>
+                            <span className="font-bold text-slate-800">
+                              {completedTicket.eventTitle}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500">Attendee:</span>
+                            <span className="font-bold text-slate-800">
+                              {completedTicket.userName} ({completedTicket.userEmail})
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-base font-extrabold pt-3 border-t border-slate-200">
+                            <span>Total Due (1 Ticket):</span>
+                            <span className={isCompletedTicketFree ? 'text-emerald-700' : 'text-[#525e3e]'}>
+                              {isCompletedTicketFree
+                                ? 'Free Event (£0.00)'
+                                : `£${Number(completedTicket.unitPrice).toFixed(2)}`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {!isCompletedTicketFree && (
+                          <>
+                            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex items-start space-x-3">
+                              <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <div className="text-xs text-amber-900 space-y-1 leading-relaxed">
+                                <p className="font-extrabold text-sm text-amber-950">
+                                  IMPORTANT: Do NOT change the Monzo payment reference!
+                                </p>
+                                <p>
+                                  Your reference{' '}
+                                  <span className="font-mono font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
+                                    {completedTicket.monzoReference}
+                                  </span>{' '}
+                                  is pre-filled automatically. Keeping it exact ensures we can verify
+                                  your payment and email your QR code ticket promptly.
+                                </p>
+                              </div>
+                            </div>
+
+                            <a
+                              href={completedTicket.paymentLinkUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full py-4 px-6 bg-[#ff4f40] hover:bg-[#e03e30] text-white font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition-all text-base"
+                            >
+                              <span>Pay £{Number(completedTicket.unitPrice).toFixed(2)} via Monzo</span>
+                              <ExternalLink className="w-5 h-5" />
+                            </a>
+                          </>
+                        )}
+
+                        <div className="text-center pt-2">
+                          <Link
+                            href="/store/orders"
+                            className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl bg-[#525e3e] hover:bg-[#414b31] text-white font-bold text-sm shadow-sm transition-all"
+                          >
+                            <Ticket className="w-4 h-4" />
+                            <span>View My Ticket in Orders</span>
+                          </Link>
+                        </div>
                       </div>
-                    </div>
-
-                    <a
-                      href={completedTicket.paymentLinkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-4 px-6 bg-[#ff4f40] hover:bg-[#e03e30] text-white font-extrabold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition-all text-base"
-                    >
-                      <span>Pay £{Number(completedTicket.unitPrice).toFixed(2)} via Monzo</span>
-                      <ExternalLink className="w-5 h-5" />
-                    </a>
-
-                    <div className="text-center pt-2">
-                      <Link
-                        href="/store/orders"
-                        className="text-sm font-bold text-[#525e3e] hover:underline"
-                      >
-                        View in My Orders &rarr;
-                      </Link>
-                    </div>
-                  </div>
+                    );
+                  })()
                 ) : isCountdownActive ? (
                   /* COUNTDOWN HOLDING STATE */
                   <div data-testid="event-countdown" className="text-center py-6">
@@ -740,152 +772,172 @@ export default function ClubEventsPage() {
                   </div>
                 ) : isSaleOpenNow ? (
                   /* TICKET PURCHASE FORM (1 TICKET PER ORDER) */
-                  <div data-testid="event-purchase-form">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 mb-6 border-b border-slate-200">
-                      <div>
-                        <h2 className="text-xl font-extrabold text-slate-900">
-                          Buy Your Event Ticket
-                        </h2>
-                        <p className="text-sm text-slate-600">
-                          Limited to <strong>1 ticket per order</strong>. Each ticket includes a
-                          unique QR code for entry at the door.
-                        </p>
-                      </div>
-                      {!user && (
-                        <button
-                          type="button"
-                          onClick={() => setIsAuthModalOpen(true)}
-                          className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#525e3e] bg-[#f2f5ec] hover:bg-[#e5ebd8] px-3.5 py-2 rounded-xl transition-colors self-start sm:self-auto"
-                        >
-                          <UserIcon className="w-3.5 h-3.5" />
-                          <span>Sign in to pre-fill details</span>
-                        </button>
-                      )}
-                    </div>
+                  (() => {
+                    const isFreeEvent = Boolean(
+                      activeEvent.isFree || Number(activeEvent.ticketPrice) === 0
+                    );
 
-                    {/* Ticket Sales Deadline Callout */}
-                    <div
-                      data-testid="ticket-deadline-banner"
-                      className="mb-6 p-4 rounded-2xl bg-[#f8faf5] border border-[#d6dec7] flex items-start space-x-3 text-xs text-slate-700"
-                    >
-                      <Clock className="w-5 h-5 text-[#525e3e] flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-extrabold block text-sm text-slate-900">
-                          Ticket Sales Deadline:{' '}
-                          {formatEventDateTime(activeEvent.saleEndAt || activeEvent.startDate)}
-                        </span>
-                        <p className="mt-0.5 text-slate-600">
-                          Ticket sales will close automatically at this deadline. Please complete your reservation before then.
-                        </p>
-                      </div>
-                    </div>
-
-                    {formError && (
-                      <div
-                        role="alert"
-                        data-testid="order-failure-alert"
-                        className="mb-6 p-5 rounded-2xl bg-red-50 border-2 border-red-300 shadow-sm space-y-3"
-                      >
-                        <div className="flex items-start space-x-3">
-                          <div className="p-2 rounded-xl bg-red-100 text-red-700 flex-shrink-0 mt-0.5">
-                            <AlertTriangle className="w-5 h-5" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-base font-extrabold text-red-900">
-                              Ticket Reservation Failed
-                            </h3>
-                            <p className="text-sm font-semibold text-red-800 mt-1 leading-snug">
-                              {formError}
+                    return (
+                      <div data-testid="event-purchase-form">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 mb-6 border-b border-slate-200">
+                          <div>
+                            <h2 className="text-xl font-extrabold text-slate-900">
+                              {isFreeEvent ? 'Book Your Free Event Ticket' : 'Buy Your Event Ticket'}
+                            </h2>
+                            <p className="text-sm text-slate-600">
+                              Limited to <strong>1 ticket per order</strong>.{' '}
+                              {isFreeEvent
+                                ? 'Your entry ticket and QR code will be emailed to you directly upon booking.'
+                                : 'Each ticket includes a unique QR code for entry at the door.'}
                             </p>
-                            <p className="text-xs text-red-700 mt-2 bg-red-100/70 p-2.5 rounded-lg border border-red-200">
-                              <strong>No payment was taken and no ticket was reserved.</strong> Your order was not placed. Please review your details and try again, or check event availability below.
+                          </div>
+                          {!user && (
+                            <button
+                              type="button"
+                              onClick={() => setIsAuthModalOpen(true)}
+                              className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#525e3e] bg-[#f2f5ec] hover:bg-[#e5ebd8] px-3.5 py-2 rounded-xl transition-colors self-start sm:self-auto"
+                            >
+                              <UserIcon className="w-3.5 h-3.5" />
+                              <span>Sign in to pre-fill details</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Ticket Sales Deadline Callout */}
+                        <div
+                          data-testid="ticket-deadline-banner"
+                          className="mb-6 p-4 rounded-2xl bg-[#f8faf5] border border-[#d6dec7] flex items-start space-x-3 text-xs text-slate-700"
+                        >
+                          <Clock className="w-5 h-5 text-[#525e3e] flex-shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-extrabold block text-sm text-slate-900">
+                              Ticket Sales Deadline:{' '}
+                              {formatEventDateTime(activeEvent.saleEndAt || activeEvent.startDate)}
+                            </span>
+                            <p className="mt-0.5 text-slate-600">
+                              Ticket sales will close automatically at this deadline. Please complete your reservation before then.
                             </p>
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => setFormError(null)}
-                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors shadow-sm"
+
+                        {formError && (
+                          <div
+                            role="alert"
+                            data-testid="order-failure-alert"
+                            className="mb-6 p-5 rounded-2xl bg-red-50 border-2 border-red-300 shadow-sm space-y-3"
                           >
-                            Try Again
-                          </button>
+                            <div className="flex items-start space-x-3">
+                              <div className="p-2 rounded-xl bg-red-100 text-red-700 flex-shrink-0 mt-0.5">
+                                <AlertTriangle className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="text-base font-extrabold text-red-900">
+                                  Ticket Reservation Failed
+                                </h3>
+                                <p className="text-sm font-semibold text-red-800 mt-1 leading-snug">
+                                  {formError}
+                                </p>
+                                <p className="text-xs text-red-700 mt-2 bg-red-100/70 p-2.5 rounded-lg border border-red-200">
+                                  <strong>No payment was taken and no ticket was reserved.</strong> Your order was not placed. Please review your details and try again, or check event availability below.
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setFormError(null)}
+                                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors shadow-sm"
+                              >
+                                Try Again
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleBackToDirectory}
+                                className="px-4 py-2 rounded-xl bg-white border border-red-200 text-red-800 hover:bg-red-50 text-xs font-bold transition-colors"
+                              >
+                                Back to All Events
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <form onSubmit={handlePurchaseSubmit} className="space-y-5">
+                          <div>
+                            <label
+                              htmlFor="ticket-customer-name"
+                              className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
+                            >
+                              Full Name *
+                            </label>
+                            <input
+                              id="ticket-customer-name"
+                              type="text"
+                              required
+                              placeholder="e.g. Jane Runner"
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#9ba582] text-sm"
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor="ticket-customer-email"
+                              className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
+                            >
+                              Email Address (for your QR Ticket) *
+                            </label>
+                            <input
+                              id="ticket-customer-email"
+                              type="email"
+                              required
+                              placeholder="runner@example.com"
+                              value={customerEmail}
+                              onChange={(e) => setCustomerEmail(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#9ba582] text-sm"
+                            />
+                          </div>
+
+                          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex items-center justify-between">
+                            <div>
+                              <div className="font-bold text-slate-900 text-sm">
+                                1 &times; {activeEvent.title} Ticket
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {isFreeEvent
+                                  ? 'Free admission \u2022 QR code ticket emailed immediately'
+                                  : 'Includes QR code entry emailed once payment is confirmed'}
+                              </div>
+                            </div>
+                            <div className="text-lg font-black text-slate-900">
+                              {isFreeEvent ? (
+                                <span className="text-emerald-700 font-extrabold">Free Event</span>
+                              ) : (
+                                `£${Number(activeEvent.ticketPrice).toFixed(2)}`
+                              )}
+                            </div>
+                          </div>
+
                           <button
-                            type="button"
-                            onClick={handleBackToDirectory}
-                            className="px-4 py-2 rounded-xl bg-white border border-red-200 text-red-800 hover:bg-red-50 text-xs font-bold transition-colors"
+                            type="submit"
+                            disabled={submitting}
+                            className="w-full py-4 px-6 rounded-xl bg-[#525e3e] hover:bg-[#414b31] disabled:opacity-50 text-white font-extrabold text-base shadow-md transition-all flex items-center justify-center space-x-2"
                           >
-                            Back to All Events
+                            <Ticket className="w-5 h-5" />
+                            <span>
+                              {submitting
+                                ? isFreeEvent
+                                  ? 'Booking Your Free Ticket...'
+                                  : 'Reserving Your Ticket...'
+                                : isFreeEvent
+                                ? 'Book Free Ticket'
+                                : `Buy Ticket — £${Number(activeEvent.ticketPrice).toFixed(2)}`}
+                            </span>
                           </button>
-                        </div>
+                        </form>
                       </div>
-                    )}
-
-                    <form onSubmit={handlePurchaseSubmit} className="space-y-5">
-                      <div>
-                        <label
-                          htmlFor="ticket-customer-name"
-                          className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
-                        >
-                          Full Name *
-                        </label>
-                        <input
-                          id="ticket-customer-name"
-                          type="text"
-                          required
-                          placeholder="e.g. Jane Runner"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#9ba582] text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="ticket-customer-email"
-                          className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
-                        >
-                          Email Address (for your QR Ticket) *
-                        </label>
-                        <input
-                          id="ticket-customer-email"
-                          type="email"
-                          required
-                          placeholder="runner@example.com"
-                          value={customerEmail}
-                          onChange={(e) => setCustomerEmail(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#9ba582] text-sm"
-                        />
-                      </div>
-
-                      <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex items-center justify-between">
-                        <div>
-                          <div className="font-bold text-slate-900 text-sm">
-                            1 &times; {activeEvent.title} Ticket
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            Includes QR code entry emailed once payment is confirmed
-                          </div>
-                        </div>
-                        <div className="text-lg font-black text-slate-900">
-                          £{Number(activeEvent.ticketPrice).toFixed(2)}
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        className="w-full py-4 px-6 rounded-xl bg-[#525e3e] hover:bg-[#414b31] disabled:opacity-50 text-white font-extrabold text-base shadow-md transition-all flex items-center justify-center space-x-2"
-                      >
-                        <Ticket className="w-5 h-5" />
-                        <span>
-                          {submitting
-                            ? 'Reserving Your Ticket...'
-                            : `Buy Ticket — £${Number(activeEvent.ticketPrice).toFixed(2)}`}
-                        </span>
-                      </button>
-                    </form>
-                  </div>
+                    );
+                  })()
                 ) : null}
               </div>
             </div>

@@ -213,6 +213,61 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
       );
     });
 
+    it('reserves and creates ticket for free event with status payment_successful, £0 unitPrice, and empty payment link', async () => {
+      const freeEvent = {
+        ...sampleEvent,
+        id: 'evt_free',
+        title: 'Free 5k Social',
+        ticketPrice: 0,
+        isFree: true,
+      };
+
+      const mockTx = {
+        get: vi
+          .fn()
+          // 1. eventRef
+          .mockResolvedValueOnce({
+            exists: true,
+            data: () => freeEvent,
+          })
+          // 2. counterRef
+          .mockResolvedValueOnce({
+            exists: false,
+          })
+          // 3. ticketRef
+          .mockResolvedValueOnce({
+            exists: false,
+          }),
+        create: vi.fn(),
+        set: vi.fn(),
+      };
+      mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
+      const paymentLinkGenerator = vi.fn();
+
+      const ticket = await adapter.reserveAndCreateTicket({
+        event: freeEvent,
+        userName: 'Free Runner',
+        userEmail: 'free@example.com',
+        paymentLinkGenerator,
+      });
+
+      expect(ticket.id).toBe('PRRC-EVT-2026-0001');
+      expect(ticket.isFree).toBe(true);
+      expect(ticket.unitPrice).toBe(0);
+      expect(ticket.status).toBe('payment_successful');
+      expect(ticket.paymentLinkUrl).toBe('');
+      expect(paymentLinkGenerator).not.toHaveBeenCalled();
+      expect(mockTx.create).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          isFree: true,
+          unitPrice: 0,
+          status: 'payment_successful',
+          paymentLinkUrl: '',
+        })
+      );
+    });
+
     it('throws sold out error when ticketsSold reaches maxTickets', async () => {
       const soldOutEvent = { ...sampleEvent, ticketsSold: 50, maxTickets: 50 };
       const mockTx = {

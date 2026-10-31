@@ -7,6 +7,7 @@ export interface ClubEvent {
   saleEndAt?: string;
   maxTickets: number;
   ticketPrice: number;
+  isFree?: boolean;
   address: string;
   logoUrl: string;
   fromEmail: string;
@@ -42,6 +43,7 @@ export interface EventTicket {
   userEmail: string;
   userId?: string;
   unitPrice: number;
+  isFree?: boolean;
   status: EventTicketStatus;
   paymentLinkUrl: string;
   monzoReference: string;

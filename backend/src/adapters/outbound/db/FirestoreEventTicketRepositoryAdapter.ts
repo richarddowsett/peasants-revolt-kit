@@ -220,10 +220,13 @@ export class FirestoreEventTicketRepositoryAdapter
           existingTicketDoc = await transaction.get(ticketRef);
         }
 
-        const paymentLinkUrl = input.paymentLinkGenerator(
-          ticketId,
-          Number(eventData.ticketPrice)
-        );
+        const isFreeEvent = Boolean(eventData.isFree || Number(eventData.ticketPrice) === 0);
+        const paymentLinkUrl = isFreeEvent
+          ? ''
+          : input.paymentLinkGenerator(
+              ticketId,
+              Number(eventData.ticketPrice)
+            );
 
         const ticketUuid = crypto.randomUUID();
         const ticket: EventTicket = stripUndefined({
@@ -236,8 +239,9 @@ export class FirestoreEventTicketRepositoryAdapter
           userName: input.userName,
           userEmail: input.userEmail,
           userId: input.userId,
-          unitPrice: eventData.ticketPrice,
-          status: 'pending_payment',
+          unitPrice: isFreeEvent ? 0 : Number(eventData.ticketPrice),
+          isFree: isFreeEvent,
+          status: isFreeEvent ? 'payment_successful' : 'pending_payment',
           paymentLinkUrl,
           monzoReference: ticketId,
           ticketUuid,

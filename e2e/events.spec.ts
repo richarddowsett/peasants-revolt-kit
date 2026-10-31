@@ -453,4 +453,136 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       }
     }
   });
+
+  test('Free Events Journey: Admin creates free event -> Cost input hidden -> Customer views Free Event & books ticket with Order Complete & no Monzo link -> Verified in Orders & Admin CMS', async ({
+    page,
+    request,
+  }) => {
+    const freeEventTitle = `Free Saturday Social 5K ${Date.now()}`;
+    let createdFreeEventId: string | null = null;
+
+    try {
+      // 1. Admin logs into /admin and opens Events CMS
+      await page.goto('/admin');
+      const pwdInput = page.locator('input[type="password"]');
+      await pwdInput.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
+      if (await pwdInput.isVisible()) {
+        await pwdInput.fill(adminPassword);
+        await Promise.all([
+          page.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
+          page.click('button[type="submit"]'),
+        ]);
+      }
+
+      await page.click('button:has-text("Events & Tickets")');
+      await expect(page).toHaveURL(/\/admin\/events/);
+      await page.click('button:has-text("Add New Event")');
+      await expect(page.getByTestId('event-admin-form')).toBeVisible();
+
+      // Check the ticket price input is visible before toggle
+      await expect(page.locator('#admin-event-price')).toBeVisible();
+
+      // Toggle Free Event checkbox
+      await page.click('#admin-event-is-free');
+
+      // Assert Ticket Price input is now hidden
+      await expect(page.locator('#admin-event-price')).not.toBeVisible();
+
+      // Fill in remaining fields
+      await page.fill('#admin-event-title', freeEventTitle);
+      await page.fill(
+        '#admin-event-description',
+        'Free 5k casual morning park run for club members and friends.'
+      );
+      await page.fill('#admin-event-start-date', '2027-08-15T09:00');
+      await page.fill('#admin-event-sale-date', '2020-01-01T09:00');
+      await page.fill('#admin-event-max-tickets', '25');
+      await page.fill('#admin-event-address', 'Weald Country Park, CM14');
+
+      const createPromise = page.waitForResponse(
+        (r) => r.url().includes('/api/events') && r.request().method() === 'POST' && r.ok()
+      );
+      await page.click('button:has-text("Create Event")');
+      const createRes = await createPromise;
+      const createdData = await createRes.json();
+      createdFreeEventId = createdData.id;
+
+      await expect(page.locator(`text=Created "${freeEventTitle}" successfully.`)).toBeVisible();
+
+      // Admin event card should display "Free Event" instead of "£0.00"
+      const adminEventCard = page.locator(`[data-testid="admin-event-card-${createdFreeEventId}"]`);
+      await expect(adminEventCard).toBeVisible();
+      await expect(adminEventCard.locator('text=Free Event')).toBeVisible();
+
+      // 2. Customer visits /events directory
+      await page.goto('/events');
+      await expect(page.getByTestId('events-list')).toBeVisible();
+      const customerCard = page.getByTestId('event-card').filter({ hasText: freeEventTitle });
+      await expect(customerCard).toBeVisible();
+      await expect(customerCard.locator('text=Free Event')).toBeVisible();
+      await expect(customerCard.locator('text=£0.00')).not.toBeVisible();
+
+      // 3. Customer opens event detail view
+      await customerCard.click();
+      await expect(page.getByTestId('event-detail-view')).toBeVisible();
+
+      // Metadata bar displays "Free Event"
+      const metadataBar = page.getByTestId('event-detail-view');
+      await expect(metadataBar.locator('text=Free Event').first()).toBeVisible();
+      await expect(metadataBar.locator('text=£0.00')).not.toBeVisible();
+
+      // Form header and button
+      await expect(page.locator('text=Book Your Free Event Ticket')).toBeVisible();
+      const bookBtn = page.locator('button:has-text("Book Free Ticket")');
+      await expect(bookBtn).toBeVisible();
+
+      // 4. Submit booking
+      const attendeeEmail = `free_attendee_${Date.now()}@example.com`;
+      await page.fill('#ticket-customer-name', 'Free Spirit Runner');
+      await page.fill('#ticket-customer-email', attendeeEmail);
+
+      const purchasePromise = page.waitForResponse(
+        (r) => r.url().includes('/tickets') && r.request().method() === 'POST' && r.ok()
+      );
+      await bookBtn.click();
+      const purchaseRes = await purchasePromise;
+      const ticketData = await purchaseRes.json();
+      const freeTicketId = ticketData.id;
+
+      // 5. Order Confirmation screen checks
+      await expect(page.getByTestId('ticket-order-confirmation')).toBeVisible();
+      await expect(page.locator('text=Order Complete!')).toBeVisible();
+      await expect(
+        page.locator('text=Ticket Confirmed! Your free ticket has been reserved and your branded entry ticket with QR code has been emailed directly')
+      ).toBeVisible();
+      await expect(page.locator('text=Free Event (£0.00)')).toBeVisible();
+
+      // NO Monzo link or Monzo reference warning should be present!
+      await expect(page.locator('text=IMPORTANT: Do NOT change the Monzo payment reference')).not.toBeVisible();
+      await expect(page.locator('a:has-text("Pay")')).not.toBeVisible();
+      await expect(page.locator('text=via Monzo')).not.toBeVisible();
+
+      // 6. Check order tracker on /store/orders
+      await page.goto(
+        `/store/orders?ref=${encodeURIComponent(freeTicketId)}&email=${encodeURIComponent(attendeeEmail)}`
+      );
+      await expect(page.locator(`text=${freeTicketId}`).first()).toBeVisible();
+      await expect(page.locator('text=Free Event').first()).toBeVisible();
+      await expect(page.locator('text=Total: Free (£0.00)').first()).toBeVisible();
+      await expect(page.locator('a:has-text("Pay via Monzo")')).not.toBeVisible();
+
+      // 7. Verify in Admin CMS: ticket is listed with Free Event and confirmed status
+      await page.goto('/admin/events');
+      await adminEventCard.click();
+      const ticketRow = page.getByTestId(`event-ticket-row-${freeTicketId}`);
+      await expect(ticketRow).toBeVisible();
+      await expect(ticketRow.locator('text=Free Event')).toBeVisible();
+      await expect(ticketRow.locator('text=Ticket Confirmed (Sent)')).toBeVisible();
+      await expect(ticketRow.locator('text=Mark Payment Received')).not.toBeVisible();
+    } finally {
+      if (createdFreeEventId) {
+        await request.delete(`/api/events/${createdFreeEventId}`).catch(() => {});
+      }
+    }
+  });
 });

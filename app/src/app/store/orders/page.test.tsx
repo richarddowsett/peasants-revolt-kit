@@ -360,5 +360,56 @@ describe('UserOrdersPage', () => {
         ).toBeInTheDocument();
       });
     });
+
+    it('renders Free Event badge, Free (£0.00) total, and no Monzo link for free event tickets', async () => {
+      const freeTicketOrder = {
+        id: 'PRRC-EVT-2026-0088',
+        userEmail: 'freetracker@example.com',
+        userName: 'Free Tracker',
+        status: 'payment_successful' as const,
+        orderType: 'event_ticket' as const,
+        isFree: true,
+        items: [
+          {
+            productId: 'evt_free',
+            productName: 'Free Social 5K — Event Ticket',
+            price: 0,
+            size: '1 Ticket',
+            quantity: 1,
+            subtotal: 0,
+          },
+        ],
+        totalAmount: 0,
+        paymentLinkUrl: '',
+        monzoReference: 'PRRC-EVT-2026-0088',
+        ticketUuid: 'uuid-free-88',
+        ticketEmailSentAt: '2026-10-10T10:00:00.000Z',
+        createdAt: '2026-10-10T10:00:00.000Z',
+        updatedAt: '2026-10-10T10:00:00.000Z',
+      };
+
+      vi.mocked(lookupOrder).mockResolvedValueOnce(freeTicketOrder);
+
+      render(<UserOrdersPage />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Order Number \/ Reference/i)).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText(/Order Number \/ Reference/i), {
+        target: { value: 'PRRC-EVT-2026-0088' },
+      });
+      fireEvent.change(screen.getByLabelText(/Email Address/i), {
+        target: { value: 'freetracker@example.com' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Check Order Status/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Free Event')).toBeInTheDocument();
+        expect(screen.getByText('Total: Free (£0.00)')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('link', { name: /Pay via Monzo/i })).not.toBeInTheDocument();
+    });
   });
 });

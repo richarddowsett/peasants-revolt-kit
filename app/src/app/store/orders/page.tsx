@@ -180,6 +180,7 @@ function UserOrdersContent() {
     const isEventTicket =
       order.orderType === 'event_ticket' ||
       (typeof order.orderType === 'string' && /^christmas_\d{4}_ticket$/.test(order.orderType));
+    const isFreeEvent = Boolean(order.isFree || (isEventTicket && order.totalAmount === 0));
 
     return (
       <div
@@ -199,6 +200,11 @@ function UserOrdersContent() {
           {isEventTicket && (
             <span className="text-xs font-bold text-[rgb(82,94,62)] bg-[rgb(242,245,236)] px-2.5 py-1 rounded-full border border-[rgb(155,165,130)]">
               Club Event Ticket
+            </span>
+          )}
+          {isFreeEvent && (
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200">
+              Free Event
             </span>
           )}
           {order.batchRef && (
@@ -248,7 +254,9 @@ function UserOrdersContent() {
             <span>
               <strong className="text-slate-900">{item.quantity}x</strong> {item.productName} ({item.size})
             </span>
-            <span className="font-bold text-slate-900">£{item.subtotal.toFixed(2)}</span>
+            <span className="font-bold text-slate-900">
+              {isFreeEvent && item.subtotal === 0 ? 'Free' : `£${item.subtotal.toFixed(2)}`}
+            </span>
           </div>
         ))}
       </div>
@@ -270,10 +278,12 @@ function UserOrdersContent() {
         <span className="text-slate-500 font-medium">
           Placed: {new Date(order.createdAt).toLocaleDateString()}
         </span>
-        <span className="text-base font-black text-slate-900">Total: £{order.totalAmount.toFixed(2)}</span>
+        <span className="text-base font-black text-slate-900">
+          Total: {isFreeEvent ? 'Free (£0.00)' : `£${order.totalAmount.toFixed(2)}`}
+        </span>
       </div>
 
-      {order.status === 'pending_payment' && (
+      {order.status === 'pending_payment' && !isFreeEvent && (
         <div className="mt-4 pt-4 border-t border-amber-100 bg-amber-50 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <p className="text-xs text-amber-900 font-medium">
             Payment pending via Monzo. Please include reference <strong className="font-mono">{order.id}</strong> in your transfer.

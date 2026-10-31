@@ -459,4 +459,101 @@ describe('ClubEventsPage (/events)', () => {
     expect(deadlineBanner).toHaveTextContent(/Ticket Sales Deadline:/i);
     expect(deadlineBanner).toHaveTextContent(/20 November 2026/i);
   });
+
+  it('displays Free Event on cards and handles free ticket booking with Order Complete and no Monzo link', async () => {
+    const freeEventWithStats = {
+      event: {
+        id: 'evt_free_1',
+        title: 'Free Community 5K Social',
+        description: 'Casual 5k morning run for club members',
+        startDate: '2026-12-05T09:00:00.000Z',
+        saleStartAt: '2026-11-01T00:00:00.000Z',
+        maxTickets: 40,
+        ticketPrice: 0,
+        isFree: true,
+        address: 'Brentwood Common',
+        logoUrl: '',
+        fromEmail: 'events@peasants-running-kit.store',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      isSaleOpen: true,
+      isSaleClosed: false,
+      ticketsSold: 10,
+      ticketsRemaining: 30,
+      ticketsCheckedIn: 0,
+    };
+
+    const bookedFreeTicket = {
+      id: 'PRRC-EVT-2026-0042',
+      eventId: 'evt_free_1',
+      eventTitle: 'Free Community 5K Social',
+      eventStartDate: '2026-12-05T09:00:00.000Z',
+      eventAddress: 'Brentwood Common',
+      userName: 'Free Runner',
+      userEmail: 'free@example.com',
+      unitPrice: 0,
+      isFree: true,
+      status: 'payment_successful' as const,
+      paymentLinkUrl: '',
+      monzoReference: 'PRRC-EVT-2026-0042',
+      ticketUuid: 'uuid-free-1234',
+      checkedIn: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    vi.mocked(api.fetchEvents).mockResolvedValue([freeEventWithStats]);
+    vi.mocked(api.fetchEventById).mockResolvedValue(freeEventWithStats);
+    vi.mocked(api.purchaseEventTicket).mockResolvedValue(bookedFreeTicket);
+
+    render(<ClubEventsPage />);
+
+    // 1. Directory card shows Free Event rather than £0.00
+    await waitFor(() => {
+      expect(screen.getByText('Free Community 5K Social')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Free Event')).toBeInTheDocument();
+    expect(screen.queryByText('£0.00')).not.toBeInTheDocument();
+
+    // Click into event
+    fireEvent.click(screen.getByTestId('event-card'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('event-detail-view')).toBeInTheDocument();
+    });
+
+    // 2. Detail metadata bar & form preview
+    expect(screen.getByText('Book Your Free Event Ticket')).toBeInTheDocument();
+    const submitBtn = screen.getByRole('button', { name: /Book Free Ticket/i });
+    expect(submitBtn).toBeInTheDocument();
+
+    // 3. Fill and submit form
+    fireEvent.change(screen.getByLabelText(/Full Name/i), {
+      target: { value: 'Free Runner' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+      target: { value: 'free@example.com' },
+    });
+
+    fireEvent.click(submitBtn);
+
+    // 4. Assert Confirmation screen
+    await waitFor(() => {
+      expect(screen.getByTestId('ticket-order-confirmation')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Order Complete!')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Ticket Confirmed! Your free ticket has been reserved and your branded entry ticket with QR code has been emailed directly/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText('Free Event (£0.00)')).toBeInTheDocument();
+
+    // Assert Monzo elements are NOT rendered
+    expect(screen.queryByText(/IMPORTANT: Do NOT change the Monzo payment reference/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Pay .* via Monzo/i })).not.toBeInTheDocument();
+
+    // Assert Link to Orders is rendered
+    expect(screen.getByRole('link', { name: /View My Ticket in Orders/i })).toBeInTheDocument();
+  });
 });

@@ -61,6 +61,7 @@ export default function EventsAdminPanel() {
   const [saleEndAtInput, setSaleEndAtInput] = useState('');
   const [maxTicketsInput, setMaxTicketsInput] = useState('50');
   const [ticketPriceInput, setTicketPriceInput] = useState('25');
+  const [isFreeInput, setIsFreeInput] = useState(false);
   const [addressInput, setAddressInput] = useState('');
   const [logoUrlInput, setLogoUrlInput] = useState('');
   const [fromEmailInput, setFromEmailInput] = useState(DEFAULT_EVENTS_FROM_EMAIL);
@@ -147,6 +148,7 @@ export default function EventsAdminPanel() {
     setSaleEndAtInput('');
     setMaxTicketsInput('50');
     setTicketPriceInput('25');
+    setIsFreeInput(false);
     setAddressInput('');
     setLogoUrlInput('');
     setFromEmailInput(DEFAULT_EVENTS_FROM_EMAIL);
@@ -167,7 +169,9 @@ export default function EventsAdminPanel() {
     setSaleStartAtInput(toDatetimeLocalValue(evt.saleStartAt));
     setSaleEndAtInput(toDatetimeLocalValue(evt.saleEndAt));
     setMaxTicketsInput(String(evt.maxTickets));
-    setTicketPriceInput(String(evt.ticketPrice));
+    const isFree = Boolean(evt.isFree || Number(evt.ticketPrice) === 0);
+    setIsFreeInput(isFree);
+    setTicketPriceInput(isFree ? '0' : String(evt.ticketPrice));
     setAddressInput(evt.address);
     setLogoUrlInput(evt.logoUrl || '');
     setFromEmailInput(evt.fromEmail || DEFAULT_EVENTS_FROM_EMAIL);
@@ -206,6 +210,7 @@ export default function EventsAdminPanel() {
       const startIso = startDateInput ? new Date(startDateInput).toISOString() : '';
       const saleIso = saleStartAtInput ? new Date(saleStartAtInput).toISOString() : '';
       const saleEndIso = saleEndAtInput ? new Date(saleEndAtInput).toISOString() : '';
+      const isFree = isFreeInput;
 
       const payload = {
         title: titleInput.trim(),
@@ -214,7 +219,8 @@ export default function EventsAdminPanel() {
         saleStartAt: saleIso,
         saleEndAt: saleEndIso || undefined,
         maxTickets: Number(maxTicketsInput),
-        ticketPrice: Number(ticketPriceInput),
+        ticketPrice: isFree ? 0 : Number(ticketPriceInput),
+        isFree,
         address: addressInput.trim(),
         logoUrl: logoUrlInput.trim(),
         fromEmail: fromEmailInput.trim() || DEFAULT_EVENTS_FROM_EMAIL,
@@ -509,24 +515,63 @@ export default function EventsAdminPanel() {
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="admin-event-price"
-                  className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
-                >
-                  Ticket Price (£) *
-                </label>
-                <input
-                  id="admin-event-price"
-                  type="number"
-                  step="0.01"
-                  min={0.5}
-                  required
-                  value={ticketPriceInput}
-                  onChange={(e) => setTicketPriceInput(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm"
-                />
+              <div className="sm:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <label
+                    htmlFor="admin-event-is-free"
+                    className="text-xs font-bold uppercase text-slate-800 flex items-center space-x-2 cursor-pointer"
+                  >
+                    <input
+                      id="admin-event-is-free"
+                      type="checkbox"
+                      disabled={Boolean(editingEventId)}
+                      checked={isFreeInput}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsFreeInput(checked);
+                        if (checked) {
+                          setTicketPriceInput('0');
+                        } else if (ticketPriceInput === '0') {
+                          setTicketPriceInput('25');
+                        }
+                      }}
+                      className="w-4 h-4 text-[#525e3e] rounded border-slate-300 focus:ring-[#525e3e]"
+                    />
+                    <span>Free Event (no ticket payment required)</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {editingEventId
+                      ? 'Free / Paid setting is locked after event creation.'
+                      : 'Free events allow runners to book immediately with no payment link. Ticket confirmation email is sent instantly.'}
+                  </p>
+                </div>
+                {isFreeInput && (
+                  <span className="text-xs font-extrabold uppercase px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
+                    Free Event
+                  </span>
+                )}
               </div>
+
+              {!isFreeInput && (
+                <div>
+                  <label
+                    htmlFor="admin-event-price"
+                    className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
+                  >
+                    Ticket Price (£) *
+                  </label>
+                  <input
+                    id="admin-event-price"
+                    type="number"
+                    step="0.01"
+                    min={0.5}
+                    required
+                    value={ticketPriceInput}
+                    onChange={(e) => setTicketPriceInput(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm"
+                  />
+                </div>
+              )}
 
               <div className="sm:col-span-2">
                 <label
@@ -676,7 +721,9 @@ export default function EventsAdminPanel() {
                         </div>
                       </div>
                       <span className="font-extrabold text-sm text-[#525e3e] bg-white px-2.5 py-1 rounded-lg border border-slate-200 flex-shrink-0">
-                        £{Number(evt.ticketPrice).toFixed(2)}
+                        {evt.isFree || Number(evt.ticketPrice) === 0
+                          ? 'Free Event'
+                          : `£${Number(evt.ticketPrice).toFixed(2)}`}
                       </span>
                     </div>
 
@@ -840,6 +887,11 @@ export default function EventsAdminPanel() {
                             <span className="font-mono font-black text-sm bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-900">
                               {ticket.id}
                             </span>
+                            {Boolean(ticket.isFree || ticket.unitPrice === 0) && (
+                              <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                Free Event
+                              </span>
+                            )}
                             <span
                               className={`text-xs font-extrabold px-2.5 py-1 rounded-full ${
                                 ticket.status === 'completed' || ticket.checkedIn
@@ -854,7 +906,9 @@ export default function EventsAdminPanel() {
                               {ticket.checkedIn
                                 ? 'Checked In at Door'
                                 : ticket.status === 'payment_successful'
-                                ? 'Payment Received (Ticket Sent)'
+                                ? (ticket.isFree || ticket.unitPrice === 0
+                                    ? 'Ticket Confirmed (Sent)'
+                                    : 'Payment Received (Ticket Sent)')
                                 : ticket.status === 'cancelled'
                                 ? 'Cancelled'
                                 : 'Pending Payment'}

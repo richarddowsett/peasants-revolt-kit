@@ -9,6 +9,7 @@ export interface ClubEvent {
   saleEndAt?: string;
   maxTickets: number;
   ticketPrice: number;
+  isFree?: boolean;
   address: string;
   logoUrl: string;
   fromEmail: string;
@@ -44,6 +45,7 @@ export interface EventTicket {
   userEmail: string;
   userId?: string;
   unitPrice: number;
+  isFree?: boolean;
   status: EventTicketStatus;
   paymentLinkUrl: string;
   monzoReference: string;
@@ -113,6 +115,7 @@ export function mapEventTicketToOrder(ticket: EventTicket): Order {
     paymentLinkUrl: ticket.paymentLinkUrl,
     monzoReference: ticket.monzoReference,
     orderType: 'event_ticket',
+    isFree: ticket.isFree ?? (ticket.unitPrice === 0),
     eventId: ticket.eventId,
     eventTitle: ticket.eventTitle,
     eventStartDate: ticket.eventStartDate,

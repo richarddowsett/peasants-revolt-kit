@@ -23,6 +23,7 @@ export interface Order {
   monzoReference: string;
   batchRef?: string;
   orderType?: OrderType;
+  isFree?: boolean;
   eventId?: string;
   eventTitle?: string;
   eventStartDate?: string;

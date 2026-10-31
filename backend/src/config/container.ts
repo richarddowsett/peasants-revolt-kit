@@ -67,7 +67,8 @@ const deleteEventUseCase = new DeleteEventUseCase(eventRepoAdapter);
 const purchaseEventTicketUseCase = new PurchaseEventTicketUseCase(
   eventRepoAdapter,
   eventTicketRepoAdapter,
-  paymentGatewayAdapter
+  paymentGatewayAdapter,
+  ticketEmailAdapter
 );
 const updateEventTicketStatusUseCase = new UpdateEventTicketStatusUseCase(
   eventTicketRepoAdapter,

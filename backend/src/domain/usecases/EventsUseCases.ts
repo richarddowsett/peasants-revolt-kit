@@ -145,9 +145,15 @@ export class CreateEventUseCase implements CreateEventInboundPort {
       throw new Error('Number of tickets must be at least 1.');
     }
 
-    const ticketPrice = Number(input.ticketPrice);
-    if (!Number.isFinite(ticketPrice) || ticketPrice <= 0) {
-      throw new Error('Ticket price must be greater than £0.');
+    const isFree = Boolean(input.isFree);
+    let ticketPrice = 0;
+    if (isFree) {
+      ticketPrice = 0;
+    } else {
+      ticketPrice = Number(input.ticketPrice);
+      if (!Number.isFinite(ticketPrice) || ticketPrice <= 0) {
+        throw new Error('Ticket price must be greater than £0.');
+      }
     }
 
     const address = (input.address || '').trim();
@@ -165,6 +171,7 @@ export class CreateEventUseCase implements CreateEventInboundPort {
       saleEndAt: saleEndAt || undefined,
       maxTickets: Math.floor(maxTickets),
       ticketPrice,
+      isFree,
       address,
       logoUrl: (input.logoUrl || '').trim(),
       fromEmail: (input.fromEmail || '').trim() || getDefaultEventsFromEmail(),
@@ -234,10 +241,16 @@ export class UpdateEventUseCase implements UpdateEventInboundPort {
       throw new Error('Number of tickets must be at least 1.');
     }
 
-    const ticketPrice =
-      input.ticketPrice !== undefined ? Number(input.ticketPrice) : existing.ticketPrice;
-    if (!Number.isFinite(ticketPrice) || ticketPrice <= 0) {
-      throw new Error('Ticket price must be greater than £0.');
+    const isFree = Boolean(existing.isFree);
+    let ticketPrice: number;
+    if (isFree) {
+      ticketPrice = 0;
+    } else {
+      ticketPrice =
+        input.ticketPrice !== undefined ? Number(input.ticketPrice) : existing.ticketPrice;
+      if (!Number.isFinite(ticketPrice) || ticketPrice <= 0) {
+        throw new Error('Ticket price must be greater than £0.');
+      }
     }
 
     const address = input.address !== undefined ? input.address.trim() : existing.address;
@@ -259,6 +272,7 @@ export class UpdateEventUseCase implements UpdateEventInboundPort {
       saleEndAt,
       maxTickets: Math.floor(maxTickets),
       ticketPrice,
+      isFree,
       address,
       logoUrl,
       fromEmail,
@@ -279,7 +293,8 @@ export class PurchaseEventTicketUseCase implements PurchaseEventTicketInboundPor
   constructor(
     private eventRepo: EventRepositoryOutboundPort,
     private ticketRepo: EventTicketRepositoryOutboundPort,
-    private paymentGateway: PaymentGatewayOutboundPort
+    private paymentGateway: PaymentGatewayOutboundPort,
+    private emailPort?: EmailOutboundPort
   ) {}
 
   async execute(input: PurchaseEventTicketInput, now: Date = new Date()): Promise<EventTicket> {
@@ -314,7 +329,8 @@ export class PurchaseEventTicketUseCase implements PurchaseEventTicketInboundPor
       throw new Error('This event has already started.');
     }
 
-    return this.ticketRepo.reserveAndCreateTicket({
+    const isFreeEvent = Boolean(event.isFree || Number(event.ticketPrice) === 0);
+    let ticket = await this.ticketRepo.reserveAndCreateTicket({
       event,
       userName: trimmedName,
       userEmail: trimmedEmail,
@@ -323,6 +339,17 @@ export class PurchaseEventTicketUseCase implements PurchaseEventTicketInboundPor
         this.paymentGateway.generatePaymentLink(ticketId, price),
       now,
     });
+
+    if (isFreeEvent && this.emailPort) {
+      const result = await this.emailPort.sendEventTicketEmail(ticket, event);
+      if (result.sent) {
+        ticket = await this.ticketRepo.updateTicket(ticket.id, {
+          ticketEmailSentAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    return ticket;
   }
 }
 
