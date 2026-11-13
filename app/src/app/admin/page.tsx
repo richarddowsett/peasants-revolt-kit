@@ -67,6 +67,7 @@ export default function AdminCMSPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | OrderStatus>('all');
   const [loading, setLoading] = useState<boolean>(false);
+  const [orderActionError, setOrderActionError] = useState<string | null>(null);
   const [isStoreClosed, setIsStoreClosed] = useState<boolean>(false);
   const [togglingStore, setTogglingStore] = useState<boolean>(false);
 
@@ -318,11 +319,14 @@ export default function AdminCMSPage() {
 
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    setOrderActionError(null);
     try {
       await updateOrderStatus(orderId, status);
       loadAdminData();
     } catch (err: unknown) {
-      alert((err as Error).message || 'Failed to update order status');
+      const errorMsg = (err as Error).message || 'Failed to update order status';
+      setOrderActionError(`Failed to update order ${orderId}: ${errorMsg}`);
+      alert(errorMsg);
     }
   };
 
@@ -755,6 +759,29 @@ export default function AdminCMSPage() {
               </div>
             </div>
 
+            {orderActionError && (
+              <div
+                role="alert"
+                data-testid="order-action-error"
+                className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start justify-between gap-3 shadow-sm"
+              >
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle size={18} className="text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-red-900">Order update failed</p>
+                    <p className="text-xs text-red-700 mt-0.5">{orderActionError}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOrderActionError(null)}
+                  className="text-xs font-bold text-red-700 hover:text-red-900 px-2 py-1 rounded-lg hover:bg-red-100 transition"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {orders.length === 0 ? (
               <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
                 <Package size={40} className="text-slate-300 mx-auto mb-3" />
@@ -782,6 +809,7 @@ export default function AdminCMSPage() {
                   return (
                     <div
                       key={order.id}
+                      data-testid={`admin-order-card-${order.id}`}
                       className={`rounded-2xl border p-5 shadow-sm transition ${
                         isCancelled
                           ? 'bg-slate-100/80 border-slate-300 opacity-60'

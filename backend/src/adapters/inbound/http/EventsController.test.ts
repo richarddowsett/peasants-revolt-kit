@@ -223,5 +223,29 @@ describe('EventsController', () => {
         operation: 'POST /api/event-tickets/:ticketId/resend-email',
       })
     );
+
+    // 4. Database failure during ticket cancellation -> SHOULD return 500 and alert with ADMIN_ACTION_FAILURE
+    vi.clearAllMocks();
+    mockUpdateTicketStatusUseCase.execute.mockRejectedValueOnce(
+      new Error('Failed to cancel event ticket in database: Firestore unavailable')
+    );
+    await alertedController.updateTicketStatus(
+      {
+        params: { ticketId: 'PRRC-EVT-2026-0026' },
+        body: { status: 'cancelled', reason: 'Payment not received in good time' },
+      } as unknown as Request,
+      mockRes as Response
+    );
+    expect(mockRes.status).toHaveBeenCalledWith(500);
+    expect(mockRes.json).toHaveBeenCalledWith({
+      error: 'Failed to cancel event ticket in database: Firestore unavailable',
+    });
+    expect(mockAlertPort.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'ADMIN_ACTION_FAILURE',
+        operation: 'PATCH /api/event-tickets/:ticketId/status',
+        httpStatus: 500,
+      })
+    );
   });
 });

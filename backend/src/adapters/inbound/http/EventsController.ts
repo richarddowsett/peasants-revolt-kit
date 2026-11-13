@@ -224,6 +224,10 @@ export class EventsController {
     } catch (err: unknown) {
       const message = (err as Error).message;
       console.error('[Events API ERROR] updateTicketStatus failed:', message);
+      const isServerError =
+        message.toLowerCase().includes('database') ||
+        message.toLowerCase().includes('firestore');
+      const httpStatus = isServerError ? 500 : 400;
       if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
         const isEmailError =
           message.toLowerCase().includes('resend') ||
@@ -235,14 +239,14 @@ export class EventsController {
           operation: 'PATCH /api/event-tickets/:ticketId/status',
           errorMessage: message,
           stack: (err as Error).stack,
-          httpStatus: 400,
+          httpStatus,
           metadata: {
             ticketId: req.params?.ticketId,
             status: req.body?.status,
           },
         });
       }
-      res.status(400).json({ error: message });
+      res.status(httpStatus).json({ error: message });
     }
   }
 

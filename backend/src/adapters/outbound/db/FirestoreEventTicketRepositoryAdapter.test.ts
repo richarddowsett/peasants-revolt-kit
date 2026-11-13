@@ -370,25 +370,35 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
   });
 
   describe('cancelTicketAndReleaseCapacity', () => {
-    it('cancels ticket and decrements event ticketsSold in transaction', async () => {
+    it('reads ticket and event before any writes and decrements event ticketsSold in transaction', async () => {
       const pendingTicket = {
         ...sampleTicket,
         id: 'PRRC-EVT-2026-0099',
         status: 'pending_payment',
         eventId: 'evt_1',
       };
+      let hasWritten = false;
       const mockTx = {
-        get: vi
-          .fn()
-          .mockResolvedValueOnce({
-            exists: true,
-            data: () => pendingTicket,
-          })
-          .mockResolvedValueOnce({
+        get: vi.fn(async () => {
+          if (hasWritten) {
+            throw new Error(
+              'Firestore transactions require all reads to be executed before all writes.'
+            );
+          }
+          if (mockTx.get.mock.calls.length === 1) {
+            return {
+              exists: true,
+              data: () => pendingTicket,
+            };
+          }
+          return {
             exists: true,
             data: () => ({ id: 'evt_1', ticketsSold: 5 }),
-          }),
-        set: vi.fn(),
+          };
+        }),
+        set: vi.fn(() => {
+          hasWritten = true;
+        }),
       };
       mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
 
@@ -401,6 +411,7 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
       expect(cancelled.cancellationReason).toBe(
         'Payment not received in good time'
       );
+      expect(mockTx.get).toHaveBeenCalledTimes(2);
       expect(mockTx.set).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ ticketsSold: 4 }),
@@ -408,15 +419,70 @@ describe('FirestoreEventTicketRepositoryAdapter', () => {
       );
     });
 
-    it('falls back to memory store if firestore transaction fails', async () => {
-      mockRunTransaction.mockRejectedValueOnce(new Error('Firestore error'));
+    it('returns existing cancelled ticket without decrementing capacity again', async () => {
+      const alreadyCancelled = {
+        ...sampleTicket,
+        id: 'PRRC-EVT-2026-0098',
+        status: 'cancelled',
+        cancelledAt: '2026-11-01T10:00:00.000Z',
+        cancellationReason: 'Already cancelled',
+      };
+      const mockTx = {
+        get: vi.fn().mockResolvedValueOnce({
+          exists: true,
+          data: () => alreadyCancelled,
+        }),
+        set: vi.fn(),
+      };
+      mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
 
-      const cancelled = await adapter.cancelTicketAndReleaseCapacity(
-        'PRRC-EVT-2026-0001',
-        'Payment not received in good time'
+      const result = await adapter.cancelTicketAndReleaseCapacity(
+        'PRRC-EVT-2026-0098'
       );
 
-      expect(cancelled.status).toBe('cancelled');
+      expect(result.status).toBe('cancelled');
+      expect(mockTx.set).not.toHaveBeenCalled();
+    });
+
+    it('throws not found error when ticket does not exist', async () => {
+      const mockTx = {
+        get: vi.fn().mockResolvedValueOnce({ exists: false }),
+        set: vi.fn(),
+      };
+      mockRunTransaction.mockImplementationOnce(async (cb) => cb(mockTx));
+
+      await expect(
+        adapter.cancelTicketAndReleaseCapacity('PRRC-EVT-2026-9999')
+      ).rejects.toThrow('Event ticket PRRC-EVT-2026-9999 not found');
+    });
+
+    it('throws database error and does NOT silently mutate memory store when firestore transaction fails', async () => {
+      const cachedTicket: EventTicket = {
+        ...sampleTicket,
+        id: 'PRRC-EVT-2026-0026',
+        status: 'pending_payment',
+      };
+      // Populate localMemoryTickets via listAllTickets just like loading /admin/orders does
+      mockGet.mockResolvedValueOnce({
+        docs: [{ data: () => cachedTicket }],
+      });
+      await adapter.listAllTickets();
+
+      mockRunTransaction.mockRejectedValueOnce(new Error('Firestore transaction aborted'));
+
+      await expect(
+        adapter.cancelTicketAndReleaseCapacity(
+          'PRRC-EVT-2026-0026',
+          'Payment not received in good time'
+        )
+      ).rejects.toThrow(
+        'Failed to cancel event ticket in database: Firestore transaction aborted'
+      );
+
+      // Verify the cached in-memory ticket was NOT silently mutated to cancelled
+      mockGet.mockRejectedValueOnce(new Error('Offline'));
+      const stillPending = await adapter.getTicketById('PRRC-EVT-2026-0026');
+      expect(stillPending?.status).toBe('pending_payment');
     });
   });
 });

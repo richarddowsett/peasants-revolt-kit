@@ -614,4 +614,138 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       }
     }
   });
+
+  test('Ticket Order Cancellation: surfaces backend errors visibly without silent fallback, and persists cancellation across page reloads and releases event capacity', async ({
+    page,
+    request,
+  }) => {
+    const timestamp = Date.now();
+    const eventTitle = `PRRC Cancel Persistence Run ${timestamp}`;
+    let createdEventId: string | null = null;
+
+    const loginRes = await request.post('/api/admin/login', {
+      data: { password: adminPassword },
+    });
+    expect(loginRes.ok()).toBeTruthy();
+    const loginBody = await loginRes.json();
+    const adminAuthHeaders: Record<string, string> = loginBody?.token
+      ? { Authorization: `Bearer ${loginBody.token}` }
+      : {};
+
+    try {
+      // 1. Create an event and purchase a ticket via API so we have a pending PRRC-EVT-* order
+      const createEventRes = await request.post('/api/events', {
+        headers: adminAuthHeaders,
+        data: {
+          title: eventTitle,
+          description: 'Test event for verifying persistent ticket cancellation and error reporting.',
+          startDate: '2027-09-10T18:30:00.000Z',
+          saleStartAt: '2020-01-01T09:00:00.000Z',
+          maxTickets: 5,
+          ticketPrice: 15,
+          isFree: false,
+          address: 'Brentwood Track, CM14',
+        },
+      });
+      expect(createEventRes.ok()).toBeTruthy();
+      const createdEvent = await createEventRes.json();
+      createdEventId = createdEvent.id;
+
+      const purchaseRes = await request.post(`/api/events/${createdEventId}/tickets`, {
+        data: {
+          userName: 'Cancel Test Runner',
+          userEmail: `cancel.runner.${timestamp}@example.com`,
+        },
+      });
+      expect(purchaseRes.ok()).toBeTruthy();
+      const createdTicket = await purchaseRes.json();
+      const ticketId: string = createdTicket.id;
+      expect(ticketId).toMatch(/^PRRC-EVT-\d{4}-\d{4}$/);
+
+      // 2. Admin logs into Customer Orders (/admin/orders)
+      await page.goto('/admin/orders');
+      const pwdInput = page.locator('input[type="password"]');
+      await pwdInput.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
+      if (await pwdInput.isVisible()) {
+        await pwdInput.fill(adminPassword);
+        await Promise.all([
+          page.waitForResponse((r) => r.url().includes('/api/admin/login') && r.ok()),
+          page.click('button[type="submit"]'),
+        ]);
+      }
+
+      const orderCard = page.getByTestId(`admin-order-card-${ticketId}`);
+      await expect(orderCard).toBeVisible();
+      await expect(orderCard).toContainText('Pending Payment');
+
+      // 3. Simulate a backend database failure when cancelling -> admin MUST see error alert and status MUST remain Pending Payment
+      await page.route(`**/api/orders/${ticketId}/status`, async (route) => {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: 'Failed to cancel event ticket in database: Simulated Firestore failure',
+          }),
+        });
+      });
+
+      const dialogMessages: string[] = [];
+      const handleFailureDialogs = async (dialog: import('@playwright/test').Dialog) => {
+        dialogMessages.push(dialog.message());
+        await dialog.accept();
+      };
+      page.on('dialog', handleFailureDialogs);
+
+      await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes(`/api/orders/${ticketId}/status`) && r.status() === 500
+        ),
+        orderCard.getByRole('button', { name: /Cancel Order/i }).click(),
+      ]);
+
+      await expect(page.getByTestId('order-action-error')).toBeVisible();
+      await expect(page.getByTestId('order-action-error')).toContainText(
+        'Simulated Firestore failure'
+      );
+      await expect.poll(() => dialogMessages.length).toBeGreaterThanOrEqual(2);
+      expect(dialogMessages.some((m) => m.includes('Simulated Firestore failure'))).toBe(true);
+
+      page.off('dialog', handleFailureDialogs);
+      await page.unroute(`**/api/orders/${ticketId}/status`);
+      await expect(orderCard).toContainText('Pending Payment');
+
+      // 4. Now cancel without interception (real backend + Firestore transaction)
+      page.once('dialog', (dialog) => dialog.accept());
+      await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes(`/api/orders/${ticketId}/status`) && r.ok()
+        ),
+        orderCard.getByRole('button', { name: /Cancel Order/i }).click(),
+      ]);
+
+      await expect(orderCard).toContainText('Cancelled');
+      await expect(orderCard).toContainText('Order cancelled');
+
+      // 5. Reload the page completely to confirm cancellation persisted in Firestore (not in-memory only)
+      await page.reload();
+      const reloadedOrderCard = page.getByTestId(`admin-order-card-${ticketId}`);
+      await expect(reloadedOrderCard).toBeVisible();
+      await expect(reloadedOrderCard).toContainText('Cancelled');
+      await expect(reloadedOrderCard).toContainText('Order cancelled');
+
+      // 6. Verify capacity was released on /admin/events
+      await page.goto(`/admin/events?eventId=${encodeURIComponent(createdEventId!)}`);
+      const adminEventCard = page.getByTestId(`admin-event-card-${createdEventId}`);
+      await expect(adminEventCard).toBeVisible();
+      await expect(adminEventCard).toContainText('0 / 5');
+      await expect(adminEventCard).toContainText('5');
+      await expect(page.getByTestId(`event-ticket-row-${ticketId}`)).toContainText('Cancelled');
+    } finally {
+      if (createdEventId) {
+        await request
+          .delete(`/api/events/${createdEventId}`, { headers: adminAuthHeaders })
+          .catch(() => {});
+      }
+    }
+  });
 });

@@ -367,5 +367,40 @@ describe('OrdersController', () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({ error: 'Invalid order status' });
     });
+
+    it('should respond with status 500 and report ADMIN_ACTION_FAILURE when cancelling fails in database', async () => {
+      const mockAlertPort = {
+        reportError: vi.fn().mockResolvedValue({ logged: true, emailSent: true }),
+      };
+      const alertedController = new OrdersController(
+        createOrderUseCase,
+        getUserOrdersUseCase,
+        updateOrderStatusUseCase,
+        mockAlertPort
+      );
+      req.params = { id: 'PRRC-EVT-2026-0026' };
+      req.body = { status: 'cancelled' };
+      vi.mocked(updateOrderStatusUseCase.execute).mockRejectedValueOnce(
+        new Error('Failed to cancel event ticket in database: Firestore unavailable')
+      );
+
+      await alertedController.updateStatus(req as Request, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Failed to cancel event ticket in database: Firestore unavailable',
+      });
+      expect(mockAlertPort.reportError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'ADMIN_ACTION_FAILURE',
+          operation: 'PATCH /api/orders/:id/status',
+          httpStatus: 500,
+          metadata: expect.objectContaining({
+            orderId: 'PRRC-EVT-2026-0026',
+            status: 'cancelled',
+          }),
+        })
+      );
+    });
   });
 });

@@ -188,13 +188,17 @@ export class OrdersController {
         `[Order API ERROR] Failed to update order ${req.params.id} status:`,
         message
       );
+      const isServerError =
+        message.toLowerCase().includes('database') ||
+        message.toLowerCase().includes('firestore');
+      const httpStatus = isServerError ? 500 : 400;
       if (this.errorAlertPort && !isErrorAlreadyAlerted(err)) {
         await this.errorAlertPort.reportError({
           category: 'ADMIN_ACTION_FAILURE',
           operation: 'PATCH /api/orders/:id/status',
           errorMessage: message,
           stack: (err as Error).stack,
-          httpStatus: 400,
+          httpStatus,
           metadata: {
             orderId: req.params?.id,
             status: req.body?.status,
@@ -202,7 +206,7 @@ export class OrdersController {
           },
         });
       }
-      res.status(400).json({ error: message });
+      res.status(httpStatus).json({ error: message });
     }
   }
 }

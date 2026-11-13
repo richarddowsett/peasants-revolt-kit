@@ -248,6 +248,40 @@ describe('AdminCMSPage - Customer Orders Status Filtering', () => {
     expect(updateOrderStatus).not.toHaveBeenCalled();
   });
 
+  it('displays visible error alert and window.alert when cancelling an order fails', async () => {
+    const { updateOrderStatus } = await import('@/lib/api');
+    window.confirm = vi.fn().mockReturnValue(true);
+    const alertSpy = vi.fn();
+    vi.stubGlobal('alert', alertSpy);
+    vi.mocked(updateOrderStatus).mockRejectedValueOnce(
+      new Error('Failed to cancel event ticket in database: Firestore error')
+    );
+
+    render(<AdminCMSPage />);
+
+    const ordersTabButton = await screen.findByRole('button', { name: /Customer Orders \(4\)/i });
+    fireEvent.click(ordersTabButton);
+
+    const pendingFilterButton = screen.getByRole('button', { name: /Pending Payment 1/i });
+    fireEvent.click(pendingFilterButton);
+
+    const cancelBtn = screen.getByRole('button', { name: /Cancel Order/i });
+    fireEvent.click(cancelBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-action-error')).toBeInTheDocument();
+      expect(screen.getByTestId('order-action-error')).toHaveTextContent(
+        /Failed to cancel event ticket in database: Firestore error/i
+      );
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Failed to cancel event ticket in database: Firestore error'
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Dismiss/i }));
+    expect(screen.queryByTestId('order-action-error')).not.toBeInTheDocument();
+  });
+
   it('displays cancelled order with greyed-out styling and without cancellation button', async () => {
     const { fetchOrders } = await import('@/lib/api');
     vi.mocked(fetchOrders).mockResolvedValueOnce([

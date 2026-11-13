@@ -427,6 +427,42 @@ describe('EventsAdminPanel & DoorQrScanner', () => {
     });
   });
 
+  it('displays visible error alert and window.alert when cancelling a ticket fails', async () => {
+    const pendingTicket = {
+      ...sampleTicket,
+      id: 'PRRC-EVT-2026-0026',
+      userName: 'Blocked Runner',
+      status: 'pending_payment' as const,
+    };
+    vi.mocked(api.fetchEventTickets).mockResolvedValueOnce([pendingTicket]);
+    vi.mocked(api.updateEventTicketStatus).mockRejectedValueOnce(
+      new Error('Failed to cancel event ticket in database: Transaction aborted')
+    );
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const alertSpy = vi.fn();
+    vi.stubGlobal('alert', alertSpy);
+
+    render(<EventsAdminPanel />);
+    await waitFor(() => {
+      expect(screen.getByText('Blocked Runner')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Cancel Order \(Unpaid\)/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ticket-action-error')).toBeInTheDocument();
+      expect(screen.getByTestId('ticket-action-error')).toHaveTextContent(
+        /Failed to cancel event ticket in database: Transaction aborted/i
+      );
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Failed to cancel event ticket in database: Transaction aborted'
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Dismiss/i }));
+    expect(screen.queryByTestId('ticket-action-error')).not.toBeInTheDocument();
+  });
+
   it('handles custom logo file upload and resetting to standard logo in the event form', async () => {
     vi.mocked(api.uploadImage).mockResolvedValue('https://storage.googleapis.com/test-bucket/custom-logo.png');
 

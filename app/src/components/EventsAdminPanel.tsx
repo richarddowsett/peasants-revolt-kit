@@ -75,6 +75,7 @@ export default function EventsAdminPanel() {
   // Ticket Actions State
   const [updatingTicketId, setUpdatingTicketId] = useState<string | null>(null);
   const [resendingTicketId, setResendingTicketId] = useState<string | null>(null);
+  const [ticketActionError, setTicketActionError] = useState<string | null>(null);
   const [verifyingQr, setVerifyingQr] = useState(false);
 
   const selectedEventIdRef = useRef<string | null>(null);
@@ -277,11 +278,14 @@ export default function EventsAdminPanel() {
 
   const handleUpdateTicketStatus = async (ticketId: string, status: EventTicketStatus) => {
     setUpdatingTicketId(ticketId);
+    setTicketActionError(null);
     try {
       await updateEventTicketStatus(ticketId, status);
       await loadEvents(selectedEventId, false);
     } catch (err: unknown) {
-      alert((err as Error).message || 'Failed to update ticket status');
+      const errorMsg = (err as Error).message || 'Failed to update ticket status';
+      setTicketActionError(`Failed to update ticket ${ticketId}: ${errorMsg}`);
+      alert(errorMsg);
     } finally {
       setUpdatingTicketId(null);
     }
@@ -296,6 +300,7 @@ export default function EventsAdminPanel() {
     if (!window.confirm(confirmMsg)) return;
 
     setUpdatingTicketId(ticket.id);
+    setTicketActionError(null);
     try {
       await updateEventTicketStatus(
         ticket.id,
@@ -304,7 +309,9 @@ export default function EventsAdminPanel() {
       );
       await loadEvents(selectedEventId, false);
     } catch (err: unknown) {
-      alert((err as Error).message || 'Failed to cancel ticket');
+      const errorMsg = (err as Error).message || 'Failed to cancel ticket';
+      setTicketActionError(`Failed to cancel ticket ${ticket.id}: ${errorMsg}`);
+      alert(errorMsg);
     } finally {
       setUpdatingTicketId(null);
     }
@@ -312,11 +319,14 @@ export default function EventsAdminPanel() {
 
   const handleResendTicketEmail = async (ticketId: string) => {
     setResendingTicketId(ticketId);
+    setTicketActionError(null);
     try {
       await resendEventTicketEmail(ticketId);
       await loadEvents(selectedEventId, false);
     } catch (err: unknown) {
-      alert((err as Error).message || 'Failed to resend ticket email');
+      const errorMsg = (err as Error).message || 'Failed to resend ticket email';
+      setTicketActionError(`Failed to resend email for ticket ${ticketId}: ${errorMsg}`);
+      alert(errorMsg);
     } finally {
       setResendingTicketId(null);
     }
@@ -857,6 +867,26 @@ export default function EventsAdminPanel() {
                 </p>
               </div>
             </div>
+
+            {ticketActionError && (
+              <div
+                role="alert"
+                data-testid="ticket-action-error"
+                className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start justify-between gap-3"
+              >
+                <div>
+                  <p className="font-bold text-red-900">Ticket action failed</p>
+                  <p className="text-xs text-red-700 mt-0.5">{ticketActionError}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTicketActionError(null)}
+                  className="text-xs font-bold text-red-700 hover:text-red-900 px-2 py-1 rounded-lg hover:bg-red-100 transition"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
 
             {loadingTickets ? (
               <p className="text-sm text-slate-500">Loading tickets...</p>

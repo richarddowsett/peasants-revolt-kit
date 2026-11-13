@@ -349,21 +349,17 @@ export class FirestoreEventTicketRepositoryAdapter
       }
       return updatedTicket;
     } catch (err: unknown) {
-      console.warn(
-        `[Firestore DB notice] Transaction failed in cancelTicketAndReleaseCapacity:`,
+      const msg = (err as Error).message || '';
+      if (msg.includes('not found')) {
+        throw err;
+      }
+      console.error(
+        `[Firestore DB error] Transaction failed in cancelTicketAndReleaseCapacity for ${ticketId}:`,
         err
       );
-      const mem = FirestoreEventTicketRepositoryAdapter.localMemoryTickets.find(
-        (t) => t.id === ticketId
+      throw new Error(
+        `Failed to cancel event ticket in database: ${msg || 'Database transaction error'}`
       );
-      if (mem) {
-        mem.status = 'cancelled';
-        mem.cancelledAt = nowIso;
-        mem.cancellationReason = reason || 'Payment not received in good time';
-        mem.updatedAt = nowIso;
-        return mem;
-      }
-      throw err;
     }
   }
 }
