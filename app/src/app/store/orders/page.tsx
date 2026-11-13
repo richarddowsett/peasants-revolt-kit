@@ -54,10 +54,18 @@ function UserOrdersContent() {
       setLoading(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user?.email) {
         setUserEmail(user.email);
-        loadOrders(user.email);
+        let idToken: string | undefined;
+        if (typeof user.getIdToken === 'function') {
+          try {
+            idToken = await user.getIdToken();
+          } catch {
+            // Ignore token retrieval error
+          }
+        }
+        loadOrders(user.email, idToken);
       } else {
         setUserEmail(null);
         setOrders([]);
@@ -106,10 +114,10 @@ function UserOrdersContent() {
     }
   }, [searchParams]);
 
-  const loadOrders = async (email: string) => {
+  const loadOrders = async (email: string, idToken?: string) => {
     setLoading(true);
     try {
-      const results = await fetchOrders(email);
+      const results = idToken ? await fetchOrders(email, idToken) : await fetchOrders(email);
       setOrders(results);
     } catch (err) {
       console.error('Failed to fetch orders from API:', err);

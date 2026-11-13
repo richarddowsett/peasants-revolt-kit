@@ -8,12 +8,22 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
     request,
   }) => {
     // 1. Ensure no upcoming events exist initially so the Instagram holding page is shown
+    const loginRes = await request.post('/api/admin/login', {
+      data: { password: adminPassword },
+    });
+    const loginBody = loginRes.ok() ? await loginRes.json() : {};
+    const adminAuthHeaders: Record<string, string> = loginBody?.token
+      ? { Authorization: `Bearer ${loginBody.token}` }
+      : {};
+
     const existingRes = await request.get('/api/events?includePast=true');
     if (existingRes.ok()) {
       const existingEvents = await existingRes.json();
       for (const item of existingEvents) {
         if (item?.event?.id) {
-          await request.delete(`/api/events/${item.event.id}`);
+          await request.delete(`/api/events/${item.event.id}`, {
+            headers: adminAuthHeaders,
+          });
         }
       }
     }
@@ -439,6 +449,14 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       await expect(ticketRowA2.locator('text=Pending Payment')).toBeVisible();
     } finally {
       // Clean up the created test events
+      const loginRes = await request.post('/api/admin/login', {
+        data: { password: adminPassword },
+      });
+      const loginBody = loginRes.ok() ? await loginRes.json() : {};
+      const adminAuthHeaders: Record<string, string> = loginBody?.token
+        ? { Authorization: `Bearer ${loginBody.token}` }
+        : {};
+
       const allEventsRes = await request.get('/api/events?includePast=true');
       if (allEventsRes.ok()) {
         const allEvents = await allEventsRes.json();
@@ -447,7 +465,9 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
             item?.event?.id &&
             (item.event.title === eventA.title || item.event.title === eventB.title)
           ) {
-            await request.delete(`/api/events/${item.event.id}`);
+            await request.delete(`/api/events/${item.event.id}`, {
+              headers: adminAuthHeaders,
+            });
           }
         }
       }
@@ -581,7 +601,16 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       await expect(ticketRow.locator('text=Mark Payment Received')).not.toBeVisible();
     } finally {
       if (createdFreeEventId) {
-        await request.delete(`/api/events/${createdFreeEventId}`).catch(() => {});
+        const loginRes = await request.post('/api/admin/login', {
+          data: { password: adminPassword },
+        });
+        const loginBody = loginRes.ok() ? await loginRes.json() : {};
+        const adminAuthHeaders: Record<string, string> = loginBody?.token
+          ? { Authorization: `Bearer ${loginBody.token}` }
+          : {};
+        await request
+          .delete(`/api/events/${createdFreeEventId}`, { headers: adminAuthHeaders })
+          .catch(() => {});
       }
     }
   });

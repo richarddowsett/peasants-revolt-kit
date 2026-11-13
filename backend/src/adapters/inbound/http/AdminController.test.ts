@@ -11,6 +11,7 @@ describe('AdminController', () => {
   beforeEach(() => {
     mockAuthAdapter = {
       verifyAdminPassword: vi.fn(),
+      generateAdminToken: vi.fn().mockReturnValue('signed_admin_token_xyz'),
     };
     controller = new AdminController(mockAuthAdapter);
     mockRes = {
@@ -19,14 +20,15 @@ describe('AdminController', () => {
     };
   });
 
-  it('returns 200 with admin_session_valid when password is valid', async () => {
+  it('returns 200 with signed admin token when password is valid', async () => {
     (mockAuthAdapter.verifyAdminPassword as ReturnType<typeof vi.fn>).mockResolvedValue(true);
     const mockReq = { body: { password: 'valid-password' } } as Request;
 
     await controller.login(mockReq, mockRes as Response);
 
     expect(mockAuthAdapter.verifyAdminPassword).toHaveBeenCalledWith('valid-password');
-    expect(mockRes.json).toHaveBeenCalledWith({ success: true, token: 'admin_session_valid' });
+    expect(mockAuthAdapter.generateAdminToken).toHaveBeenCalled();
+    expect(mockRes.json).toHaveBeenCalledWith({ success: true, token: 'signed_admin_token_xyz' });
   });
 
   it('returns 401 when password is invalid', async () => {

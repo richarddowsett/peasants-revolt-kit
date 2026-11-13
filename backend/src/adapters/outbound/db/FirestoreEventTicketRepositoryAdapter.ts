@@ -314,25 +314,28 @@ export class FirestoreEventTicketRepositoryAdapter
           updatedAt: nowIso,
         });
 
+        let eventRef: FirebaseFirestore.DocumentReference | null = null;
+        let eventSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+        if (ticketData.eventId) {
+          eventRef = adminDb.collection('events').doc(ticketData.eventId);
+          eventSnap = await transaction.get(eventRef);
+        }
+
         transaction.set(ticketRef, updated, { merge: true });
 
-        if (ticketData.eventId) {
-          const eventRef = adminDb.collection('events').doc(ticketData.eventId);
-          const eventSnap = await transaction.get(eventRef);
-          if (eventSnap.exists) {
-            const eventData = eventSnap.data() as ClubEvent;
-            const currentSold =
-              typeof eventData.ticketsSold === 'number' ? eventData.ticketsSold : 1;
-            const newSold = Math.max(0, currentSold - 1);
-            transaction.set(
-              eventRef,
-              {
-                ticketsSold: newSold,
-                updatedAt: nowIso,
-              },
-              { merge: true }
-            );
-          }
+        if (eventRef && eventSnap && eventSnap.exists) {
+          const eventData = eventSnap.data() as ClubEvent;
+          const currentSold =
+            typeof eventData.ticketsSold === 'number' ? eventData.ticketsSold : 1;
+          const newSold = Math.max(0, currentSold - 1);
+          transaction.set(
+            eventRef,
+            {
+              ticketsSold: newSold,
+              updatedAt: nowIso,
+            },
+            { merge: true }
+          );
         }
 
         return updated;

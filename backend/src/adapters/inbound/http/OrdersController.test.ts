@@ -208,6 +208,93 @@ describe('OrdersController', () => {
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ error: 'Failed to fetch orders' });
     });
+
+    it('enforces admin or Firebase ID token authentication when adminAuthAdapter is configured', async () => {
+      const mockAdminAuth = {
+        verifyAdminPassword: vi.fn(),
+        verifyAdminToken: vi.fn((t: string) => t === 'valid-admin-token'),
+      };
+      const mockUserVerifier = {
+        verifyIdToken: vi.fn(async (t: string) => {
+          if (t === 'user-token-jane') return { email: 'user@example.com', uid: 'u1' };
+          throw new Error('Invalid token');
+        }),
+      };
+
+      const securedController = new OrdersController(
+        createOrderUseCase,
+        getUserOrdersUseCase,
+        updateOrderStatusUseCase,
+        undefined,
+        mockAdminAuth,
+        mockUserVerifier
+      );
+
+      // 1. GET /api/orders (all orders) without admin token -> 401
+      await securedController.getOrders(
+        { query: {}, headers: {} } as unknown as Request,
+        res as Response
+      );
+      expect(res.status).toHaveBeenCalledWith(401);
+
+      // 2. GET /api/orders with valid admin token -> 200
+      vi.clearAllMocks();
+      await securedController.getOrders(
+        { query: {}, headers: { authorization: 'Bearer valid-admin-token' } } as unknown as Request,
+        res as Response
+      );
+      expect(getUserOrdersUseCase.getAllOrders).toHaveBeenCalledTimes(1);
+      expect(res.json).toHaveBeenCalledWith([mockOrder]);
+
+      // 3. GET /api/orders?email=user@example.com without token -> 401
+      vi.clearAllMocks();
+      await securedController.getOrders(
+        { query: { email: 'user@example.com' }, headers: {} } as unknown as Request,
+        res as Response
+      );
+      expect(res.status).toHaveBeenCalledWith(401);
+
+      // 4. GET /api/orders?email=other@example.com with Jane's token -> 403
+      vi.clearAllMocks();
+      await securedController.getOrders(
+        {
+          query: { email: 'other@example.com' },
+          headers: { authorization: 'Bearer user-token-jane' },
+        } as unknown as Request,
+        res as Response
+      );
+      expect(res.status).toHaveBeenCalledWith(403);
+
+      // 5. GET /api/orders?email=user@example.com with Jane's token -> 200
+      vi.clearAllMocks();
+      await securedController.getOrders(
+        {
+          query: { email: 'user@example.com' },
+          headers: { authorization: 'Bearer user-token-jane' },
+        } as unknown as Request,
+        res as Response
+      );
+      expect(getUserOrdersUseCase.getOrdersForUser).toHaveBeenCalledWith('user@example.com');
+      expect(res.json).toHaveBeenCalledWith([mockOrder]);
+    });
+
+    it('redacts ticketUuid on unpaid event ticket orders for non-admin lookups', async () => {
+      const unpaidTicketOrder: Order = {
+        ...mockOrder,
+        id: 'PRRC-EVT-2026-0001',
+        orderType: 'event_ticket',
+        status: 'pending_payment',
+        ticketUuid: 'secret-uuid-999',
+      };
+      vi.mocked(getUserOrdersUseCase.getOrderByRefAndEmail).mockResolvedValueOnce(unpaidTicketOrder);
+
+      req.query = { orderRef: 'PRRC-EVT-2026-0001', email: 'user@example.com' };
+      await controller.getOrders(req as Request, res as Response);
+
+      const returnedOrder = vi.mocked(res.json!).mock.calls[0][0] as Order;
+      expect(returnedOrder.id).toBe('PRRC-EVT-2026-0001');
+      expect(returnedOrder.ticketUuid).toBeUndefined();
+    });
   });
 
   describe('updateStatus', () => {

@@ -10,6 +10,8 @@ import { FirestoreEventTicketRepositoryAdapter } from '../adapters/outbound/db/F
 import { ResendTicketEmailAdapter } from '../adapters/outbound/email/ResendTicketEmailAdapter';
 import { ErrorObservabilityAdapter } from '../adapters/outbound/observability/ErrorObservabilityAdapter';
 import { createGlobalErrorMiddleware } from '../adapters/inbound/http/errorMiddleware';
+import { createRequireAdminAuth } from '../adapters/inbound/http/authMiddleware';
+import { adminAuth } from '../adapters/outbound/db/FirebaseAdminConfig';
 
 // Core Use Cases (Implementing Inbound Ports)
 import { GetProductsUseCase } from '../domain/usecases/GetProductsUseCase';
@@ -101,8 +103,11 @@ export const ordersController = new OrdersController(
   createOrderUseCase,
   getUserOrdersUseCase,
   updateOrderStatusUseCase,
-  errorObservabilityAdapter
+  errorObservabilityAdapter,
+  adminAuthAdapter,
+  adminAuth
 );
+export const requireAdminAuth = createRequireAdminAuth(adminAuthAdapter);
 export const adminController = new AdminController(
   adminAuthAdapter,
   errorObservabilityAdapter

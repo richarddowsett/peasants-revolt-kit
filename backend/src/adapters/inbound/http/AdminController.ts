@@ -14,7 +14,10 @@ export class AdminController {
       const { password } = req.body;
       const isValid = await this.adminAuthAdapter.verifyAdminPassword(password);
       if (isValid) {
-        res.json({ success: true, token: 'admin_session_valid' });
+        const token = this.adminAuthAdapter.generateAdminToken
+          ? this.adminAuthAdapter.generateAdminToken()
+          : 'admin_session_valid';
+        res.json({ success: true, token });
       } else {
         res.status(401).json({ success: false, error: 'Incorrect admin password' });
       }

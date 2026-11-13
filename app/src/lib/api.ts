@@ -1,5 +1,51 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
+export const ADMIN_TOKEN_STORAGE_KEY = 'admin_auth_token';
+
+export function getAdminToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAdminToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
+  } catch {
+    // Ignore storage error
+  }
+}
+
+export function clearAdminToken(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+  } catch {
+    // Ignore storage error
+  }
+}
+
+function getAdminAuthHeaders(): Record<string, string> {
+  const token = getAdminToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function withAdminGetOptions(baseOptions: RequestInit = { cache: 'no-store' }): RequestInit {
+  const token = getAdminToken();
+  if (!token) return baseOptions;
+  return {
+    ...baseOptions,
+    headers: {
+      ...(baseOptions.headers as Record<string, string> | undefined),
+      Authorization: `Bearer ${token}`,
+    },
+  };
+}
+
 async function handleResponse(res: Response, defaultMessage: string) {
   if (!res.ok) {
     let errorMsg = defaultMessage;
@@ -22,23 +68,25 @@ async function handleResponse(res: Response, defaultMessage: string) {
 }
 
 export async function fetchProducts(all: boolean = false) {
-  const res = await fetch(`${API_BASE}/products${all ? '?all=true' : ''}`, { cache: 'no-store' });
+  const options = all ? withAdminGetOptions({ cache: 'no-store' }) : { cache: 'no-store' as const };
+  const res = await fetch(`${API_BASE}/products${all ? '?all=true' : ''}`, options);
   return handleResponse(res, 'Failed to fetch products');
 }
-
 
 export async function saveProduct(productData: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/products`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify(productData),
   });
   return handleResponse(res, 'Failed to save product');
 }
 
 export async function deleteProduct(id: string) {
+  const adminHeaders = getAdminAuthHeaders();
   const res = await fetch(`${API_BASE}/products/${id}`, {
     method: 'DELETE',
+    ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
   });
   return handleResponse(res, 'Failed to delete product');
 }
@@ -49,7 +97,7 @@ export async function getSignedUploadUrl(
 ): Promise<{ uploadUrl: string; publicUrl: string; filePath: string }> {
   const res = await fetch(`${API_BASE}/upload/signed-url`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify({ fileName, contentType }),
   });
   return handleResponse(res, 'Failed to generate signed upload URL');
@@ -76,8 +124,10 @@ export async function uploadImage(file: File): Promise<string> {
     console.warn('Signed URL direct upload failed, attempting fallback multipart upload:', err);
     const formData = new FormData();
     formData.append('images', file);
+    const adminHeaders = getAdminAuthHeaders();
     const res = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
+      ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
       body: formData,
     });
     const data = await handleResponse(res, 'Failed to upload image');
@@ -93,8 +143,10 @@ export async function uploadImages(files: File[]): Promise<string[]> {
     console.warn('Signed URL direct uploads failed, attempting fallback multipart upload:', err);
     const formData = new FormData();
     files.forEach((file) => formData.append('images', file));
+    const adminHeaders = getAdminAuthHeaders();
     const res = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
+      ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
       body: formData,
     });
     const data = await handleResponse(res, 'Failed to upload images');
@@ -111,9 +163,12 @@ export async function createOrder(orderCommand: Record<string, unknown>) {
   return handleResponse(res, 'Failed to create order');
 }
 
-export async function fetchOrders(email?: string) {
+export async function fetchOrders(email?: string, userToken?: string) {
   const url = email ? `${API_BASE}/orders?email=${encodeURIComponent(email)}` : `${API_BASE}/orders`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const options: RequestInit = userToken
+    ? { cache: 'no-store', headers: { Authorization: `Bearer ${userToken}` } }
+    : withAdminGetOptions({ cache: 'no-store' });
+  const res = await fetch(url, options);
   return handleResponse(res, 'Failed to fetch orders');
 }
 
@@ -123,7 +178,6 @@ export async function lookupOrder(orderRef: string, email: string) {
   return handleResponse(res, 'Failed to look up order');
 }
 
-
 export async function updateOrderStatus(orderId: string, status: string, batchRef?: string) {
   const payload: { status: string; batchRef?: string } = { status };
   if (batchRef !== undefined && batchRef.trim() !== '') {
@@ -131,7 +185,7 @@ export async function updateOrderStatus(orderId: string, status: string, batchRe
   }
   const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify(payload),
   });
   return handleResponse(res, 'Failed to update order status');
@@ -145,7 +199,13 @@ export async function verifyAdminPassword(password: string) {
   });
   if (!res.ok) return false;
   const data = await res.json();
-  return data.success === true;
+  if (data.success === true) {
+    if (typeof data.token === 'string' && data.token) {
+      setAdminToken(data.token);
+    }
+    return true;
+  }
+  return false;
 }
 
 export async function fetchFeatureFlags() {
@@ -162,7 +222,7 @@ export async function fetchFeatureFlag(id: string) {
 export async function updateFeatureFlag(id: string, enabled: boolean) {
   const res = await fetch(`${API_BASE}/feature-flags/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify({ enabled }),
   });
   return handleResponse(res, `Failed to update feature flag ${id}`);
@@ -186,7 +246,7 @@ export async function fetchEventById(eventId: string) {
 export async function createEvent(payload: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/events`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify(payload),
   });
   return handleResponse(res, 'Failed to create event');
@@ -195,15 +255,17 @@ export async function createEvent(payload: Record<string, unknown>) {
 export async function updateEvent(eventId: string, payload: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/events/${encodeURIComponent(eventId)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify(payload),
   });
   return handleResponse(res, 'Failed to update event');
 }
 
 export async function deleteEvent(eventId: string) {
+  const adminHeaders = getAdminAuthHeaders();
   const res = await fetch(`${API_BASE}/events/${encodeURIComponent(eventId)}`, {
     method: 'DELETE',
+    ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
   });
   return handleResponse(res, 'Failed to delete event');
 }
@@ -230,7 +292,7 @@ export async function purchaseEventTicket(
 export async function fetchEventTickets(eventId: string) {
   const res = await fetch(
     `${API_BASE}/events/${encodeURIComponent(eventId)}/tickets`,
-    { cache: 'no-store' }
+    withAdminGetOptions({ cache: 'no-store' })
   );
   return handleResponse(res, 'Failed to fetch event tickets');
 }
@@ -244,7 +306,7 @@ export async function updateEventTicketStatus(
     `${API_BASE}/event-tickets/${encodeURIComponent(ticketId)}/status`,
     {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
       body: JSON.stringify({ status, reason }),
     }
   );
@@ -252,10 +314,12 @@ export async function updateEventTicketStatus(
 }
 
 export async function resendEventTicketEmail(ticketId: string) {
+  const adminHeaders = getAdminAuthHeaders();
   const res = await fetch(
     `${API_BASE}/event-tickets/${encodeURIComponent(ticketId)}/resend-email`,
     {
       method: 'POST',
+      ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
     }
   );
   return handleResponse(res, 'Failed to resend ticket email');
@@ -264,10 +328,8 @@ export async function resendEventTicketEmail(ticketId: string) {
 export async function verifyEventTicketQr(ticketUuid: string, eventId?: string) {
   const res = await fetch(`${API_BASE}/events/verify-qr`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify({ ticketUuid, eventId }),
   });
   return handleResponse(res, 'Failed to verify ticket QR code');
 }
-
-

@@ -3,17 +3,38 @@ import { CreateOrderInboundPort } from '../../../domain/ports/inbound/CreateOrde
 import { GetUserOrdersInboundPort } from '../../../domain/ports/inbound/GetUserOrdersInboundPort';
 import { UpdateOrderStatusInboundPort } from '../../../domain/ports/inbound/UpdateOrderStatusInboundPort';
 import { ErrorAlertOutboundPort } from '../../../domain/ports/outbound/ErrorAlertOutboundPort';
+import { AdminAuthOutboundPort } from '../../../domain/ports/outbound/AdminAuthOutboundPort';
+import { Order } from '../../../domain/entities/Order';
+import { extractBearerToken, isValidAdminRequest } from './authMiddleware';
 import {
   isErrorAlreadyAlerted,
   isOrderBusinessValidationError,
 } from '../../outbound/observability/ErrorObservabilityAdapter';
+
+export interface UserTokenVerifier {
+  verifyIdToken(token: string): Promise<{ email?: string; uid?: string }>;
+}
+
+function sanitizeOrderForCustomer(order: Order): Order {
+  if (
+    order.orderType === 'event_ticket' &&
+    (order.status === 'pending_payment' || order.status === 'cancelled') &&
+    order.ticketUuid
+  ) {
+    const { ticketUuid: _omitted, ...rest } = order;
+    return rest;
+  }
+  return order;
+}
 
 export class OrdersController {
   constructor(
     private createOrderUseCase: CreateOrderInboundPort,
     private getUserOrdersUseCase: GetUserOrdersInboundPort,
     private updateOrderStatusUseCase: UpdateOrderStatusInboundPort,
-    private errorAlertPort?: ErrorAlertOutboundPort
+    private errorAlertPort?: ErrorAlertOutboundPort,
+    private adminAuthAdapter?: AdminAuthOutboundPort,
+    private userTokenVerifier?: UserTokenVerifier
   ) {}
 
   async createOrder(req: Request, res: Response): Promise<void> {
@@ -67,6 +88,8 @@ export class OrdersController {
   async getOrders(req: Request, res: Response): Promise<void> {
     try {
       const { email, orderRef } = req.query;
+      const isAdmin = isValidAdminRequest(req, this.adminAuthAdapter);
+
       if (orderRef) {
         if (!email) {
           res.status(400).json({ error: 'Email address is required to track an order.' });
@@ -84,14 +107,48 @@ export class OrdersController {
           return;
         }
         console.log(`[Order API] Order lookup successful: [${order.id}] for ${email}`);
-        res.json(order);
+        res.json(isAdmin ? order : sanitizeOrderForCustomer(order));
         return;
       }
+
       if (email) {
+        if (this.adminAuthAdapter && !isAdmin) {
+          const bearerToken = extractBearerToken(req);
+          if (!bearerToken || !this.userTokenVerifier) {
+            res.status(401).json({
+              error: 'Unauthorized: Please sign in to view your order history.',
+            });
+            return;
+          }
+          try {
+            const decoded = await this.userTokenVerifier.verifyIdToken(bearerToken);
+            const verifiedEmail = (decoded.email || '').trim().toLowerCase();
+            const requestedEmail = String(email).trim().toLowerCase();
+            if (!verifiedEmail || verifiedEmail !== requestedEmail) {
+              res.status(403).json({
+                error: 'Forbidden: You can only view orders for your own email address.',
+              });
+              return;
+            }
+          } catch {
+            res.status(401).json({
+              error: 'Unauthorized: Invalid or expired authentication token.',
+            });
+            return;
+          }
+        }
         const orders = await this.getUserOrdersUseCase.getOrdersForUser(String(email));
-        res.json(orders);
+        res.json(isAdmin ? orders : orders.map(sanitizeOrderForCustomer));
         return;
       }
+
+      if (this.adminAuthAdapter && !isAdmin) {
+        res.status(401).json({
+          error: 'Unauthorized: Valid administrator session required.',
+        });
+        return;
+      }
+
       const orders = await this.getUserOrdersUseCase.getAllOrders();
       res.json(orders);
     } catch (err: unknown) {

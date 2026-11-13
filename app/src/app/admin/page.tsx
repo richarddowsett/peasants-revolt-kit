@@ -533,6 +533,7 @@ export default function AdminCMSPage() {
               onClick={() => {
                 setIsAuthenticated(false);
                 sessionStorage.removeItem('admin_authenticated');
+                sessionStorage.removeItem('admin_auth_token');
               }}
               className="text-xs text-slate-400 hover:text-red-400 font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-800 transition"
             >

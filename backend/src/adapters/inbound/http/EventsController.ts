@@ -147,6 +147,13 @@ export class EventsController {
         userEmail: req.body?.userEmail,
         userId: req.body?.userId,
       });
+      if (
+        ticket &&
+        (ticket.status === 'pending_payment' || ticket.status === 'cancelled')
+      ) {
+        res.status(201).json({ ...ticket, ticketUuid: '' });
+        return;
+      }
       res.status(201).json(ticket);
     } catch (err: unknown) {
       const message = (err as Error).message;

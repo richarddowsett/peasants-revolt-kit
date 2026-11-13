@@ -33,6 +33,7 @@ global.fetch = mockFetch as unknown as typeof fetch;
 describe('Frontend API Client (lib/api)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
   });
 
   it('fetchProducts calls /api/products', async () => {
@@ -409,6 +410,38 @@ describe('Frontend API Client (lib/api)', () => {
       expect(global.fetch).toHaveBeenCalledWith('/api/upload', expect.objectContaining({
         method: 'POST',
       }));
+    });
+
+    it('stores admin token on login and attaches Authorization Bearer header to admin and authenticated requests', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, token: 'signed.admin.token' }),
+      });
+
+      const loggedIn = await verifyAdminPassword('peasants2026!');
+      expect(loggedIn).toBe(true);
+      expect(sessionStorage.getItem('admin_auth_token')).toBe('signed.admin.token');
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      await fetchEventTickets('evt-123');
+      expect(global.fetch).toHaveBeenLastCalledWith('/api/events/evt-123/tickets', {
+        cache: 'no-store',
+        headers: { Authorization: 'Bearer signed.admin.token' },
+      });
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      await fetchOrders();
+      expect(global.fetch).toHaveBeenLastCalledWith('/api/orders', {
+        cache: 'no-store',
+        headers: { Authorization: 'Bearer signed.admin.token' },
+      });
+
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      await fetchOrders('member@example.com', 'firebase-id-token-999');
+      expect(global.fetch).toHaveBeenLastCalledWith('/api/orders?email=member%40example.com', {
+        cache: 'no-store',
+        headers: { Authorization: 'Bearer firebase-id-token-999' },
+      });
     });
   });
 });

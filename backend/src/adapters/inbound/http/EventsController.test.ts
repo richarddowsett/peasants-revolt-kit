@@ -83,6 +83,39 @@ describe('EventsController', () => {
     expect(mockRes.json).toHaveBeenCalledWith({ id: 'evt_new' });
   });
 
+  it('purchaseTicket redacts ticketUuid when status is pending_payment and preserves it when payment_successful', async () => {
+    mockPurchaseTicketUseCase.execute.mockResolvedValueOnce({
+      id: 'PRRC-EVT-2026-0001',
+      status: 'pending_payment',
+      ticketUuid: 'secret-qr-uuid',
+    });
+    await controller.purchaseTicket(
+      { params: { id: 'evt_1' }, body: { userName: 'Runner', userEmail: 'r@test.com' } } as unknown as Request,
+      mockRes as Response
+    );
+    expect(mockRes.status).toHaveBeenCalledWith(201);
+    expect(mockRes.json).toHaveBeenCalledWith({
+      id: 'PRRC-EVT-2026-0001',
+      status: 'pending_payment',
+      ticketUuid: '',
+    });
+
+    mockPurchaseTicketUseCase.execute.mockResolvedValueOnce({
+      id: 'PRRC-EVT-2026-0002',
+      status: 'payment_successful',
+      ticketUuid: 'free-event-qr-uuid',
+    });
+    await controller.purchaseTicket(
+      { params: { id: 'evt_free' }, body: { userName: 'Runner', userEmail: 'r@test.com' } } as unknown as Request,
+      mockRes as Response
+    );
+    expect(mockRes.json).toHaveBeenCalledWith({
+      id: 'PRRC-EVT-2026-0002',
+      status: 'payment_successful',
+      ticketUuid: 'free-event-qr-uuid',
+    });
+  });
+
   it('updateEvent and deleteEvent handle requests and errors', async () => {
     mockUpdateEventUseCase.execute.mockResolvedValueOnce({ id: 'evt_1', title: 'Updated' });
     const updateReq = { params: { id: 'evt_1' }, body: { title: 'Updated' } } as unknown as Request;

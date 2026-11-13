@@ -1,13 +1,3 @@
-import { AdminAuthPort } from '../../domain/ports/AdminAuthPort';
+import { PasswordAdminAuthAdapter as OutboundPasswordAdminAuthAdapter } from '../outbound/auth/PasswordAdminAuthAdapter';
 
-export class PasswordAdminAuthAdapter implements AdminAuthPort {
-  private readonly adminPassword: string;
-
-  constructor(adminPassword: string = process.env.ADMIN_PASSWORD || 'peasants2026!') {
-    this.adminPassword = adminPassword;
-  }
-
-  async verifyAdminPassword(password: string): Promise<boolean> {
-    return password === this.adminPassword;
-  }
-}
+export class PasswordAdminAuthAdapter extends OutboundPasswordAdminAuthAdapter {}

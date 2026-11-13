@@ -8,6 +8,7 @@ import {
   verifyAdminPassword,
 } from '@/lib/api';
 import { Order } from '@/domain/models/Order';
+import { isEventTicketOrderType } from '@/domain/models/ClubEvent';
 import {
   aggregateOrdersForManufacturer,
   ManufacturerExportBatch,
@@ -89,9 +90,12 @@ export default function ManufacturerExportPage() {
   };
 
   // Filter orders according to user toggle:
-  // Default: orders with status 'payment_successful'
-  // When toggle active: orders with status 'payment_successful' OR 'order_sent'
+  // Default: kit orders with status 'payment_successful'
+  // When toggle active: kit orders with status 'payment_successful' OR 'order_sent'
   const filteredOrders = orders.filter((order) => {
+    if (isEventTicketOrderType(order.orderType)) {
+      return false;
+    }
     if (includeAlreadySent) {
       return order.status === 'payment_successful' || order.status === 'order_sent';
     }
