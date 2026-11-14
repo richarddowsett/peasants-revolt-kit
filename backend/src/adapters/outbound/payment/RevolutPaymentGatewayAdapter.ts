@@ -7,11 +7,9 @@ export class RevolutPaymentGatewayAdapter implements PaymentGatewayOutboundPort 
     this.revolutUsername = revolutUsername;
   }
 
-  generatePaymentLink(orderReference: string, amount: number): string {
+  generatePaymentLink(_orderReference: string, amount: number): string {
     const amountInPence = Math.round(amount * 100);
-    const encodedRef = encodeURIComponent((orderReference || '').trim());
-    const noteParam = encodedRef ? `&note=${encodedRef}` : '';
-    return `https://revolut.me/${this.revolutUsername}?currency=GBP&amount=${amountInPence}${noteParam}`;
+    return `https://revolut.me/${this.revolutUsername}?currency=GBP&amount=${amountInPence}`;
   }
 
   getGatewayName(): string {
