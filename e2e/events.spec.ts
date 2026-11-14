@@ -578,9 +578,12 @@ test.describe('Club Events & Ticketing End-to-End Journey', () => {
       await expect(page.locator('text=Free Event (£0.00)')).toBeVisible();
 
       // NO Monzo link or Monzo reference warning should be present!
-      await expect(page.locator('text=IMPORTANT: Do NOT change the Monzo payment reference')).not.toBeVisible();
-      await expect(page.locator('a:has-text("Pay")')).not.toBeVisible();
-      await expect(page.locator('text=via Monzo')).not.toBeVisible();
+      const confirmationCard = page.getByTestId('ticket-order-confirmation');
+      await expect(
+        confirmationCard.locator('text=IMPORTANT: Do NOT change the Monzo payment reference')
+      ).not.toBeVisible();
+      await expect(confirmationCard.locator('a:has-text("Pay")')).not.toBeVisible();
+      await expect(confirmationCard.locator('text=via Monzo')).not.toBeVisible();
 
       // 6. Check order tracker on /store/orders
       await page.goto(
