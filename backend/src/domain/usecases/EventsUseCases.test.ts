@@ -169,9 +169,9 @@ describe('Club Events & Ticketing Use Cases', () => {
     paymentGateway = {
       generatePaymentLink: vi.fn(
         (ref: string, amount: number) =>
-          `https://revolut.me/terenclgf?currency=GBP&amount=${Math.round(amount * 100)}`
+          `https://monzo.me/rebeccannevarney/${amount.toFixed(2)}?d=${ref}`
       ),
-      getGatewayName: vi.fn(() => 'Revolut'),
+      getGatewayName: vi.fn(() => 'Monzo'),
     };
 
     emailPort = {

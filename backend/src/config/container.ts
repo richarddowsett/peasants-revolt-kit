@@ -1,7 +1,7 @@
 // Driven (Outbound) Adapters
 import { FirestoreAdminProductRepositoryAdapter } from '../adapters/outbound/db/FirestoreAdminProductRepositoryAdapter';
 import { FirestoreAdminOrderRepositoryAdapter } from '../adapters/outbound/db/FirestoreAdminOrderRepositoryAdapter';
-import { RevolutPaymentGatewayAdapter } from '../adapters/outbound/payment/RevolutPaymentGatewayAdapter';
+import { MonzoPaymentGatewayAdapter } from '../adapters/outbound/payment/MonzoPaymentGatewayAdapter';
 import { PasswordAdminAuthAdapter } from '../adapters/outbound/auth/PasswordAdminAuthAdapter';
 import { FirebaseAdminStorageAdapter } from '../adapters/outbound/storage/FirebaseAdminStorageAdapter';
 import { FirestoreAdminFeatureFlagRepositoryAdapter } from '../adapters/outbound/db/FirestoreAdminFeatureFlagRepositoryAdapter';
@@ -43,7 +43,7 @@ import { EventsController } from '../adapters/inbound/http/EventsController';
 // 1. Instantiate Driven (Outbound) Adapters
 const productRepoAdapter = new FirestoreAdminProductRepositoryAdapter();
 const orderRepoAdapter = new FirestoreAdminOrderRepositoryAdapter();
-const paymentGatewayAdapter = new RevolutPaymentGatewayAdapter();
+const paymentGatewayAdapter = new MonzoPaymentGatewayAdapter();
 const adminAuthAdapter = new PasswordAdminAuthAdapter();
 const storageAdapter = new FirebaseAdminStorageAdapter();
 const featureFlagRepoAdapter = new FirestoreAdminFeatureFlagRepositoryAdapter();

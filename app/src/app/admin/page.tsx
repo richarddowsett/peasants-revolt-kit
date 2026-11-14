@@ -709,7 +709,7 @@ export default function AdminCMSPage() {
               <div>
                 <h2 className="text-xl font-black text-slate-900">Manage Customer Orders</h2>
                 <p className="text-xs text-slate-500">
-                  Check Revolut transfers and mark payments as received or fulfilled.
+                  Check Monzo transfers and mark payments as received or fulfilled.
                 </p>
               </div>
 
