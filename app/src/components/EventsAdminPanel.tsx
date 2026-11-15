@@ -33,6 +33,7 @@ import {
   verifyEventTicketQr,
   uploadImage,
 } from '@/lib/api';
+import { isUnauthorizedError, notifyAdminUnauthorized } from '@/lib/adminSession';
 
 function toDatetimeLocalValue(isoStr?: string): string {
   if (!isoStr) return '';
@@ -118,6 +119,10 @@ export default function EventsAdminPanel() {
         setTickets([]);
       }
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       console.error('Failed to load events:', err);
     } finally {
       if (showSpinner) setLoadingEvents(false);
@@ -130,6 +135,10 @@ export default function EventsAdminPanel() {
       const data = await fetchEventTickets(eventId);
       setTickets(Array.isArray(data) ? data : []);
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       console.error('Failed to load event tickets:', err);
     } finally {
       setLoadingTickets(false);
@@ -193,6 +202,10 @@ export default function EventsAdminPanel() {
         text: 'Custom event logo uploaded to Cloud Storage.',
       });
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       setFormMessage({
         type: 'error',
         text: (err as Error).message || 'Failed to upload custom logo.',
@@ -244,6 +257,10 @@ export default function EventsAdminPanel() {
       }
       setIsFormOpen(false);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       setFormMessage({
         type: 'error',
         text: (err as Error).message || 'Failed to save event.',
@@ -262,6 +279,10 @@ export default function EventsAdminPanel() {
       const nextId = selectedEventId === eventId ? undefined : selectedEventId;
       await loadEvents(nextId, false);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       alert((err as Error).message || 'Failed to delete event');
     }
   };
@@ -283,6 +304,10 @@ export default function EventsAdminPanel() {
       await updateEventTicketStatus(ticketId, status);
       await loadEvents(selectedEventId, false);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       const errorMsg = (err as Error).message || 'Failed to update ticket status';
       setTicketActionError(`Failed to update ticket ${ticketId}: ${errorMsg}`);
       alert(errorMsg);
@@ -309,6 +334,10 @@ export default function EventsAdminPanel() {
       );
       await loadEvents(selectedEventId, false);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       const errorMsg = (err as Error).message || 'Failed to cancel ticket';
       setTicketActionError(`Failed to cancel ticket ${ticket.id}: ${errorMsg}`);
       alert(errorMsg);
@@ -324,6 +353,10 @@ export default function EventsAdminPanel() {
       await resendEventTicketEmail(ticketId);
       await loadEvents(selectedEventId, false);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       const errorMsg = (err as Error).message || 'Failed to resend ticket email';
       setTicketActionError(`Failed to resend email for ticket ${ticketId}: ${errorMsg}`);
       alert(errorMsg);
@@ -343,6 +376,10 @@ export default function EventsAdminPanel() {
       await verifyEventTicketQr(clean, targetEventId);
       await loadEvents(targetEventId ?? null, false);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       alert((err as Error).message || 'Failed to verify QR ticket UUID.');
     } finally {
       verifyingQrRef.current = false;

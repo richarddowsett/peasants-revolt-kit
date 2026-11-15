@@ -1,43 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { verifyAdminPassword } from '@/lib/api';
+import { useAdminAuth } from '@/lib/useAdminAuth';
 import DoorQrScanner from '@/components/DoorQrScanner';
 
 function ScannerPageContent() {
   const searchParams = useSearchParams();
   const eventIdParam = searchParams.get('eventId');
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [passwordInput, setPasswordInput] = useState<string>('');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [authError, setAuthError] = useState<string>('');
-
-  useEffect(() => {
-    const savedAuth = sessionStorage.getItem('admin_authenticated');
-    if (savedAuth === 'true') {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const isValid = await verifyAdminPassword(passwordInput);
-      if (isValid) {
-        setIsAuthenticated(true);
-        sessionStorage.setItem('admin_authenticated', 'true');
-        setAuthError('');
-      } else {
-        setAuthError('Incorrect admin password.');
-      }
-    } catch {
-      setAuthError('Failed to verify admin password.');
-    }
-  };
+  const {
+    isAuthenticated,
+    passwordInput,
+    setPasswordInput,
+    showPassword,
+    setShowPassword,
+    authError,
+    handleAdminLogin,
+  } = useAdminAuth();
 
   if (!isAuthenticated) {
     return (

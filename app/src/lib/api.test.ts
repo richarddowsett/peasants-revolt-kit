@@ -25,7 +25,20 @@ import {
   updateEventTicketStatus,
   resendEventTicketEmail,
   verifyEventTicketQr,
+  ApiError,
+  getAdminToken,
+  setAdminToken,
+  clearAdminToken,
+  isUnauthorizedError,
 } from './api';
+import {
+  ADMIN_AUTH_STORAGE_KEY,
+  ADMIN_TOKEN_STORAGE_KEY,
+  ADMIN_UNAUTHORIZED_EVENT,
+  isAdminSessionAuthenticated,
+  setAdminSessionAuthenticated,
+  subscribeAdminUnauthorized,
+} from './adminSession';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
@@ -442,6 +455,117 @@ describe('Frontend API Client (lib/api)', () => {
         cache: 'no-store',
         headers: { Authorization: 'Bearer firebase-id-token-999' },
       });
+    });
+
+    it('clears admin token, clears admin session, and dispatches unauthorized event on admin 401 responses', async () => {
+      setAdminToken('expired.admin.token');
+      setAdminSessionAuthenticated();
+      expect(getAdminToken()).toBe('expired.admin.token');
+      expect(isAdminSessionAuthenticated()).toBe(true);
+
+      const unauthorizedListener = vi.fn();
+      const unsubscribe = subscribeAdminUnauthorized(unauthorizedListener);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: 'Unauthorized: Valid administrator session required.' }),
+      });
+
+      await expect(fetchOrders()).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 401,
+        message: 'Unauthorized: Valid administrator session required.',
+      });
+
+      expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+      expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBeNull();
+      expect(getAdminToken()).toBeNull();
+      expect(isAdminSessionAuthenticated()).toBe(false);
+      expect(unauthorizedListener).toHaveBeenCalledTimes(1);
+
+      unsubscribe();
+    });
+
+    it('clears admin session on 401 across admin mutations and skips upload fallback on 401', async () => {
+      setAdminToken('expired.admin.token');
+      setAdminSessionAuthenticated();
+
+      const events: Event[] = [];
+      const handler = (e: Event) => events.push(e);
+      window.addEventListener(ADMIN_UNAUTHORIZED_EVENT, handler);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: 'Token expired' }),
+      });
+
+      const file = new File(['data'], 'kit.png', { type: 'image/png' });
+      await expect(uploadImage(file)).rejects.toBeInstanceOf(ApiError);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+      expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBeNull();
+      expect(events).toHaveLength(1);
+
+      setAdminToken('expired.admin.token');
+      setAdminSessionAuthenticated();
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: 'Token expired' }),
+      });
+      await expect(uploadImages([file])).rejects.toBeInstanceOf(ApiError);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+
+      setAdminToken('expired.admin.token');
+      setAdminSessionAuthenticated();
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        text: async () => 'Unauthorized',
+      });
+      await expect(updateOrderStatus('ORD-1', 'completed')).rejects.toMatchObject({
+        status: 401,
+        message: 'Unauthorized',
+      });
+      expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+
+      clearAdminToken();
+      window.removeEventListener(ADMIN_UNAUTHORIZED_EVENT, handler);
+    });
+
+    it('does not clear admin session on 401 for non-admin customer fetchOrders calls', async () => {
+      setAdminToken('valid.admin.token');
+      setAdminSessionAuthenticated();
+      const unauthorizedListener = vi.fn();
+      const unsubscribe = subscribeAdminUnauthorized(unauthorizedListener);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: 'Invalid user token' }),
+      });
+
+      await expect(fetchOrders('member@example.com', 'expired-firebase-token')).rejects.toMatchObject({
+        status: 401,
+      });
+
+      expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBe('valid.admin.token');
+      expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBe('true');
+      expect(unauthorizedListener).not.toHaveBeenCalled();
+
+      unsubscribe();
+    });
+
+    it('isUnauthorizedError detects ApiError 401 and status 401 objects', () => {
+      expect(isUnauthorizedError(new ApiError('Unauthorized', 401))).toBe(true);
+      expect(isUnauthorizedError(new ApiError('Forbidden', 403))).toBe(false);
+      expect(isUnauthorizedError({ status: 401 })).toBe(true);
+      expect(isUnauthorizedError({ status: 500 })).toBe(false);
+      expect(isUnauthorizedError(new Error('Network error'))).toBe(false);
+      expect(isUnauthorizedError(null)).toBe(false);
     });
   });
 });

@@ -22,6 +22,7 @@ import {
   EventTicketVerificationResult,
 } from '@/domain/models/ClubEvent';
 import { fetchEvents, verifyEventTicketQr } from '@/lib/api';
+import { isUnauthorizedError, notifyAdminUnauthorized } from '@/lib/adminSession';
 
 export type ScanFlashType = 'success' | 'warning' | 'error' | null;
 
@@ -236,6 +237,10 @@ export default function DoorQrScanner({
         triggerVisualAndAudioFeedback(result);
         await loadEvents(targetEventId ?? null, false);
       } catch (err: unknown) {
+        if (isUnauthorizedError(err)) {
+          notifyAdminUnauthorized();
+          return;
+        }
         const fallbackResult: EventTicketVerificationResult = {
           valid: false,
           status: 'not_found',

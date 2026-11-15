@@ -1,33 +1,23 @@
+import {
+  ADMIN_TOKEN_STORAGE_KEY,
+  ApiError,
+  clearAdminToken,
+  getAdminToken,
+  isUnauthorizedError,
+  notifyAdminUnauthorized,
+  setAdminToken,
+} from './adminSession';
+
+export {
+  ADMIN_TOKEN_STORAGE_KEY,
+  ApiError,
+  clearAdminToken,
+  getAdminToken,
+  isUnauthorizedError,
+  setAdminToken,
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
-
-export const ADMIN_TOKEN_STORAGE_KEY = 'admin_auth_token';
-
-export function getAdminToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function setAdminToken(token: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
-  } catch {
-    // Ignore storage error
-  }
-}
-
-export function clearAdminToken(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
-  } catch {
-    // Ignore storage error
-  }
-}
 
 function getAdminAuthHeaders(): Record<string, string> {
   const token = getAdminToken();
@@ -46,7 +36,11 @@ function withAdminGetOptions(baseOptions: RequestInit = { cache: 'no-store' }): 
   };
 }
 
-async function handleResponse(res: Response, defaultMessage: string) {
+async function handleResponse(
+  res: Response,
+  defaultMessage: string,
+  options?: { notifyOn401?: boolean }
+) {
   if (!res.ok) {
     let errorMsg = defaultMessage;
     try {
@@ -62,7 +56,10 @@ async function handleResponse(res: Response, defaultMessage: string) {
         // Ignore text parse error
       }
     }
-    throw new Error(errorMsg);
+    if (res.status === 401 && options?.notifyOn401) {
+      notifyAdminUnauthorized();
+    }
+    throw new ApiError(errorMsg, res.status);
   }
   return res.json();
 }
@@ -70,7 +67,7 @@ async function handleResponse(res: Response, defaultMessage: string) {
 export async function fetchProducts(all: boolean = false) {
   const options = all ? withAdminGetOptions({ cache: 'no-store' }) : { cache: 'no-store' as const };
   const res = await fetch(`${API_BASE}/products${all ? '?all=true' : ''}`, options);
-  return handleResponse(res, 'Failed to fetch products');
+  return handleResponse(res, 'Failed to fetch products', { notifyOn401: all });
 }
 
 export async function saveProduct(productData: Record<string, unknown>) {
@@ -79,7 +76,7 @@ export async function saveProduct(productData: Record<string, unknown>) {
     headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify(productData),
   });
-  return handleResponse(res, 'Failed to save product');
+  return handleResponse(res, 'Failed to save product', { notifyOn401: true });
 }
 
 export async function deleteProduct(id: string) {
@@ -88,7 +85,7 @@ export async function deleteProduct(id: string) {
     method: 'DELETE',
     ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
   });
-  return handleResponse(res, 'Failed to delete product');
+  return handleResponse(res, 'Failed to delete product', { notifyOn401: true });
 }
 
 export async function getSignedUploadUrl(
@@ -100,7 +97,7 @@ export async function getSignedUploadUrl(
     headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify({ fileName, contentType }),
   });
-  return handleResponse(res, 'Failed to generate signed upload URL');
+  return handleResponse(res, 'Failed to generate signed upload URL', { notifyOn401: true });
 }
 
 export async function uploadImageViaSignedUrl(file: File): Promise<string> {
@@ -121,6 +118,9 @@ export async function uploadImage(file: File): Promise<string> {
   try {
     return await uploadImageViaSignedUrl(file);
   } catch (err) {
+    if (isUnauthorizedError(err)) {
+      throw err;
+    }
     console.warn('Signed URL direct upload failed, attempting fallback multipart upload:', err);
     const formData = new FormData();
     formData.append('images', file);
@@ -130,7 +130,7 @@ export async function uploadImage(file: File): Promise<string> {
       ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
       body: formData,
     });
-    const data = await handleResponse(res, 'Failed to upload image');
+    const data = await handleResponse(res, 'Failed to upload image', { notifyOn401: true });
     return data.imageUrl || (data.imageUrls && data.imageUrls[0]);
   }
 }
@@ -140,6 +140,9 @@ export async function uploadImages(files: File[]): Promise<string[]> {
   try {
     return await Promise.all(files.map((file) => uploadImageViaSignedUrl(file)));
   } catch (err) {
+    if (isUnauthorizedError(err)) {
+      throw err;
+    }
     console.warn('Signed URL direct uploads failed, attempting fallback multipart upload:', err);
     const formData = new FormData();
     files.forEach((file) => formData.append('images', file));
@@ -149,7 +152,7 @@ export async function uploadImages(files: File[]): Promise<string[]> {
       ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
       body: formData,
     });
-    const data = await handleResponse(res, 'Failed to upload images');
+    const data = await handleResponse(res, 'Failed to upload images', { notifyOn401: true });
     return data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
   }
 }
@@ -169,7 +172,7 @@ export async function fetchOrders(email?: string, userToken?: string) {
     ? { cache: 'no-store', headers: { Authorization: `Bearer ${userToken}` } }
     : withAdminGetOptions({ cache: 'no-store' });
   const res = await fetch(url, options);
-  return handleResponse(res, 'Failed to fetch orders');
+  return handleResponse(res, 'Failed to fetch orders', { notifyOn401: !userToken && !email });
 }
 
 export async function lookupOrder(orderRef: string, email: string) {
@@ -188,7 +191,7 @@ export async function updateOrderStatus(orderId: string, status: string, batchRe
     headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify(payload),
   });
-  return handleResponse(res, 'Failed to update order status');
+  return handleResponse(res, 'Failed to update order status', { notifyOn401: true });
 }
 
 export async function verifyAdminPassword(password: string) {
@@ -225,7 +228,7 @@ export async function updateFeatureFlag(id: string, enabled: boolean) {
     headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify({ enabled }),
   });
-  return handleResponse(res, `Failed to update feature flag ${id}`);
+  return handleResponse(res, `Failed to update feature flag ${id}`, { notifyOn401: true });
 }
 
 export async function fetchEvents(includePast: boolean = false) {
@@ -249,7 +252,7 @@ export async function createEvent(payload: Record<string, unknown>) {
     headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify(payload),
   });
-  return handleResponse(res, 'Failed to create event');
+  return handleResponse(res, 'Failed to create event', { notifyOn401: true });
 }
 
 export async function updateEvent(eventId: string, payload: Record<string, unknown>) {
@@ -258,7 +261,7 @@ export async function updateEvent(eventId: string, payload: Record<string, unkno
     headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify(payload),
   });
-  return handleResponse(res, 'Failed to update event');
+  return handleResponse(res, 'Failed to update event', { notifyOn401: true });
 }
 
 export async function deleteEvent(eventId: string) {
@@ -267,7 +270,7 @@ export async function deleteEvent(eventId: string) {
     method: 'DELETE',
     ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
   });
-  return handleResponse(res, 'Failed to delete event');
+  return handleResponse(res, 'Failed to delete event', { notifyOn401: true });
 }
 
 export async function purchaseEventTicket(
@@ -294,7 +297,7 @@ export async function fetchEventTickets(eventId: string) {
     `${API_BASE}/events/${encodeURIComponent(eventId)}/tickets`,
     withAdminGetOptions({ cache: 'no-store' })
   );
-  return handleResponse(res, 'Failed to fetch event tickets');
+  return handleResponse(res, 'Failed to fetch event tickets', { notifyOn401: true });
 }
 
 export async function updateEventTicketStatus(
@@ -310,7 +313,7 @@ export async function updateEventTicketStatus(
       body: JSON.stringify({ status, reason }),
     }
   );
-  return handleResponse(res, 'Failed to update ticket status');
+  return handleResponse(res, 'Failed to update ticket status', { notifyOn401: true });
 }
 
 export async function resendEventTicketEmail(ticketId: string) {
@@ -322,7 +325,7 @@ export async function resendEventTicketEmail(ticketId: string) {
       ...(Object.keys(adminHeaders).length > 0 ? { headers: adminHeaders } : {}),
     }
   );
-  return handleResponse(res, 'Failed to resend ticket email');
+  return handleResponse(res, 'Failed to resend ticket email', { notifyOn401: true });
 }
 
 export async function verifyEventTicketQr(ticketUuid: string, eventId?: string) {
@@ -331,5 +334,5 @@ export async function verifyEventTicketQr(ticketUuid: string, eventId?: string) 
     headers: { 'Content-Type': 'application/json', ...getAdminAuthHeaders() },
     body: JSON.stringify({ ticketUuid, eventId }),
   });
-  return handleResponse(res, 'Failed to verify ticket QR code');
+  return handleResponse(res, 'Failed to verify ticket QR code', { notifyOn401: true });
 }

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   fetchOrders,
   updateOrderStatus,
-  verifyAdminPassword,
 } from '@/lib/api';
+import { isUnauthorizedError, notifyAdminUnauthorized } from '@/lib/adminSession';
+import { useAdminAuth } from '@/lib/useAdminAuth';
 import { Order } from '@/domain/models/Order';
 import { isEventTicketOrderType } from '@/domain/models/ClubEvent';
 import {
@@ -28,10 +29,19 @@ import {
 } from 'lucide-react';
 
 export default function ManufacturerExportPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [passwordInput, setPasswordInput] = useState<string>('');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [authError, setAuthError] = useState<string>('');
+  const {
+    isAuthenticated,
+    passwordInput,
+    setPasswordInput,
+    showPassword,
+    setShowPassword,
+    authError,
+    handleAdminLogin,
+  } = useAdminAuth({
+    onAuthenticated: () => loadOrders(),
+    onUnauthenticatedOnMount: () => setLoading(false),
+    onUnauthorized: () => setStatusMessage(null),
+  });
 
   const [loading, setLoading] = useState<boolean>(true);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -47,34 +57,6 @@ export default function ManufacturerExportPage() {
   const isAddressValid = shippingAddress.trim().length > 0;
   const isExportValid = isEmailValid && isAddressValid;
 
-  // Check authentication on mount
-  useEffect(() => {
-    const savedAuth = sessionStorage.getItem('admin_authenticated');
-    if (savedAuth === 'true') {
-      setIsAuthenticated(true);
-      loadOrders();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const isValid = await verifyAdminPassword(passwordInput);
-      if (isValid) {
-        setIsAuthenticated(true);
-        sessionStorage.setItem('admin_authenticated', 'true');
-        setAuthError('');
-        loadOrders();
-      } else {
-        setAuthError('Incorrect admin password.');
-      }
-    } catch {
-      setAuthError('Failed to verify admin password.');
-    }
-  };
-
   const loadOrders = async () => {
     setLoading(true);
     setStatusMessage(null);
@@ -82,6 +64,10 @@ export default function ManufacturerExportPage() {
       const allOrders = await fetchOrders();
       setOrders(allOrders);
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       console.error('Failed to load orders for export:', err);
       setStatusMessage({ type: 'error', text: 'Failed to load orders. Please refresh.' });
     } finally {
@@ -159,6 +145,10 @@ export default function ManufacturerExportPage() {
           : `Successfully marked ${pendingSentOrderIds.length} order(s) as "Order Sent"!`,
       });
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       console.error('Failed to update orders to order_sent:', err);
       setStatusMessage({
         type: 'error',

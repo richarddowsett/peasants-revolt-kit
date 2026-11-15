@@ -3,6 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ManufacturerExportPage from './page';
 import { fetchOrders, updateOrderStatus, verifyAdminPassword } from '@/lib/api';
+import {
+  ADMIN_AUTH_STORAGE_KEY,
+  ADMIN_TOKEN_STORAGE_KEY,
+  ApiError,
+} from '@/lib/adminSession';
 
 vi.mock('@/lib/api', () => ({
   verifyAdminPassword: vi.fn(),
@@ -379,5 +384,52 @@ describe('ManufacturerExportPage', () => {
 
     expect(screen.queryByText(/Production & Packaging Notes/i)).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/Add specific instructions for the manufacturer/i)).not.toBeInTheDocument();
+  });
+
+  it('logs out, deletes bearer token, and returns to login screen when fetchOrders returns 401', async () => {
+    sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, 'true');
+    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, 'expired.bearer.token');
+    vi.mocked(fetchOrders).mockRejectedValueOnce(new ApiError('Unauthorized', 401));
+
+    render(<ManufacturerExportPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Admin Access Required')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Enter admin password')).toBeInTheDocument();
+      expect(screen.getByText('Your session has expired. Please log in again.')).toBeInTheDocument();
+    });
+
+    expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBeNull();
+  });
+
+  it('logs out, deletes bearer token, and returns to login screen when mark as sent returns 401', async () => {
+    sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, 'true');
+    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, 'expired.bearer.token');
+    window.confirm = vi.fn().mockReturnValue(true);
+
+    render(<ManufacturerExportPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Running Vest')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. admin@peasantsrc.co.uk'), {
+      target: { value: 'admin@peasantsrc.co.uk' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Enter shipping address...'), {
+      target: { value: '1 Club Lane' },
+    });
+
+    vi.mocked(updateOrderStatus).mockRejectedValueOnce(new ApiError('Unauthorized', 401));
+    fireEvent.click(screen.getByRole('button', { name: /Mark 2 as Sent/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Admin Access Required')).toBeInTheDocument();
+      expect(screen.getByText('Your session has expired. Please log in again.')).toBeInTheDocument();
+    });
+
+    expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBeNull();
   });
 });

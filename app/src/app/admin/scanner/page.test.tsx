@@ -3,6 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminDoorScannerPage from './page';
 import * as api from '@/lib/api';
+import {
+  ADMIN_AUTH_STORAGE_KEY,
+  ADMIN_TOKEN_STORAGE_KEY,
+  ApiError,
+} from '@/lib/adminSession';
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({
@@ -62,5 +67,25 @@ describe('AdminDoorScannerPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('door-qr-scanner-screen')).toBeInTheDocument();
     });
+  });
+
+  it('logs out, deletes bearer token, and returns to login screen when QR verification returns 401', async () => {
+    sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, 'true');
+    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, 'expired.bearer.token');
+    vi.mocked(api.verifyEventTicketQr).mockRejectedValueOnce(new ApiError('Unauthorized', 401));
+
+    render(<AdminDoorScannerPage />);
+
+    const uuidInput = await screen.findByPlaceholderText('Paste or scan Ticket UUID...');
+    fireEvent.change(uuidInput, { target: { value: 'ticket-uuid-123' } });
+    fireEvent.click(screen.getByRole('button', { name: /Verify & Check In/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Door QR Scanner Login')).toBeInTheDocument();
+      expect(screen.getByText('Your session has expired. Please log in again.')).toBeInTheDocument();
+    });
+
+    expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBeNull();
   });
 });

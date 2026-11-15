@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  verifyAdminPassword,
   fetchProducts,
   saveProduct,
   deleteProduct,
@@ -12,6 +11,8 @@ import {
   fetchFeatureFlag,
   updateFeatureFlag,
 } from '@/lib/api';
+import { isUnauthorizedError, notifyAdminUnauthorized } from '@/lib/adminSession';
+import { useAdminAuth } from '@/lib/useAdminAuth';
 import { Product, SizeGuideRow, GenderFit } from '@/domain/models/Product';
 import { Order, OrderStatus } from '@/domain/models/Order';
 import { formatFullSizeLabel, parseGenderFromSize } from '@/domain/models/SizeGuide';
@@ -52,10 +53,23 @@ const ORDER_STATUS_FILTERS: Array<{ id: 'all' | OrderStatus; label: string }> = 
 ];
 
 export default function AdminCMSPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [passwordInput, setPasswordInput] = useState<string>('');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [authError, setAuthError] = useState<string>('');
+  const {
+    isAuthenticated,
+    passwordInput,
+    setPasswordInput,
+    showPassword,
+    setShowPassword,
+    authError,
+    handleAdminLogin,
+    logout,
+  } = useAdminAuth({
+    onAuthenticated: () => loadAdminData(),
+    onUnauthorized: () => {
+      setIsProductModalOpen(false);
+      resetProductForm();
+      setOrderActionError(null);
+    },
+  });
 
   const [activeTab, setActiveTab] = useState<AdminTab>(() => {
     if (typeof window !== 'undefined') {
@@ -82,15 +96,6 @@ export default function AdminCMSPage() {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [sizeGuideRows, setSizeGuideRows] = useState<SizeGuideRow[]>([]);
   const [adminSizeFilter, setAdminSizeFilter] = useState<'all' | 'men' | 'women' | 'unisex'>('all');
-
-
-  useEffect(() => {
-    const savedAuth = sessionStorage.getItem('admin_authenticated');
-    if (savedAuth === 'true') {
-      setIsAuthenticated(true);
-      loadAdminData();
-    }
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -124,23 +129,6 @@ export default function AdminCMSPage() {
     }
   };
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const isValid = await verifyAdminPassword(passwordInput);
-      if (isValid) {
-        setIsAuthenticated(true);
-        sessionStorage.setItem('admin_authenticated', 'true');
-        setAuthError('');
-        loadAdminData();
-      } else {
-        setAuthError('Incorrect admin password.');
-      }
-    } catch {
-      setAuthError('Failed to verify admin password.');
-    }
-  };
-
   const loadAdminData = async (showSpinner: boolean = false) => {
     if (showSpinner) {
       setLoading(true);
@@ -157,6 +145,10 @@ export default function AdminCMSPage() {
         setIsStoreClosed(storeFlag.enabled === true);
       }
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       console.error('Failed to load admin data from API:', err);
     } finally {
       setLoading(false);
@@ -176,6 +168,10 @@ export default function AdminCMSPage() {
       await updateFeatureFlag('store_closed', nextClosedState);
       setIsStoreClosed(nextClosedState);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       alert((err as Error).message || 'Failed to update store status');
     } finally {
       setTogglingStore(false);
@@ -193,6 +189,10 @@ export default function AdminCMSPage() {
       const uploadedUrls = await uploadImages(imageFiles);
       setProductImages((prev) => [...prev, ...uploadedUrls]);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       alert(`Failed to upload images: ${(err as Error).message || 'Storage upload error'}`);
     } finally {
       setUploadingImage(false);
@@ -299,6 +299,10 @@ export default function AdminCMSPage() {
       resetProductForm();
       loadAdminData();
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       alert((err as Error).message || 'Failed to save product');
     }
   };
@@ -312,6 +316,10 @@ export default function AdminCMSPage() {
         resetProductForm();
         loadAdminData();
       } catch (err: unknown) {
+        if (isUnauthorizedError(err)) {
+          notifyAdminUnauthorized();
+          return;
+        }
         alert((err as Error).message || 'Failed to delete product');
       }
     }
@@ -324,6 +332,10 @@ export default function AdminCMSPage() {
       await updateOrderStatus(orderId, status);
       loadAdminData();
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        notifyAdminUnauthorized();
+        return;
+      }
       const errorMsg = (err as Error).message || 'Failed to update order status';
       setOrderActionError(`Failed to update order ${orderId}: ${errorMsg}`);
       alert(errorMsg);
@@ -534,11 +546,7 @@ export default function AdminCMSPage() {
               <RefreshCw size={16} />
             </button>
             <button
-              onClick={() => {
-                setIsAuthenticated(false);
-                sessionStorage.removeItem('admin_authenticated');
-                sessionStorage.removeItem('admin_auth_token');
-              }}
+              onClick={logout}
               className="text-xs text-slate-400 hover:text-red-400 font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-800 transition"
             >
               Logout

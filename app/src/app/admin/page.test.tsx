@@ -6,6 +6,11 @@ import AdminCataloguePage from './catalogue/page';
 import AdminOrdersPage from './orders/page';
 import AdminEventsPage from './events/page';
 import { saveProduct } from '@/lib/api';
+import {
+  ADMIN_AUTH_STORAGE_KEY,
+  ADMIN_TOKEN_STORAGE_KEY,
+  ApiError,
+} from '@/lib/adminSession';
 
 vi.mock('@/lib/api', () => ({
   verifyAdminPassword: vi.fn().mockResolvedValue(true),
@@ -739,6 +744,69 @@ describe('AdminCMSPage - Sub-path Navigation, Back Button & Refresh', () => {
     await waitFor(() => {
       expect(mockUpdateFeatureFlag).toHaveBeenCalledWith('store_closed', true);
     });
+  });
+
+  it('logs out, deletes bearer token, and returns to login screen when initial load returns 401', async () => {
+    const { fetchOrders: mockFetchOrders } = await import('@/lib/api');
+    const alertSpy = vi.fn();
+    vi.stubGlobal('alert', alertSpy);
+
+    sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, 'true');
+    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, 'expired.bearer.token');
+    vi.mocked(mockFetchOrders).mockRejectedValueOnce(new ApiError('Unauthorized', 401));
+
+    render(<AdminCMSPage />);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Enter password...')).toBeInTheDocument();
+      expect(screen.getByText('Your session has expired. Please log in again.')).toBeInTheDocument();
+    });
+
+    expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBeNull();
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs out, deletes bearer token, and returns to login screen when an admin action returns 401', async () => {
+    const { updateOrderStatus: mockUpdateOrderStatus } = await import('@/lib/api');
+    const alertSpy = vi.fn();
+    vi.stubGlobal('alert', alertSpy);
+
+    sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, 'true');
+    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, 'expired.bearer.token');
+    window.history.replaceState({}, '', '/admin/orders');
+
+    render(<AdminCMSPage />);
+
+    const markPaidBtn = await screen.findByRole('button', { name: /Mark Payment Received/i });
+    vi.mocked(mockUpdateOrderStatus).mockRejectedValueOnce(new ApiError('Token expired', 401));
+    fireEvent.click(markPaidBtn);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Enter password...')).toBeInTheDocument();
+      expect(screen.getByText('Your session has expired. Please log in again.')).toBeInTheDocument();
+    });
+
+    expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBeNull();
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs out, deletes bearer token, and returns to login screen when clicking Logout', async () => {
+    sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, 'true');
+    sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, 'active.bearer.token');
+
+    render(<AdminCMSPage />);
+
+    const logoutBtn = await screen.findByRole('button', { name: /Logout/i });
+    fireEvent.click(logoutBtn);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Enter password...')).toBeInTheDocument();
+    });
+
+    expect(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY)).toBeNull();
   });
 });
 
